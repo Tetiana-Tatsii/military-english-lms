@@ -3,27 +3,20 @@
 import React, { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppContext } from "../../../context/AppContext";
-import {
-  ArrowLeft,
-  BookOpen,
-  PlayCircle,
-  FileText,
-  Circle,
-} from "lucide-react";
+import { ArrowLeft, Play, Edit2 } from "lucide-react";
 
 export default function CoursePage() {
   const params = useParams();
   const router = useRouter();
-  const { user, courses } = useAppContext();
+  const { courses, user, isInitialized } = useAppContext();
 
-  // Перевірка авторизації
   useEffect(() => {
-    if (!user) {
+    if (isInitialized && !user) {
       router.push("/login");
     }
-  }, [user, router]);
+  }, [user, router, isInitialized]);
 
-  if (!user) return null;
+  if (!isInitialized || !user) return null;
 
   const courseId = params.courseId as string;
   const course = courses.find((c) => c.id === courseId);
@@ -32,33 +25,19 @@ export default function CoursePage() {
     return (
       <div
         style={{
-          background: "#f0e9d8",
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#3a3528",
+          background: "#f0e9d8",
         }}
       >
-        <div style={{ textAlign: "center" }}>
-          <h2>Курс не знайдено</h2>
-          <button
-            onClick={() => router.push("/dashboard")}
-            style={{
-              background: "#c79a3e",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: 8,
-              cursor: "pointer",
-              fontWeight: 500,
-            }}
-          >
-            Повернутися на головну
-          </button>
-        </div>
+        <h2>Курс не знайдено</h2>
       </div>
     );
   }
+
+  const isTeacher = user.role === "teacher";
 
   return (
     <div
@@ -69,13 +48,13 @@ export default function CoursePage() {
         color: "#3a3528",
       }}
     >
-      {/* НАВІГАЦІЯ: КНОПКА НАЗАД */}
       <div
         style={{
           padding: "16px 24px",
           background: "#f6f1e4",
           borderBottom: "0.5px solid #d8cdb4",
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
         }}
       >
@@ -95,207 +74,177 @@ export default function CoursePage() {
         >
           <ArrowLeft size={18} /> Назад до списку курсів
         </button>
-      </div>
 
-      <div
-        style={{ padding: "32px 24px", maxWidth: "900px", margin: "0 auto" }}
-      >
-        {/* ШАПКА КУРСУ */}
-        <div style={{ marginBottom: "40px" }}>
-          <h1
+        {/* СПЕЦІАЛЬНА КНОПКА ТІЛЬКИ ДЛЯ ВИКЛАДАЧА */}
+        {isTeacher && (
+          <button
+            onClick={() => router.push("/teacher")}
             style={{
-              fontSize: 28,
-              fontWeight: 700,
-              margin: "0 0 12px",
-              color: "#3a3528",
-            }}
-          >
-            {course.title}
-          </h1>
-          <p
-            style={{
-              fontSize: 16,
-              fontWeight: 500,
-              color: "#8a8a45",
-              margin: "0 0 16px",
-            }}
-          >
-            {course.subtitle}
-          </p>
-          <p style={{ fontSize: 15, color: "#5a5440", lineHeight: 1.6 }}>
-            {course.description}
-          </p>
-        </div>
-
-        {/* ПЛАН КУРСУ (СИЛАБУС) */}
-        <div>
-          <h2
-            style={{
-              fontSize: 20,
+              background: "#8a8a45",
+              color: "#fff",
+              border: "none",
+              padding: "8px 16px",
+              borderRadius: 8,
+              cursor: "pointer",
               fontWeight: 600,
-              marginBottom: "20px",
               display: "flex",
               alignItems: "center",
               gap: 8,
-              color: "#3a3528",
             }}
           >
-            <BookOpen size={22} color="#c79a3e" /> План навчання
-          </h2>
+            <Edit2 size={16} /> Редагувати курс
+          </button>
+        )}
+      </div>
 
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "24px" }}
-          >
-            {course.modules.map((mod, index) => (
+      <div
+        style={{ padding: "40px 24px", maxWidth: "800px", margin: "0 auto" }}
+      >
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            margin: "0 0 8px",
+            color: "#3a3528",
+          }}
+        >
+          {course.title}
+        </h1>
+        <p
+          style={{
+            fontSize: 15,
+            color: "#8a8a45",
+            margin: "0 0 16px",
+            fontWeight: 500,
+          }}
+        >
+          {course.subtitle}
+        </p>
+        <p
+          style={{
+            fontSize: 14,
+            color: "#5a5440",
+            lineHeight: 1.6,
+            margin: "0 0 32px",
+          }}
+        >
+          {course.description}
+        </p>
+
+        <h3
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            margin: "0 0 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          📖 План навчання
+        </h3>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {course.modules.map((mod, mIndex) => (
+            <div
+              key={mod.id}
+              style={{
+                background: "#f6f1e4",
+                borderRadius: 12,
+                border: "0.5px solid #d8cdb4",
+                overflow: "hidden",
+              }}
+            >
               <div
-                key={mod.id}
                 style={{
-                  background: "#f6f1e4",
-                  borderRadius: 12,
-                  border: "0.5px solid #d8cdb4",
-                  overflow: "hidden",
+                  padding: "16px 20px",
+                  background: "#eef0df",
+                  borderBottom: "0.5px solid #d8cdb4",
                 }}
               >
-                {/* ЗАГОЛОВОК МОДУЛЯ */}
-                <div
+                <h4
                   style={{
-                    background: "#e9e1cd",
-                    padding: "16px 20px",
-                    borderBottom: "0.5px solid #d8cdb4",
+                    margin: 0,
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "#3a3528",
                   }}
                 >
-                  <h3
+                  {mIndex + 1}. {mod.title}
+                </h4>
+              </div>
+              <div style={{ padding: "12px 20px" }}>
+                {mod.lessons.map((lesson) => (
+                  <div
+                    key={lesson.id}
+                    onClick={() =>
+                      router.push(`/courses/${course.id}/lessons/${lesson.id}`)
+                    }
                     style={{
-                      fontSize: 16,
-                      fontWeight: 600,
-                      margin: 0,
-                      color: "#3a3528",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "12px 0",
+                      borderBottom: "0.5px solid #e9e1cd",
+                      cursor: "pointer",
                     }}
                   >
-                    {index + 1}. {mod.title}
-                  </h3>
-                </div>
-
-                {/* СПИСОК УРОКІВ */}
-                <div
-                  style={{
-                    padding: "12px 20px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
-                  {mod.lessons.map((lesson, lessonIndex) => (
                     <div
-                      key={lesson.id}
-                      onClick={() =>
-                        router.push(
-                          `/courses/${course.id}/lessons/${lesson.id}`,
-                        )
-                      }
                       style={{
                         display: "flex",
-                        alignItems: "center",
+                        alignItems: "flex-start",
                         gap: 12,
-                        padding: "12px",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        transition: "background 0.2s",
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#eef0df")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "transparent")
-                      }
                     >
-                      <Circle size={18} color="#aaa18a" />
-                      <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          border: "2px solid #a8a08c",
+                          marginTop: 2,
+                        }}
+                      ></div>
+                      <div>
                         <p
                           style={{
+                            margin: "0 0 4px",
                             fontSize: 14,
                             fontWeight: 500,
-                            margin: "0 0 4px",
                             color: "#3a3528",
                           }}
                         >
-                          1.{lessonIndex + 1} {lesson.title}
+                          {lesson.title}
                         </p>
                         <span
                           style={{
-                            fontSize: 11,
+                            fontSize: 10,
                             color: "#8a8a45",
                             textTransform: "uppercase",
                             fontWeight: 600,
-                            background: "#eef0df",
-                            padding: "2px 6px",
-                            borderRadius: 4,
                           }}
                         >
                           {lesson.skill}
                         </span>
                       </div>
-                      <PlayCircle size={18} color="#8a8a45" />
                     </div>
-                  ))}
-
-                  {mod.lessons.length === 0 && (
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: "#9a8f70",
-                        margin: "8px 0",
-                      }}
-                    >
-                      Уроки ще не додані.
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* ПІДСУМКОВИЙ ТЕСТ */}
-            <div
-              style={{
-                background: "#f6f1e4",
-                borderRadius: 12,
-                border: "0.5px solid #d8cdb4",
-                padding: "16px 20px",
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 8,
-                  background: "#8a8a45",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FileText size={20} color="#f6f1e4" />
-              </div>
-              <div>
-                <h3
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    margin: "0 0 4px",
-                    color: "#3a3528",
-                  }}
-                >
-                  {course.finalTest.title}
-                </h3>
-                <p style={{ fontSize: 13, color: "#5a5440", margin: 0 }}>
-                  Відкриється після завершення всіх модулів
-                </p>
+                    <Play size={16} color="#a8a08c" />
+                  </div>
+                ))}
+                {mod.lessons.length === 0 && (
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#9a8f70",
+                      margin: "12px 0 0",
+                    }}
+                  >
+                    Уроки ще не додані
+                  </p>
+                )}
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Mic,
+  Square,
   Paperclip,
   X,
   Camera,
@@ -44,12 +45,11 @@ function QuizletPanel({ cards }: { cards: QuizletCard[] }) {
     setFlipped(false);
   };
 
-  // ФУНКЦІЯ ДЛЯ ОЗВУЧКИ АНГЛІЙСЬКОЮ
   const playAudio = (text: string) => {
     if ("speechSynthesis" in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US"; // Американська вимова. Можна змінити на 'en-GB' для британської
-      utterance.rate = 0.9; // Трохи сповільнив, щоб курсантам було краще чути
+      utterance.lang = "en-US";
+      utterance.rate = 0.9;
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -104,7 +104,6 @@ function QuizletPanel({ cards }: { cards: QuizletCard[] }) {
           {flipped ? card.translation : card.term}
         </p>
 
-        {/* КНОПКА ОЗВУЧКИ */}
         {!flipped && (
           <div
             onClick={(e) => {
@@ -170,7 +169,7 @@ function QuizletPanel({ cards }: { cards: QuizletCard[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Компонент Відправки Відповіді (Рапорт/Голос)
+// 2. Компонент Відправки Відповіді (Справжній Диктофон та Файли)
 // ---------------------------------------------------------------------------
 function AnswerPanel({
   courseId,
@@ -181,19 +180,82 @@ function AnswerPanel({
 }) {
   const { submitAnswer } = useAppContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
 
   const [text, setText] = useState("");
-  const [voiceRecorded, setVoiceRecorded] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
+  // Стейт для диктофона
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  // ОБРОБКА ФАЙЛІВ
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setAttachments((prev) => [...prev, ...files.map((f) => f.name)]);
+    setAttachments((prev) => [...prev, ...files]);
   };
 
+  const removeFile = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ЛОГІКА ДИКТОФОНА
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/webm",
+        });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Помилка доступу до мікрофона:", err);
+      alert(
+        "Будь ласка, надайте дозвіл на використання мікрофона у налаштуваннях браузера.",
+      );
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      // Вимикаємо індикатор мікрофона у вкладці браузера
+      mediaRecorderRef.current.stream
+        .getTracks()
+        .forEach((track) => track.stop());
+      setIsRecording(false);
+    }
+  };
+
+  const removeAudio = () => {
+    setAudioUrl(null);
+  };
+
+  // ВІДПРАВКА ДАНИХ
   const handleSubmit = () => {
-    submitAnswer({ courseId, lessonId, text, voiceRecorded, attachments });
+    const fileNames = attachments.map((f) => f.name);
+    submitAnswer({
+      courseId,
+      lessonId,
+      text,
+      voiceRecorded: !!audioUrl,
+      attachments: fileNames,
+    });
     setSubmitted(true);
   };
 
@@ -251,6 +313,8 @@ function AnswerPanel({
       >
         Відповідь на завдання
       </h3>
+
+      {/* Текстове поле */}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -267,27 +331,119 @@ function AnswerPanel({
           resize: "vertical",
         }}
       />
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <button
-          onClick={() => setVoiceRecorded(!voiceRecorded)}
+
+      {/* Панель прослуховування записаного аудіо */}
+      {audioUrl && (
+        <div
           style={{
-            flex: 1,
-            background: voiceRecorded ? "#eef0df" : "#fff",
-            color: "#3a3528",
-            border: voiceRecorded ? "1px solid #8a8a45" : "0.5px solid #d8cdb4",
-            borderRadius: 8,
-            padding: "10px",
-            fontSize: 13,
-            fontWeight: 500,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            cursor: "pointer",
+            gap: 12,
+            background: "#eef0df",
+            padding: "8px 12px",
+            borderRadius: 8,
+            marginBottom: 16,
+            border: "1px solid #8a8a45",
           }}
         >
-          <Mic size={16} /> {voiceRecorded ? "Записано" : "PTT Аудіо"}
-        </button>
+          <audio src={audioUrl} controls style={{ height: 32, flex: 1 }} />
+          <button
+            onClick={removeAudio}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#c97a4a",
+              cursor: "pointer",
+              display: "flex",
+            }}
+            title="Видалити запис"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      )}
+
+      {/* Список прикріплених файлів */}
+      {attachments.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            marginBottom: 16,
+          }}
+        >
+          {attachments.map((file, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "#fff",
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "0.5px solid #d8cdb4",
+                fontSize: 13,
+              }}
+            >
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  color: "#5a5440",
+                }}
+              >
+                <Paperclip size={14} /> {file.name}
+              </span>
+              <button
+                onClick={() => removeFile(idx)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#9a8f70",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Кнопки дій */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        {!audioUrl && (
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            style={{
+              flex: 1,
+              background: isRecording ? "#fdeced" : "#fff",
+              color: isRecording ? "#c97a4a" : "#3a3528",
+              border: isRecording ? "1px solid #c97a4a" : "0.5px solid #d8cdb4",
+              borderRadius: 8,
+              padding: "10px",
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {isRecording ? (
+              <Square size={16} fill="#c97a4a" />
+            ) : (
+              <Mic size={16} />
+            )}
+            {isRecording ? "Зупинити запис" : "PTT Аудіо"}
+          </button>
+        )}
+
         <input
           ref={fileInputRef}
           type="file"
@@ -316,9 +472,11 @@ function AnswerPanel({
           <Paperclip size={16} /> Додати файл
         </button>
       </div>
+
+      {/* Кнопка відправки */}
       <button
         onClick={handleSubmit}
-        disabled={!text && attachments.length === 0 && !voiceRecorded}
+        disabled={!text && attachments.length === 0 && !audioUrl}
         style={{
           width: "100%",
           background: "#8a8a45",
@@ -329,11 +487,10 @@ function AnswerPanel({
           fontSize: 14,
           fontWeight: 600,
           cursor:
-            !text && attachments.length === 0 && !voiceRecorded
+            !text && attachments.length === 0 && !audioUrl
               ? "not-allowed"
               : "pointer",
-          opacity:
-            !text && attachments.length === 0 && !voiceRecorded ? 0.5 : 1,
+          opacity: !text && attachments.length === 0 && !audioUrl ? 0.5 : 1,
         }}
       >
         Надіслати викладачу
@@ -381,7 +538,6 @@ export default function LessonPage() {
 
   const isTeacher = user.role === "teacher";
 
-  // Ініціалізація даних для редагування
   const handleEditToggle = () => {
     if (!isEditing) {
       setEditData({
@@ -448,7 +604,6 @@ export default function LessonPage() {
         color: "#3a3528",
       }}
     >
-      {/* НАВІГАЦІЯ ТА ПАНЕЛЬ ВИКЛАДАЧА */}
       <div
         style={{
           padding: "16px 24px",
@@ -549,7 +704,6 @@ export default function LessonPage() {
           alignItems: "start",
         }}
       >
-        {/* ЛІВА КОЛОНКА: КОНТЕНТ УРОКУ */}
         <div>
           {isEditing ? (
             <div
@@ -680,7 +834,6 @@ export default function LessonPage() {
               >
                 {lesson.title}
               </h1>
-
               <div
                 style={{
                   fontSize: 16,
@@ -698,13 +851,12 @@ export default function LessonPage() {
             </>
           )}
 
-          {/* ПАНЕЛЬ ВІДПОВІДІ */}
-          {!isEditing && (
+          {/* ТУТ МИ ПРИХОВАЛИ ПАНЕЛЬ ВІДПОВІДІ ДЛЯ ВИКЛАДАЧА, ВОНА ТІЛЬКИ ДЛЯ СТУДЕНТІВ */}
+          {!isEditing && !isTeacher && (
             <AnswerPanel courseId={courseId} lessonId={lessonId} />
           )}
         </div>
 
-        {/* ПРАВА КОЛОНКА: ІНТЕРАКТИВ (QUIZLET) */}
         <div>
           {isEditing ? (
             <div

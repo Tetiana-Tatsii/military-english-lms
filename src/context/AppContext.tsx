@@ -75,7 +75,6 @@ export interface GrammarRule {
   content: string;
 }
 
-// НОВИЙ ІНТЕРФЕЙС: Акаунт користувача
 export interface UserAccount {
   id: string;
   name: string;
@@ -90,9 +89,8 @@ interface AppState {
   courses: Course[];
   answers: Answer[];
   grammarBase: GrammarRule[];
-  usersDb: UserAccount[]; // База користувачів
+  usersDb: UserAccount[];
 
-  // Оновлені функції авторизації
   registerUser: (
     name: string,
     password: string,
@@ -100,7 +98,11 @@ interface AppState {
   ) => string | null;
   login: (name: string, password: string) => string | null;
   logout: () => void;
+
+  // Керування доступом
   approveUser: (userId: string) => void;
+  rejectUser: (userId: string) => void;
+  changeUserPassword: (userId: string, newPassword: string) => void;
 
   submitAnswer: (
     answerData: Omit<
@@ -141,7 +143,6 @@ interface AppState {
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
-// Базовий викладач, щоб система не була порожньою
 const defaultUsers: UserAccount[] = [
   {
     id: "usr-admin",
@@ -219,10 +220,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       password,
       role,
       squadId: role === "student" ? "Alpha Squad" : undefined,
-      status: "pending", // Всі нові акаунти очікують підтвердження
+      status: "pending",
     };
     setUsersDb((prev) => [...prev, newUser]);
-    return null; // null означає успіх (без помилок)
+    return null;
   };
 
   const login = (name: string, password: string): string | null => {
@@ -252,6 +253,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const approveUser = (userId: string) => {
     setUsersDb((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, status: "approved" } : u)),
+    );
+  };
+
+  const rejectUser = (userId: string) => {
+    if (
+      confirm(
+        "Ви впевнені, що хочете відхилити цю заявку або видалити користувача?",
+      )
+    ) {
+      setUsersDb((prev) => prev.filter((u) => u.id !== userId));
+    }
+  };
+
+  const changeUserPassword = (userId: string, newPassword: string) => {
+    setUsersDb((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, password: newPassword } : u)),
     );
   };
 
@@ -452,6 +469,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         approveUser,
+        rejectUser,
+        changeUserPassword,
         submitAnswer,
         provideFeedback,
         addCourse,

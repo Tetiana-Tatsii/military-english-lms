@@ -8,7 +8,7 @@ import { AppProvider } from "@/context/AppContext";
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "Military LANP",
+  title: "LMS",
   description: "Закрита платформа вивчення військової англійської",
 };
 
