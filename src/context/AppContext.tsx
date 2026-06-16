@@ -25,16 +25,21 @@ export interface QuizletCard {
   translation: string;
 }
 
-export interface Lesson {
+export type Lesson = {
   id: string;
   title: string;
   section: string;
   content: string;
-  videoLabel: string;
+  videoLabel?: string;
   duration: string;
-  quizlet: QuizletCard[];
-  skill: SkillType;
-}
+  quizlet?: { term: string; translation: string }[];
+  skill?: "listening" | "reading" | "speaking" | "writing" | "mixed";
+
+  // ДОДАЄМО НАШІ НОВІ ПОЛЯ:
+  audioUrl?: string;
+  grammarContent?: string;
+  imageUrl?: string;
+};
 
 export interface Module {
   id: string;
