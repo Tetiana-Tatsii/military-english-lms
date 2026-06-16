@@ -12,27 +12,42 @@ export default function LoginPage() {
   const { login, registerUser } = useAppContext();
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (isRegister) {
-      const err = registerUser(name, password, "student");
-      if (err) {
-        setError(err);
+    try {
+      if (isRegister) {
+        const err = await registerUser(name, password, "student");
+        if (err) {
+          setError(err);
+        } else {
+          alert("Заявку на реєстрацію надіслано. Очікуйте активації.");
+          setIsRegister(false);
+          setName("");
+          setPassword("");
+        }
       } else {
-        alert("Заявку на реєстрацію надіслано викладачу. Очікуйте активації.");
-        setIsRegister(false);
-        setName("");
-        setPassword("");
+        const err = await login(name, password);
+        if (err) {
+          setError(err);
+        } else {
+          // ДОДАЄМО ПЕРЕНАПРАВЛЕННЯ ТУТ:
+          // Якщо це Адмін або Викладач — кидаємо в панель керування, інакше — в кабінет курсанта
+          if (
+            name.toLowerCase() === "адмін" ||
+            name.toLowerCase() === "викладач"
+          ) {
+            router.push("/teacher");
+          } else {
+            router.push("/dashboard");
+          }
+        }
       }
-    } else {
-      const err = login(name, password);
-      if (err) {
-        setError(err);
-      } else {
-        router.push("/dashboard");
-      }
+    } catch (error) {
+      const err = error as Error;
+      setError("Критична помилка: " + err.message);
+      console.error(err);
     }
   };
 

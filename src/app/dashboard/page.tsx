@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "../../context/AppContext";
 import {
@@ -11,26 +11,51 @@ import {
   Clock,
   MessageSquare,
   Award,
+  ChevronDown,
+  Sun,
+  Moon,
+  LifeBuoy,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, courses, answers, logout, isInitialized } = useAppContext();
   const router = useRouter();
 
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   useEffect(() => {
-    if (isInitialized && !user) {
-      router.push("/login");
-    } else if (user?.role === "teacher") {
-      router.push("/teacher");
+    if (isInitialized) {
+      if (!user) {
+        router.push("/login");
+      } else if (user.role === "teacher" || user.role === "admin") {
+        router.push("/teacher");
+      }
     }
   }, [user, router, isInitialized]);
 
-  if (!isInitialized || !user) return null;
+  // ОСЬ ТУТ МИ ВИПРАВИЛИ ПОМИЛКУ БІЛОГО ЕКРАНА
+  if (!isInitialized || !user) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f0e9d8",
+          color: "#8a8a45",
+          fontWeight: 600,
+          fontSize: 18,
+        }}
+      >
+        Завантаження платформи...
+      </div>
+    );
+  }
 
-  // Фільтруємо відповіді, щоб показати тільки роботи цього конкретного курсанта
   const myAnswers = answers.filter((a) => a.studentName === user.name);
 
-  // Функція для розрахунку прогресу курсу (%)
   const getCourseProgress = (courseId: string) => {
     const course = courses.find((c) => c.id === courseId);
     if (!course) return 0;
@@ -41,14 +66,12 @@ export default function DashboardPage() {
     });
     if (totalLessons === 0) return 0;
 
-    // Рахуємо унікальні уроки, на які курсант дав хоча б одну відповідь
     const submittedLessonIds = new Set(
       myAnswers.filter((a) => a.courseId === courseId).map((a) => a.lessonId),
     );
     return Math.round((submittedLessonIds.size / totalLessons) * 100);
   };
 
-  // Функція для отримання назви уроку за ID (щоб гарно виводити у фідбеку)
   const getLessonTitle = (courseId: string, lessonId: string) => {
     const course = courses.find((c) => c.id === courseId);
     if (!course) return "Невідомий урок";
@@ -62,10 +85,11 @@ export default function DashboardPage() {
   return (
     <div
       style={{
-        background: "#f0e9d8",
+        background: isDarkMode ? "#2b261d" : "#f0e9d8",
         minHeight: "100vh",
         fontFamily: "system-ui, sans-serif",
-        color: "#3a3528",
+        color: isDarkMode ? "#f6f1e4" : "#3a3528",
+        transition: "all 0.3s ease",
       }}
     >
       {/* ВЕРХНЯ ПАНЕЛЬ */}
@@ -75,8 +99,10 @@ export default function DashboardPage() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 24px",
-          borderBottom: "0.5px solid #d8cdb4",
-          background: "#f6f1e4",
+          borderBottom: isDarkMode
+            ? "0.5px solid #4a4231"
+            : "0.5px solid #d8cdb4",
+          background: isDarkMode ? "#3a3326" : "#f6f1e4",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -94,7 +120,14 @@ export default function DashboardPage() {
             <Shield size={20} color="#f6f1e4" />
           </div>
           <div>
-            <p style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
+            <p
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                margin: 0,
+                color: isDarkMode ? "#fff" : "#3a3528",
+              }}
+            >
               MILITARY LMS
             </p>
             <p style={{ fontSize: 12, margin: 0, color: "#9a8f70" }}>
@@ -102,31 +135,147 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: 14, fontWeight: 600, display: "block" }}>
-              {user.name}
-            </span>
-            <span style={{ fontSize: 12, color: "#8a8a45", fontWeight: 500 }}>
-              Курсант ({user.squadId || "STANAG 6001"})
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              logout();
-              router.push("/login");
-            }}
+
+        {/* ПРОФІЛЬ */}
+        <div style={{ position: "relative" }}>
+          <div
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
             style={{
-              border: "none",
-              background: "#e9e1cd",
-              padding: "8px",
-              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
               cursor: "pointer",
-              color: "#6b6b3a",
+              padding: "6px 12px",
+              borderRadius: 8,
+              background: isProfileOpen
+                ? isDarkMode
+                  ? "#4a4231"
+                  : "#e9e1cd"
+                : "transparent",
+              transition: "background 0.2s",
             }}
           >
-            <LogOut size={18} />
-          </button>
+            <div style={{ textAlign: "right" }}>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  display: "block",
+                  color: isDarkMode ? "#fff" : "#3a3528",
+                }}
+              >
+                {user.name}
+              </span>
+            </div>
+            <ChevronDown
+              size={16}
+              color="#8a8a45"
+              style={{
+                transform: isProfileOpen ? "rotate(180deg)" : "none",
+                transition: "transform 0.2s",
+              }}
+            />
+          </div>
+
+          {/* ВИПАДАЮЧЕ МЕНЮ */}
+          {isProfileOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "110%",
+                right: 0,
+                width: 220,
+                background: isDarkMode ? "#3a3326" : "#fff",
+                borderRadius: 12,
+                boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                border: isDarkMode ? "1px solid #4a4231" : "1px solid #d8cdb4",
+                padding: "8px",
+                zIndex: 100,
+              }}
+            >
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: isDarkMode ? "#d8cdb4" : "#5a5440",
+                  fontSize: 14,
+                  textAlign: "left",
+                }}
+              >
+                {isDarkMode ? (
+                  <Sun size={16} color="#c79a3e" />
+                ) : (
+                  <Moon size={16} color="#8a8a45" />
+                )}
+                <span>{isDarkMode ? "Світла тема" : "Темна тема"}</span>
+              </button>
+              <button
+                onClick={() =>
+                  alert(
+                    "Зв'язок із техпідтримкою: черговий інженер платформи (lms-support@mil.ua)",
+                  )
+                }
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: isDarkMode ? "#d8cdb4" : "#5a5440",
+                  fontSize: 14,
+                  textAlign: "left",
+                }}
+              >
+                <LifeBuoy size={16} color="#8a8a45" />
+                <span>Підтримка</span>
+              </button>
+              <hr
+                style={{
+                  border: "none",
+                  borderTop: isDarkMode
+                    ? "1px solid #4a4231"
+                    : "1px solid #e9e1cd",
+                  margin: "6px 0",
+                }}
+              />
+              <button
+                onClick={() => {
+                  logout();
+                  router.push("/login");
+                }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  background: isDarkMode ? "#4e2d2d" : "#fdeced",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: "#c97a4a",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textAlign: "left",
+                }}
+              >
+                <LogOut size={16} />
+                <span>Розлогінитись</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -142,9 +291,7 @@ export default function DashboardPage() {
           alignItems: "start",
         }}
       >
-        {/* ЛІВА КОЛОНКА (Курси та Фідбек) */}
         <div>
-          {/* СЕКЦІЯ КУРСІВ */}
           <h2
             style={{
               fontSize: 18,
@@ -153,6 +300,7 @@ export default function DashboardPage() {
               display: "flex",
               alignItems: "center",
               gap: 8,
+              color: isDarkMode ? "#f6f1e4" : "#3a3528",
             }}
           >
             <BookOpen size={20} color="#8a8a45" /> Доступні курси
@@ -171,9 +319,11 @@ export default function DashboardPage() {
                 <div
                   key={course.id}
                   style={{
-                    background: "#f6f1e4",
+                    background: isDarkMode ? "#3a3326" : "#f6f1e4",
                     borderRadius: 12,
-                    border: "0.5px solid #d8cdb4",
+                    border: isDarkMode
+                      ? "1px solid #4a4231"
+                      : "0.5px solid #d8cdb4",
                     padding: 24,
                   }}
                 >
@@ -191,7 +341,7 @@ export default function DashboardPage() {
                           fontSize: 18,
                           fontWeight: 700,
                           margin: "0 0 4px",
-                          color: "#3a3528",
+                          color: isDarkMode ? "#fff" : "#3a3528",
                         }}
                       >
                         {course.title}
@@ -225,8 +375,8 @@ export default function DashboardPage() {
                     ) : (
                       <span
                         style={{
-                          background: "#e9e1cd",
-                          color: "#9a8f70",
+                          background: isDarkMode ? "#4a4231" : "#e9e1cd",
+                          color: isDarkMode ? "#d8cdb4" : "#9a8f70",
                           padding: "6px 12px",
                           borderRadius: 6,
                           fontSize: 12,
@@ -238,7 +388,6 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* Прогрес-бар */}
                   {course.status === "active" && (
                     <div>
                       <div
@@ -248,7 +397,7 @@ export default function DashboardPage() {
                           marginBottom: 6,
                           fontSize: 13,
                           fontWeight: 500,
-                          color: "#6b6b3a",
+                          color: isDarkMode ? "#d8cdb4" : "#6b6b3a",
                         }}
                       >
                         <span>Прогрес курсу</span>
@@ -258,7 +407,7 @@ export default function DashboardPage() {
                         style={{
                           width: "100%",
                           height: 6,
-                          background: "#e9e1cd",
+                          background: isDarkMode ? "#4a4231" : "#e9e1cd",
                           borderRadius: 3,
                           overflow: "hidden",
                         }}
@@ -280,7 +429,6 @@ export default function DashboardPage() {
             })}
           </div>
 
-          {/* СЕКЦІЯ ФІДБЕКУ */}
           <h2
             style={{
               fontSize: 18,
@@ -289,6 +437,7 @@ export default function DashboardPage() {
               display: "flex",
               alignItems: "center",
               gap: 8,
+              color: isDarkMode ? "#f6f1e4" : "#3a3528",
             }}
           >
             <MessageSquare size={20} color="#8a8a45" /> Мої результати та фідбек
@@ -296,10 +445,12 @@ export default function DashboardPage() {
           {myAnswers.length === 0 ? (
             <div
               style={{
-                background: "#f6f1e4",
+                background: isDarkMode ? "#3a3326" : "#f6f1e4",
                 padding: 24,
                 borderRadius: 12,
-                border: "0.5px solid #d8cdb4",
+                border: isDarkMode
+                  ? "1px solid #4a4231"
+                  : "0.5px solid #d8cdb4",
                 textAlign: "center",
               }}
             >
@@ -313,9 +464,11 @@ export default function DashboardPage() {
                 <div
                   key={ans.id}
                   style={{
-                    background: "#f6f1e4",
+                    background: isDarkMode ? "#3a3326" : "#f6f1e4",
                     borderRadius: 12,
-                    border: "0.5px solid #d8cdb4",
+                    border: isDarkMode
+                      ? "1px solid #4a4231"
+                      : "0.5px solid #d8cdb4",
                     padding: 20,
                   }}
                 >
@@ -339,7 +492,14 @@ export default function DashboardPage() {
                       >
                         Відповідь на урок
                       </p>
-                      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+                      <h4
+                        style={{
+                          margin: 0,
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: isDarkMode ? "#fff" : "#3a3528",
+                        }}
+                      >
                         {getLessonTitle(ans.courseId, ans.lessonId)}
                       </h4>
                     </div>
@@ -349,7 +509,7 @@ export default function DashboardPage() {
                           display: "flex",
                           alignItems: "center",
                           gap: 4,
-                          background: "#eef0df",
+                          background: isDarkMode ? "#3d402b" : "#eef0df",
                           color: "#8a8a45",
                           padding: "4px 8px",
                           borderRadius: 6,
@@ -365,7 +525,7 @@ export default function DashboardPage() {
                           display: "flex",
                           alignItems: "center",
                           gap: 4,
-                          background: "#fdeced",
+                          background: isDarkMode ? "#4e2d2d" : "#fdeced",
                           color: "#c97a4a",
                           padding: "4px 8px",
                           borderRadius: 6,
@@ -381,7 +541,7 @@ export default function DashboardPage() {
                   {ans.status === "reviewed" && (
                     <div
                       style={{
-                        background: "#e9e1cd",
+                        background: isDarkMode ? "#4a4231" : "#e9e1cd",
                         padding: 16,
                         borderRadius: 8,
                         marginTop: 12,
@@ -391,7 +551,7 @@ export default function DashboardPage() {
                         style={{
                           fontSize: 14,
                           margin: "0 0 8px",
-                          color: "#4a4435",
+                          color: isDarkMode ? "#f6f1e4" : "#4a4435",
                         }}
                       >
                         <strong>Коментар викладача:</strong>{" "}
@@ -419,14 +579,13 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ПРАВА КОЛОНКА (SLP Профіль) */}
         <div>
           <div
             style={{
-              background: "#f6f1e4",
+              background: isDarkMode ? "#3a3326" : "#f6f1e4",
               padding: 24,
               borderRadius: 12,
-              border: "0.5px solid #d8cdb4",
+              border: isDarkMode ? "1px solid #4a4231" : "0.5px solid #d8cdb4",
             }}
           >
             <h3
@@ -434,7 +593,7 @@ export default function DashboardPage() {
                 fontSize: 14,
                 fontWeight: 600,
                 margin: "0 0 20px",
-                color: "#3a3528",
+                color: isDarkMode ? "#fff" : "#3a3528",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
@@ -456,7 +615,7 @@ export default function DashboardPage() {
                       justifyContent: "space-between",
                       fontSize: 12,
                       fontWeight: 600,
-                      color: "#5a5440",
+                      color: isDarkMode ? "#d8cdb4" : "#5a5440",
                       marginBottom: 6,
                     }}
                   >
@@ -467,7 +626,7 @@ export default function DashboardPage() {
                     style={{
                       width: "100%",
                       height: 6,
-                      background: "#e9e1cd",
+                      background: isDarkMode ? "#4a4231" : "#e9e1cd",
                       borderRadius: 3,
                       overflow: "hidden",
                     }}

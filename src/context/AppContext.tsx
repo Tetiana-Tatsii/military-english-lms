@@ -9,6 +9,7 @@ import React, {
   useEffect,
 } from "react";
 import { initialCourses } from "../data/courses";
+import { supabase } from "../lib/supabase"; // Підключаємо наш міст до хмари
 
 export type SkillType =
   | "listening"
@@ -95,14 +96,13 @@ interface AppState {
     name: string,
     password: string,
     role: UserRole,
-  ) => string | null;
-  login: (name: string, password: string) => string | null;
+  ) => Promise<string | null>;
+  login: (name: string, password: string) => Promise<string | null>;
   logout: () => void;
 
-  // Керування доступом
-  approveUser: (userId: string) => void;
-  rejectUser: (userId: string) => void;
-  changeUserPassword: (userId: string, newPassword: string) => void;
+  approveUser: (userId: string) => Promise<void>;
+  rejectUser: (userId: string) => Promise<void>;
+  changeUserPassword: (userId: string, newPassword: string) => Promise<void>;
 
   submitAnswer: (
     answerData: Omit<
@@ -116,6 +116,7 @@ interface AppState {
     feedbackAudio: boolean,
     score?: number,
   ) => void;
+
   addCourse: (title: string, subtitle: string, description: string) => void;
   updateCourse: (courseId: string, updatedData: Partial<Course>) => void;
   deleteCourse: (courseId: string) => void;
@@ -143,21 +144,11 @@ interface AppState {
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
-const defaultUsers: UserAccount[] = [
-  {
-    id: "usr-admin",
-    name: "Викладач",
-    password: "1234",
-    role: "teacher",
-    status: "approved",
-  },
-];
-
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppState["user"]>(null);
   const [courses, setCourses] = useState<Course[]>(initialCourses as Course[]);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [usersDb, setUsersDb] = useState<UserAccount[]>(defaultUsers);
+  const [usersDb, setUsersDb] = useState<UserAccount[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [grammarBase] = useState<GrammarRule[]>([
     {
@@ -165,25 +156,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       title: 'Дієслово "to be" як linking verb',
       category: "Граматика А1-А2",
       content:
-        'Дієслово "to be" зв’язує підмет зі станом, якістю або професією (наприклад: He is a Lieutenant / They are ready). Важливо не змішувати його вживання з тривалими часами (Continuous) на початкових етапах вивчення, щоб курсанти чітко розрізняли опис стану від опису процесу дії.',
+        'Дієслово "to be" зв’язує підмет зі станом, якістю або професією (наприклад: He is a Lieutenant / They are ready).',
     },
   ]);
 
-  // 1. ЗАВАНТАЖЕННЯ ДАНИХ (Асинхронно)
+  // СИНХРОНІЗАЦІЯ КОРИСТУВАЧІВ З SUPABASE
+  const fetchUsersFromSupabase = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (!error && data) {
+      // Трансформуємо змійок snake_case з бази у camelCase для нашого React-коду
+      const formattedUsers: UserAccount[] = data.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        password: u.password,
+        role: u.role,
+        status: u.status,
+        squadId: u.squad_id,
+      }));
+      setUsersDb(formattedUsers);
+    }
+  };
+
+  // 1. ЗАВАНТАЖЕННЯ ДАНИХ ПРИ ЗАПУСКУ
   useEffect(() => {
     const loadSavedData = async () => {
       try {
         const savedCourses = localStorage.getItem("lanp_courses");
         const savedAnswers = localStorage.getItem("lanp_answers");
-        const savedUsers = localStorage.getItem("lanp_users_db");
         const savedUserSession = sessionStorage.getItem("lanp_user");
 
         if (savedCourses) setCourses(JSON.parse(savedCourses));
         if (savedAnswers) setAnswers(JSON.parse(savedAnswers));
-        if (savedUsers) setUsersDb(JSON.parse(savedUsers));
         if (savedUserSession) setUser(JSON.parse(savedUserSession));
+
+        // Обов'язково завантажуємо актуальних користувачів з хмари
+        await fetchUsersFromSupabase();
       } catch (error) {
-        console.error("Помилка читання з пам'яті:", error);
+        console.error("Помилка завантаження системи:", error);
       } finally {
         setIsInitialized(true);
       }
@@ -191,7 +204,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadSavedData();
   }, []);
 
-  // 2. ЗБЕРЕЖЕННЯ ДАНИХ
+  // Періодично оновлюємо список користувачів, якщо викладач або адмін у системі
+  useEffect(() => {
+    if (
+      isInitialized &&
+      user &&
+      (user.role === "teacher" || user.role === "admin")
+    ) {
+      const interval = setInterval(fetchUsersFromSupabase, 5000); // кожні 5 секунд
+      return () => clearInterval(interval);
+    }
+  }, [isInitialized, user]);
+
+  // 2. ЗБЕРЕЖЕННЯ КУРСІВ ТА ВІДПОВІДЕЙ (Поки що в LocalStorage, наступним кроком перенесемо теж в хмару)
   useEffect(() => {
     if (isInitialized)
       localStorage.setItem("lanp_courses", JSON.stringify(courses));
@@ -200,45 +225,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isInitialized)
       localStorage.setItem("lanp_answers", JSON.stringify(answers));
   }, [answers, isInitialized]);
-  useEffect(() => {
-    if (isInitialized)
-      localStorage.setItem("lanp_users_db", JSON.stringify(usersDb));
-  }, [usersDb, isInitialized]);
 
-  // --- ЛОГІКА БЕЗПЕКИ ТА АВТОРИЗАЦІЇ ---
-  const registerUser = (
+  // --- СЕРВЕРНА ЛОГІКА АВТОРИЗАЦІЇ (SUPABASE) ---
+
+  const registerUser = async (
     name: string,
     password: string,
     role: UserRole,
-  ): string | null => {
-    if (usersDb.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
+  ): Promise<string | null> => {
+    // Перевіряємо унікальність імені безпосередньо в базі
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("name", name);
+    if (existing && existing.length > 0) {
       return "Користувач з таким іменем вже існує.";
     }
-    const newUser: UserAccount = {
-      id: `usr-${Date.now()}`,
-      name,
-      password,
-      role,
-      squadId: role === "student" ? "Alpha Squad" : undefined,
-      status: "pending",
-    };
-    setUsersDb((prev) => [...prev, newUser]);
+
+    const uid = `usr-${Date.now()}`;
+    const { error } = await supabase.from("profiles").insert([
+      {
+        id: uid,
+        name,
+        password,
+        role,
+        status: "pending", // Всі за замовчуванням чекають перевірки
+        squad_id: role === "student" ? "Alpha Squad" : null,
+      },
+    ]);
+
+    if (error) return "Помилка реєстрації на сервері.";
+    await fetchUsersFromSupabase();
     return null;
   };
 
-  const login = (name: string, password: string): string | null => {
-    const foundUser = usersDb.find(
-      (u) => u.name.toLowerCase() === name.toLowerCase(),
-    );
-    if (!foundUser) return "Користувача не знайдено.";
-    if (foundUser.password !== password) return "Невірний пароль.";
-    if (foundUser.status === "pending")
-      return "Ваш акаунт ще не активовано викладачем.";
+  const login = async (
+    name: string,
+    password: string,
+  ): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .ilike("name", name)
+      .maybeSingle();
+
+    if (error || !data) return "Користувача не знайдено.";
+    if (data.password !== password) return "Невірний пароль.";
+    if (data.status === "pending")
+      return "Ваш акаунт ще не активовано адміністрацією.";
 
     const sessionData = {
-      name: foundUser.name,
-      role: foundUser.role,
-      squadId: foundUser.squadId,
+      name: data.name,
+      role: data.role as UserRole,
+      squadId: data.squad_id,
     };
     setUser(sessionData);
     sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
@@ -250,28 +289,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem("lanp_user");
   };
 
-  const approveUser = (userId: string) => {
-    setUsersDb((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, status: "approved" } : u)),
-    );
+  const approveUser = async (userId: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ status: "approved" })
+      .eq("id", userId);
+    if (!error) await fetchUsersFromSupabase();
   };
 
-  const rejectUser = (userId: string) => {
+  const rejectUser = async (userId: string) => {
     if (
-      confirm(
-        "Ви впевнені, що хочете відхилити цю заявку або видалити користувача?",
-      )
+      confirm("Ви впевнені, що хочете відхилити заявку / видалити користувача?")
     ) {
-      setUsersDb((prev) => prev.filter((u) => u.id !== userId));
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", userId);
+      if (!error) await fetchUsersFromSupabase();
     }
   };
 
-  const changeUserPassword = (userId: string, newPassword: string) => {
-    setUsersDb((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, password: newPassword } : u)),
-    );
+  const changeUserPassword = async (userId: string, newPassword: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ password: newPassword })
+      .eq("id", userId);
+    if (!error) await fetchUsersFromSupabase();
   };
 
+  // --- ІНШІ ФУНКЦІЇ (ВІДПОВІДІ ТА CRUD КУРСІВ) ---
   const submitAnswer = (
     answerData: Omit<
       Answer,
@@ -313,7 +359,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // --- ЛОГІКА КУРСІВ (CRUD) ---
   const addCourse = (title: string, subtitle: string, description: string) => {
     setCourses((prev) => [
       ...prev,
@@ -465,6 +510,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         answers,
         grammarBase,
         usersDb,
+        isInitialized,
         registerUser,
         login,
         logout,
@@ -482,7 +528,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addLesson,
         updateLesson,
         deleteLesson,
-        isInitialized,
       }}
     >
       {isInitialized ? (
@@ -495,6 +540,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             alignItems: "center",
             justifyContent: "center",
             background: "#f0e9d8",
+            fontFamily: "sans-serif",
+            color: "#3a3528",
+            fontWeight: 500,
           }}
         >
           Завантаження системи...
