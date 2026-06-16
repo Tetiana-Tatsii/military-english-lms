@@ -272,7 +272,7 @@ export default function DashboardPage() {
                 }}
               >
                 <LogOut size={16} />
-                <span>Розлогінитись</span>
+                <span>Вихід</span>
               </button>
             </div>
           )}
