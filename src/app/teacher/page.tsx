@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useAppContext, Lesson } from "../../context/AppContext";
 import {
   Shield,
@@ -31,6 +32,11 @@ import {
   Image as ImageIcon,
   FileText,
 } from "lucide-react";
+
+// Динамічний імпорт текстового редактора (щоб Next.js не сварився на відсутність document)
+// @ts-ignore
+const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
+import "react-quill-new/dist/quill.snow.css"; // Стилі редактора
 
 export default function TeacherDashboard() {
   const {
@@ -63,9 +69,7 @@ export default function TeacherDashboard() {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // Для створення нового курсу
   const [isAddingCourse, setIsAddingCourse] = useState(false);
-  // Для редагування існуючого курсу
   const [isEditingCourse, setIsEditingCourse] = useState(false);
   const [courseData, setCourseData] = useState({
     title: "",
@@ -91,7 +95,6 @@ export default function TeacherDashboard() {
   );
   const [newPasswordValue, setNewPasswordValue] = useState("");
 
-  // ВИПРАВЛЕНО: Проблема з кнопкою "Назад"
   useEffect(() => {
     if (isInitialized) {
       if (!user) router.push("/login");
@@ -122,7 +125,6 @@ export default function TeacherDashboard() {
   );
   const activeCourse = courses.find((c) => c.id === selectedCourseId);
 
-  // --- РОБОТА З КУРСАМИ ---
   const handleCreateCourse = () => {
     if (!courseData.title) return;
     addCourse(courseData.title, courseData.subtitle, courseData.description);
@@ -158,7 +160,6 @@ export default function TeacherDashboard() {
     }
   };
 
-  // --- РОБОТА З МОДУЛЯМИ ТА УРОКАМИ ---
   const handleAddModule = () => {
     if (!newModuleTitle.trim()) return;
     addModule(selectedCourseId, newModuleTitle, "book");
@@ -207,7 +208,6 @@ export default function TeacherDashboard() {
     setEditingLesson(null);
   };
 
-  // РОЗУМНИЙ YOUTUBE: автоматично дістає ID з посилання
   const handleYouTubeChange = (val: string) => {
     if (!editingLesson) return;
     let videoId = val;
@@ -260,6 +260,17 @@ export default function TeacherDashboard() {
     });
   };
 
+  // Налаштування панелі інструментів для редактора
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ color: [] }, { background: [] }],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["clean"],
+    ],
+  };
+
   return (
     <div
       style={{
@@ -269,7 +280,6 @@ export default function TeacherDashboard() {
         color: "#4a4a4a",
       }}
     >
-      {/* ВЕРХНЯ ПАНЕЛЬ (СВІТЛА) */}
       <div
         style={{
           display: "flex",
@@ -449,7 +459,6 @@ export default function TeacherDashboard() {
       <div
         style={{ padding: "32px 24px", maxWidth: "1000px", margin: "0 auto" }}
       >
-        {/* --- ВКЛАДКА 3: РЕДАКТОР КУРСІВ --- */}
         {tab === "editor" && !editingLesson && (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <div
@@ -532,7 +541,6 @@ export default function TeacherDashboard() {
                       >
                         {activeCourse.title}
                       </h3>
-                      {/* КНОПКА РЕДАГУВАННЯ ІНФО КУРСУ */}
                       <button
                         onClick={openEditCourseModal}
                         style={{
@@ -606,7 +614,6 @@ export default function TeacherDashboard() {
                         color: "#3a3528",
                       }}
                     >
-                      {/* НУМЕРАЦІЯ МОДУЛІВ */}
                       <span
                         style={{
                           display: "flex",
@@ -667,7 +674,6 @@ export default function TeacherDashboard() {
                             title="Редагувати вміст уроку"
                           >
                             <Edit2 size={16} color="#8a8a45" />
-                            {/* НУМЕРАЦІЯ УРОКІВ */}
                             <span style={{ fontWeight: 700 }}>
                               Урок {modIndex + 1}.{lesIndex + 1}
                             </span>{" "}
@@ -777,7 +783,6 @@ export default function TeacherDashboard() {
               </p>
             )}
 
-            {/* МОДАЛЬНІ ВІКНА ДЛЯ СТВОРЕННЯ / РЕДАГУВАННЯ КУРСУ */}
             {(isAddingCourse || isEditingCourse) && (
               <div
                 style={{
@@ -1053,7 +1058,6 @@ export default function TeacherDashboard() {
                 </div>
               </div>
 
-              {/* МЕДІА ФАЙЛИ З КОМП'ЮТЕРА (КАРКАС) */}
               <div
                 style={{
                   background: "#f0ede5",
@@ -1108,8 +1112,8 @@ export default function TeacherDashboard() {
                 </div>
               </div>
 
-              {/* ТЕОРІЯ */}
-              <div style={{ marginBottom: 24 }}>
+              {/* ТЕОРІЯ: РЕДАКТОР ТЕКСТУ */}
+              <div style={{ marginBottom: 32 }}>
                 <div
                   style={{
                     display: "flex",
@@ -1130,36 +1134,31 @@ export default function TeacherDashboard() {
                   >
                     <FileText size={18} /> Основний текст / Reading
                   </label>
-                  <span style={{ fontSize: 12, color: "#9a8f70" }}>
-                    *Панель шрифтів буде додана пізніше
-                  </span>
                 </div>
-                <textarea
-                  placeholder="Вставте текст для читання тут..."
-                  value={editingLesson.lesson.content}
-                  onChange={(e) =>
-                    setEditingLesson({
-                      ...editingLesson,
-                      lesson: {
-                        ...editingLesson.lesson,
-                        content: e.target.value,
-                      },
-                    })
-                  }
-                  rows={8}
+                <div
                   style={{
-                    width: "100%",
-                    padding: 16,
+                    background: "#fff",
                     borderRadius: 8,
                     border: "1px solid #d8cdb4",
-                    fontFamily: "inherit",
-                    fontSize: 15,
-                    lineHeight: 1.6,
+                    overflow: "hidden",
                   }}
-                />
+                >
+                  <ReactQuill
+                    theme="snow"
+                    modules={quillModules}
+                    value={editingLesson.lesson.content}
+                    onChange={(val: string) =>
+                      setEditingLesson({
+                        ...editingLesson,
+                        lesson: { ...editingLesson.lesson, content: val },
+                      })
+                    }
+                    style={{ height: "200px" }}
+                  />
+                </div>
               </div>
 
-              {/* ГРАМАТИКА */}
+              {/* ГРАМАТИКА: РЕДАКТОР ТЕКСТУ */}
               <div style={{ marginBottom: 32 }}>
                 <label
                   style={{
@@ -1174,30 +1173,30 @@ export default function TeacherDashboard() {
                 >
                   <BookOpen size={18} /> Граматичний довідник
                 </label>
-                <textarea
-                  placeholder="Впишіть граматичне правило (наприклад: Present Simple використовується для...)"
-                  value={(editingLesson.lesson as any).grammarContent || ""}
-                  onChange={(e) =>
-                    setEditingLesson({
-                      ...editingLesson,
-                      lesson: {
-                        ...editingLesson.lesson,
-                        grammarContent: e.target.value,
-                      } as any,
-                    })
-                  }
-                  rows={5}
+                <div
                   style={{
-                    width: "100%",
-                    padding: 16,
+                    background: "#fdf8f5",
                     borderRadius: 8,
                     border: "1px solid #facbce",
-                    background: "#fdf8f5",
-                    fontFamily: "inherit",
-                    fontSize: 15,
-                    lineHeight: 1.6,
+                    overflow: "hidden",
                   }}
-                />
+                >
+                  <ReactQuill
+                    theme="snow"
+                    modules={quillModules}
+                    value={(editingLesson.lesson as any).grammarContent || ""}
+                    onChange={(val: string) =>
+                      setEditingLesson({
+                        ...editingLesson,
+                        lesson: {
+                          ...editingLesson.lesson,
+                          grammarContent: val,
+                        } as any,
+                      })
+                    }
+                    style={{ height: "150px" }}
+                  />
+                </div>
               </div>
 
               {/* КАРТКИ QUIZLET */}
