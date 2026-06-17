@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -33,10 +32,10 @@ import {
   Image as ImageIcon,
   FileText,
   Loader2,
+  ClipboardList,
 } from "lucide-react";
 
 // Динамічний імпорт текстового редактора
-// @ts-expect-error
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 import "react-quill-new/dist/quill.snow.css";
 
@@ -46,6 +45,7 @@ export default function TeacherDashboard() {
     courses,
     answers,
     usersDb,
+    supportTickets,
     approveUser,
     rejectUser,
     changeUserPassword,
@@ -60,11 +60,15 @@ export default function TeacherDashboard() {
     deleteLesson,
     logout,
     provideFeedback,
+    addSupportTicket,
+    updateTicketStatus,
     isInitialized,
   } = useAppContext();
   const router = useRouter();
 
-  const [tab, setTab] = useState<"answers" | "users" | "editor">("editor");
+  console.log("TeacherDashboard - supportTickets:", supportTickets);
+
+  const [tab, setTab] = useState<"answers" | "users" | "editor" | "support">("editor");
   const [selectedCourseId, setSelectedCourseId] = useState<string>(
     courses[0]?.id || "",
   );
@@ -92,6 +96,7 @@ export default function TeacherDashboard() {
   // Стейти для відстеження процесу завантаження файлів
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
 
   const [feedbackTexts, setFeedbackTexts] = useState<{ [key: string]: string }>(
     {},
@@ -101,6 +106,12 @@ export default function TeacherDashboard() {
     null,
   );
   const [newPasswordValue, setNewPasswordValue] = useState("");
+  const [answerFilter, setAnswerFilter] = useState<"pending" | "reviewed">("pending");
+
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [editingModuleName, setEditingModuleName] = useState("");
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [editingLessonName, setEditingLessonName] = useState("");
 
   useEffect(() => {
     if (isInitialized) {
@@ -183,6 +194,42 @@ export default function TeacherDashboard() {
     }
   };
 
+  const handleEditModuleName = (moduleId: string, currentName: string) => {
+    setEditingModuleId(moduleId);
+    setEditingModuleName(currentName);
+  };
+
+  const handleSaveModuleName = () => {
+    if (!editingModuleId || !editingModuleName.trim()) return;
+    updateModule(selectedCourseId, editingModuleId, { title: editingModuleName });
+    setEditingModuleId(null);
+    setEditingModuleName("");
+  };
+
+  const handleCancelEditModuleName = () => {
+    setEditingModuleId(null);
+    setEditingModuleName("");
+  };
+
+  const handleEditLessonName = (lessonId: string, currentName: string) => {
+    setEditingLessonId(lessonId);
+    setEditingLessonName(currentName);
+  };
+
+  const handleSaveLessonName = (moduleId: string) => {
+    if (!editingLessonId || !editingLessonName.trim()) return;
+    updateLesson(selectedCourseId, moduleId, editingLessonId, {
+      title: editingLessonName,
+    });
+    setEditingLessonId(null);
+    setEditingLessonName("");
+  };
+
+  const handleCancelEditLessonName = () => {
+    setEditingLessonId(null);
+    setEditingLessonName("");
+  };
+
   const handleAddLesson = (moduleId: string) => {
     if (!newLessonTitle.trim()) return;
     addLesson(selectedCourseId, moduleId, {
@@ -233,7 +280,7 @@ export default function TeacherDashboard() {
   // --- ФУНКЦІЯ ДЛЯ ЗАВАНТАЖЕННЯ ФАЙЛІВ НА СЕРВЕР SUPABASE ---
   const uploadFileToStorage = async (
     file: File,
-    folder: "photos" | "audio",
+    folder: "photos" | "audio" | "documents",
   ) => {
     try {
       const fileExt = file.name.split(".").pop();
@@ -300,6 +347,49 @@ export default function TeacherDashboard() {
         lesson: { ...editingLesson.lesson, audioUrl: publicUrl } as any,
       });
     }
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingLesson) return;
+
+    setIsUploadingDocument(true);
+    const publicUrl = await uploadFileToStorage(file, "documents");
+    setIsUploadingDocument(false);
+
+    if (publicUrl) {
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
+      const docType = fileExt === "pdf" ? "pdf" : fileExt === "doc" ? "doc" : "docx";
+      
+      const newDoc = {
+        id: `doc-${Date.now()}`,
+        name: file.name,
+        url: publicUrl,
+        type: docType as "pdf" | "doc" | "docx",
+      };
+
+      const currentDocs = (editingLesson.lesson as any).documents || [];
+      setEditingLesson({
+        ...editingLesson,
+        lesson: {
+          ...editingLesson.lesson,
+          documents: [...currentDocs, newDoc],
+        } as any,
+      });
+    }
+  };
+
+  const handleRemoveDocument = (docId: string) => {
+    if (!editingLesson) return;
+    const currentDocs = (editingLesson.lesson as any).documents || [];
+    const updatedDocs = currentDocs.filter((doc: any) => doc.id !== docId);
+    setEditingLesson({
+      ...editingLesson,
+      lesson: {
+        ...editingLesson.lesson,
+        documents: updatedDocs,
+      } as any,
+    });
   };
 
   const handleAddQuizletCard = () => {
@@ -420,6 +510,28 @@ export default function TeacherDashboard() {
             <Inbox size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
             Роботи на перевірку
           </button>
+          {user.role === "admin" && (
+            <button
+              onClick={() => {
+                setTab("support");
+                setEditingLesson(null);
+              }}
+              style={{
+                background: "transparent",
+                border: "none",
+                fontSize: 15,
+                fontWeight: tab === "support" ? 700 : 500,
+                color: tab === "support" ? "#8a8a45" : "#7a7568",
+                cursor: "pointer",
+                borderBottom:
+                  tab === "support" ? "2px solid #8a8a45" : "2px solid transparent",
+                paddingBottom: 4,
+              }}
+            >
+              <LifeBuoy size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
+              Служба підтримки
+            </button>
+          )}
           <button
             onClick={() => {
               setTab("users");
@@ -685,16 +797,71 @@ export default function TeacherDashboard() {
                         marginBottom: 16,
                       }}
                     >
-                      <span
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <BookOpen size={20} color="#8a8a45" /> Модуль{" "}
-                        {modIndex + 1}: {mod.title}
-                      </span>
+                      {editingModuleId === mod.id ? (
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
+                          <input
+                            value={editingModuleName}
+                            onChange={(e) => setEditingModuleName(e.target.value)}
+                            style={{
+                              flex: 1,
+                              padding: "8px 12px",
+                              borderRadius: 6,
+                              border: "1px solid #8a8a45",
+                              fontSize: 16,
+                            }}
+                          />
+                          <button
+                            onClick={handleSaveModuleName}
+                            style={{
+                              background: "#8a8a45",
+                              color: "#fff",
+                              border: "none",
+                              padding: "8px 16px",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={handleCancelEditModuleName}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid #c97a4a",
+                              color: "#c97a4a",
+                              padding: "8px 16px",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <BookOpen size={20} color="#8a8a45" /> Модуль{" "}
+                          {modIndex + 1}: {mod.title}
+                          <button
+                            onClick={() => handleEditModuleName(mod.id, mod.title)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "#8a8a45",
+                              cursor: "pointer",
+                              marginLeft: 8,
+                            }}
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        </span>
+                      )}
                       <button
                         onClick={() => handleDeleteModule(mod.id)}
                         style={{
@@ -727,27 +894,85 @@ export default function TeacherDashboard() {
                             fontWeight: 500,
                           }}
                         >
-                          <span
-                            onClick={() =>
-                              setEditingLesson({
-                                moduleId: mod.id,
-                                lesson: les,
-                              })
-                            }
-                            style={{
-                              cursor: "pointer",
-                              color: "#5c574a",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 10,
-                            }}
-                          >
-                            <Edit2 size={16} color="#8a8a45" />
-                            <span style={{ fontWeight: 700 }}>
-                              Урок {modIndex + 1}.{lesIndex + 1}
-                            </span>{" "}
-                            {les.title}
-                          </span>
+                          {editingLessonId === les.id ? (
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
+                              <input
+                                value={editingLessonName}
+                                onChange={(e) => setEditingLessonName(e.target.value)}
+                                style={{
+                                  flex: 1,
+                                  padding: "8px 12px",
+                                  borderRadius: 6,
+                                  border: "1px solid #8a8a45",
+                                  fontSize: 14,
+                                }}
+                              />
+                              <button
+                                onClick={() => handleSaveLessonName(mod.id)}
+                                style={{
+                                  background: "#8a8a45",
+                                  color: "#fff",
+                                  border: "none",
+                                  padding: "6px 12px",
+                                  borderRadius: 6,
+                                  cursor: "pointer",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={handleCancelEditLessonName}
+                                style={{
+                                  background: "transparent",
+                                  border: "1px solid #c97a4a",
+                                  color: "#c97a4a",
+                                  padding: "6px 12px",
+                                  borderRadius: 6,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              onClick={() =>
+                                setEditingLesson({
+                                  moduleId: mod.id,
+                                  lesson: les,
+                                })
+                              }
+                              style={{
+                                cursor: "pointer",
+                                color: "#5c574a",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                              }}
+                            >
+                              <Edit2 size={16} color="#8a8a45" />
+                              <span style={{ fontWeight: 700 }}>
+                                Урок {modIndex + 1}.{lesIndex + 1}
+                              </span>{" "}
+                              {les.title}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditLessonName(les.id, les.title);
+                                }}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  color: "#8a8a45",
+                                  cursor: "pointer",
+                                  marginLeft: 4,
+                                }}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            </span>
+                          )}
                           <button
                             onClick={() => handleDeleteLesson(mod.id, les.id)}
                             style={{
@@ -1070,6 +1295,108 @@ export default function TeacherDashboard() {
                 </div>
               </div>
 
+              {/* ЗАВАНТАЖЕННЯ ДОКУМЕНТІВ */}
+              <div
+                style={{
+                  background: "#f0ede5",
+                  padding: 24,
+                  borderRadius: 12,
+                  marginBottom: 32,
+                }}
+              >
+                <label
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#5c574a",
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <FileText size={16} /> Навчальні документи (PDF, Word)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={handleDocumentUpload}
+                  disabled={isUploadingDocument}
+                  style={{ display: "block", marginTop: 8 }}
+                />
+                {isUploadingDocument && (
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#8a8a45",
+                      marginTop: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Loader2 size={14} className="animate-spin" /> Завантаження...
+                  </p>
+                )}
+                {(editingLesson.lesson as any).documents &&
+                  (editingLesson.lesson as any).documents.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#7a7568",
+                          marginBottom: 8,
+                        }}
+                      >
+                        Прикріплені документи:
+                      </p>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                        }}
+                      >
+                        {(editingLesson.lesson as any).documents.map(
+                          (doc: any) => (
+                            <div
+                              key={doc.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                background: "#fff",
+                                padding: 10,
+                                borderRadius: 6,
+                                border: "1px solid #d8cdb4",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <FileText size={16} color="#8a8a45" />
+                                <span style={{ fontSize: 13, color: "#5c574a" }}>
+                                  {doc.name}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => handleRemoveDocument(doc.id)}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  color: "#c97a4a",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
+              </div>
+
               {/* ТЕКСТ / READING */}
               <div style={{ marginBottom: 32 }}>
                 <label
@@ -1143,6 +1470,55 @@ export default function TeacherDashboard() {
                     style={{ height: "160px" }}
                   />
                 </div>
+              </div>
+
+              {/* ІНСТРУКЦІЯ ДО ДОМАШНЬОГО ЗАВДАННЯ */}
+              <div
+                style={{
+                  marginBottom: 32,
+                  background: "#faf9f6",
+                  padding: 24,
+                  borderRadius: 12,
+                  border: "1px solid #e0dcd0",
+                }}
+              >
+                <label
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#8a8a45",
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <ClipboardList size={18} /> Інструкція до домашнього завдання
+                </label>
+                <textarea
+                  value={(editingLesson.lesson as any).homeworkInstruction || ""}
+                  onChange={(e) =>
+                    setEditingLesson({
+                      ...editingLesson,
+                      lesson: {
+                        ...editingLesson.lesson,
+                        homeworkInstruction: e.target.value,
+                      } as any,
+                    })
+                  }
+                  placeholder="Опишіть детально, що курсант має зробити в рамках домашнього завдання..."
+                  style={{
+                    width: "100%",
+                    minHeight: 120,
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #d8cdb4",
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    resize: "vertical",
+                    background: "#fff",
+                  }}
+                />
               </div>
 
               {/* СЛОВНИК (КАРТКИ) */}
@@ -1277,6 +1653,252 @@ export default function TeacherDashboard() {
                 )}
               </div>
 
+              {/* ІНТЕРАКТИВНИЙ ТЕСТ (QUIZ) */}
+              <div
+                style={{
+                  marginBottom: 32,
+                  background: "#faf9f6",
+                  padding: 24,
+                  borderRadius: 12,
+                  border: "1px solid #e0dcd0",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 16,
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#8a8a45",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Target size={18} /> Інтерактивний тест (Quiz)
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (!editingLesson) return;
+                      const currentQuiz = (editingLesson.lesson as any).quiz || [];
+                      setEditingLesson({
+                        ...editingLesson,
+                        lesson: {
+                          ...editingLesson.lesson,
+                          quiz: [
+                            ...currentQuiz,
+                            {
+                              id: `q-${Date.now()}`,
+                              text: "",
+                              options: ["", "", "", ""],
+                              correctAnswer: "",
+                            },
+                          ],
+                        } as any,
+                      });
+                    }}
+                    style={{
+                      background: "#8a8a45",
+                      color: "#fff",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    + Додати питання
+                  </button>
+                </div>
+                {!(editingLesson.lesson as any).quiz ||
+                (editingLesson.lesson as any).quiz.length === 0 ? (
+                  <p
+                    style={{
+                      color: "#9a8f70",
+                      fontSize: 14,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Ще немає питань тесту.
+                  </p>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 16,
+                    }}
+                  >
+                    {(editingLesson.lesson as any).quiz.map(
+                      (question: any, index: number) => (
+                        <div
+                          key={question.id}
+                          style={{
+                            background: "#fff",
+                            padding: 16,
+                            borderRadius: 8,
+                            border: "1px solid #d8cdb4",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 12,
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "#9a8f70",
+                                fontWeight: 700,
+                                fontSize: 13,
+                              }}
+                            >
+                              Питання {index + 1}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (!editingLesson) return;
+                                const updatedQuiz = (editingLesson.lesson as any).quiz.filter(
+                                  (_: any, i: number) => i !== index,
+                                );
+                                setEditingLesson({
+                                  ...editingLesson,
+                                  lesson: {
+                                    ...editingLesson.lesson,
+                                    quiz: updatedQuiz,
+                                  } as any,
+                                });
+                              }}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#c97a4a",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          <input
+                            placeholder="Текст питання"
+                            value={question.text}
+                            onChange={(e) => {
+                              if (!editingLesson) return;
+                              const updatedQuiz = [...(editingLesson.lesson as any).quiz];
+                              updatedQuiz[index] = {
+                                ...updatedQuiz[index],
+                                text: e.target.value,
+                              };
+                              setEditingLesson({
+                                ...editingLesson,
+                                lesson: {
+                                  ...editingLesson.lesson,
+                                  quiz: updatedQuiz,
+                                } as any,
+                              });
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: 10,
+                              borderRadius: 6,
+                              border: "1px solid #e9e1cd",
+                              marginBottom: 12,
+                              fontSize: 14,
+                            }}
+                          />
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: 8,
+                              marginBottom: 12,
+                            }}
+                          >
+                            {question.options.map((option: string, optIndex: number) => (
+                              <div key={optIndex}>
+                                <input
+                                  placeholder={`Варіант ${optIndex + 1}`}
+                                  value={option}
+                                  onChange={(e) => {
+                                    if (!editingLesson) return;
+                                    const updatedQuiz = [...(editingLesson.lesson as any).quiz];
+                                    updatedQuiz[index].options[optIndex] = e.target.value;
+                                    setEditingLesson({
+                                      ...editingLesson,
+                                      lesson: {
+                                        ...editingLesson.lesson,
+                                        quiz: updatedQuiz,
+                                      } as any,
+                                    });
+                                  }}
+                                  style={{
+                                    width: "100%",
+                                    padding: 8,
+                                    borderRadius: 6,
+                                    border: "1px solid #e9e1cd",
+                                    fontSize: 13,
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <div>
+                            <label
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "#7a7568",
+                                marginBottom: 4,
+                                display: "block",
+                              }}
+                            >
+                              Правильна відповідь:
+                            </label>
+                            <select
+                              value={question.correctAnswer}
+                              onChange={(e) => {
+                                if (!editingLesson) return;
+                                const updatedQuiz = [...(editingLesson.lesson as any).quiz];
+                                updatedQuiz[index].correctAnswer = e.target.value;
+                                setEditingLesson({
+                                  ...editingLesson,
+                                  lesson: {
+                                    ...editingLesson.lesson,
+                                    quiz: updatedQuiz,
+                                  } as any,
+                                });
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: 8,
+                                borderRadius: 6,
+                                border: "1px solid #d8cdb4",
+                                fontSize: 13,
+                              }}
+                            >
+                              <option value="">Оберіть правильну відповідь</option>
+                              {question.options.map((opt: string, optIndex: number) => (
+                                <option key={optIndex} value={opt}>
+                                  Варіант {optIndex + 1}: {opt || "(пусто)"}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div
                 style={{
                   display: "flex",
@@ -1304,6 +1926,939 @@ export default function TeacherDashboard() {
                   Зберегти урок
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ВКЛАДКА РОБОТИ НА ПЕРЕВІРКУ */}
+        {tab === "answers" && (
+          <div style={{ animation: "fadeIn 0.3s ease" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 24,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  margin: 0,
+                  color: "#3a3528",
+                }}
+              >
+                <Inbox size={24} style={{ display: "inline", marginRight: 8 }} />
+                Роботи на перевірку
+              </h2>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setAnswerFilter("pending")}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    border: "1px solid #e0dcd0",
+                    background: answerFilter === "pending" ? "#8a8a45" : "#fff",
+                    color: answerFilter === "pending" ? "#fff" : "#3a3528",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Очікують перевірки ({answers.filter((a) => a.status === "pending").length})
+                </button>
+                <button
+                  onClick={() => setAnswerFilter("reviewed")}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    border: "1px solid #e0dcd0",
+                    background: answerFilter === "reviewed" ? "#8a8a45" : "#fff",
+                    color: answerFilter === "reviewed" ? "#fff" : "#3a3528",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Перевірені ({answers.filter((a) => a.status === "reviewed").length})
+                </button>
+              </div>
+            </div>
+            {answers.filter((a) => a.status === answerFilter).length === 0 ? (
+              <div
+                style={{
+                  background: "#fff",
+                  padding: 40,
+                  borderRadius: 12,
+                  border: "1px solid #e0dcd0",
+                  textAlign: "center",
+                }}
+              >
+                <p style={{ color: "#9a8f70", fontSize: 16 }}>
+                  {answerFilter === "pending"
+                    ? "Немає робіт на перевірку."
+                    : "Немає перевірених робіт."}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {answers
+                  .filter((a) => a.status === answerFilter)
+                  .map((ans) => (
+                    <div
+                      key={ans.id}
+                      style={{
+                        background: "#fff",
+                        padding: 24,
+                        borderRadius: 12,
+                        border: "1px solid #e0dcd0",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          marginBottom: 16,
+                          paddingBottom: 16,
+                          borderBottom: "1px solid #e0dcd0",
+                        }}
+                      >
+                        <div>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "#9a8f70",
+                              textTransform: "uppercase",
+                              fontWeight: 600,
+                              marginBottom: 4,
+                            }}
+                          >
+                            Курсант
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 16,
+                              fontWeight: 700,
+                              color: "#3a3528",
+                              margin: 0,
+                            }}
+                          >
+                            {ans.studentName}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 13,
+                              color: "#7a7568",
+                              margin: "4px 0 0",
+                            }}
+                          >
+                            {ans.squadId}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "#9a8f70",
+                              textTransform: "uppercase",
+                              fontWeight: 600,
+                              marginBottom: 4,
+                            }}
+                          >
+                            Курс та урок
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 13,
+                              color: "#5c574a",
+                              margin: 0,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {courses.find((c) => c.id === ans.courseId)?.title || "Невідомий курс"}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 13,
+                              color: "#7a7568",
+                              margin: "4px 0 0",
+                            }}
+                          >
+                            {(() => {
+                              const course = courses.find((c) => c.id === ans.courseId);
+                              if (!course) return "Невідомий урок";
+                              for (const mod of course.modules) {
+                                const lesson = mod.lessons.find((l) => l.id === ans.lessonId);
+                                if (lesson) return lesson.title;
+                              }
+                              return "Невідомий урок";
+                            })()}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "#9a8f70",
+                              textTransform: "uppercase",
+                              fontWeight: 600,
+                              marginBottom: 4,
+                            }}
+                          >
+                            Відправлено
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 13,
+                              color: "#5c574a",
+                              margin: 0,
+                            }}
+                          >
+                            {new Date(ans.submittedAt).toLocaleString("uk-UA")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 16 }}>
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "#9a8f70",
+                            textTransform: "uppercase",
+                            fontWeight: 600,
+                            marginBottom: 4,
+                          }}
+                        >
+                          Відповідь на урок
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 15,
+                            color: "#4a4a4a",
+                            lineHeight: 1.6,
+                            margin: 0,
+                          }}
+                        >
+                          {ans.text}
+                        </p>
+                      </div>
+
+                      {/* Аудіо та документи */}
+                      {(ans.voiceRecorded || ans.attachments.length > 0) && (
+                        <div
+                          style={{
+                            background: "#faf9f6",
+                            padding: 16,
+                            borderRadius: 8,
+                            marginBottom: 16,
+                          }}
+                        >
+                          {ans.voiceRecorded && (
+                            <div style={{ marginBottom: 12 }}>
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: "#7a7568",
+                                  marginBottom: 8,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <Headphones size={16} /> Голосова відповідь
+                              </p>
+                              <audio
+                                controls
+                                style={{ width: "100%", height: 40 }}
+                                src={ans.attachments.find((a) => a.endsWith(".webm")) || ans.attachments[0]}
+                              >
+                                Ваш браузер не підтримує аудіо.
+                              </audio>
+                            </div>
+                          )}
+                          {ans.attachments.length > 0 && (
+                            <div>
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: "#7a7568",
+                                  marginBottom: 8,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <FileText size={16} /> Прикріплені документи
+                              </p>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                {ans.attachments
+                                  .filter((a) => !a.endsWith(".webm"))
+                                  .map((att, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={att}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      color: "#8a8a45",
+                                      textDecoration: "underline",
+                                      fontSize: 14,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                      padding: 8,
+                                      background: "#fff",
+                                      borderRadius: 6,
+                                      border: "1px solid #e0dcd0",
+                                    }}
+                                  >
+                                    <FileText size={16} />
+                                    {att.split("/").pop()}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Форма оцінювання */}
+                      <div
+                        style={{
+                          background: "#f0ede5",
+                          padding: 20,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: 16,
+                            marginBottom: 16,
+                          }}
+                        >
+                          <div>
+                            <label
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: "#7a7568",
+                                marginBottom: 8,
+                                display: "block",
+                              }}
+                            >
+                              Оцінка (0-100)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={scores[ans.id] || ""}
+                              onChange={(e) =>
+                                setScores({
+                                  ...scores,
+                                  [ans.id]: parseInt(e.target.value) || 0,
+                                })
+                              }
+                              style={{
+                                width: "100%",
+                                padding: 10,
+                                borderRadius: 6,
+                                border: "1px solid #d8cdb4",
+                                fontSize: 14,
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: 16 }}>
+                          <label
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "#7a7568",
+                              marginBottom: 8,
+                              display: "block",
+                            }}
+                          >
+                            Фідбек
+                          </label>
+                          <textarea
+                            value={feedbackTexts[ans.id] || ""}
+                            onChange={(e) =>
+                              setFeedbackTexts({
+                                ...feedbackTexts,
+                                [ans.id]: e.target.value,
+                              })
+                            }
+                            placeholder="Введіть коментар до роботи..."
+                            style={{
+                              width: "100%",
+                              padding: 10,
+                              borderRadius: 6,
+                              border: "1px solid #d8cdb4",
+                              fontSize: 14,
+                              minHeight: 80,
+                              resize: "vertical",
+                            }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => {
+                            provideFeedback(
+                              ans.id,
+                              feedbackTexts[ans.id] || "",
+                              false,
+                              scores[ans.id],
+                            );
+                            setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
+                            setScores({ ...scores, [ans.id]: 0 });
+                          }}
+                          style={{
+                            background: "#8a8a45",
+                            color: "#fff",
+                            border: "none",
+                            padding: "12px 24px",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <CheckCircle size={18} /> Зберегти оцінку
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ВКЛАДКА СЛУЖБА ПІДТРИМКИ */}
+        {tab === "support" && (
+          <div style={{ animation: "fadeIn 0.3s ease" }}>
+            <h2
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                marginBottom: 24,
+                color: "#3a3528",
+              }}
+            >
+              <LifeBuoy size={24} style={{ display: "inline", marginRight: 8 }} />
+              Служба підтримки
+            </h2>
+            {supportTickets.length === 0 ? (
+              <div
+                style={{
+                  background: "#fff",
+                  padding: 40,
+                  borderRadius: 12,
+                  border: "1px solid #e0dcd0",
+                  textAlign: "center",
+                }}
+              >
+                <p style={{ color: "#9a8f70", fontSize: 16 }}>
+                  Немає звернень до служби підтримки.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {supportTickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    style={{
+                      background: "#fff",
+                      padding: 24,
+                      borderRadius: 12,
+                      border: "1px solid #e0dcd0",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: 16,
+                        paddingBottom: 16,
+                        borderBottom: "1px solid #e0dcd0",
+                      }}
+                    >
+                      <div>
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "#9a8f70",
+                            textTransform: "uppercase",
+                            fontWeight: 600,
+                            marginBottom: 4,
+                          }}
+                        >
+                          Курсант
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 700,
+                            color: "#3a3528",
+                            margin: 0,
+                          }}
+                        >
+                          {ticket.userName}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "#9a8f70",
+                            textTransform: "uppercase",
+                            fontWeight: 600,
+                            marginBottom: 4,
+                          }}
+                        >
+                          Тип звернення
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: ticket.type === "bug" ? "#c97a4a" : "#8a8a45",
+                            margin: 0,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {ticket.type === "bug" ? "Помилка (Bug)" : "Пропозиція покращення"}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "#9a8f70",
+                            textTransform: "uppercase",
+                            fontWeight: 600,
+                            marginBottom: 4,
+                          }}
+                        >
+                          Дата
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "#5c574a",
+                            margin: 0,
+                          }}
+                        >
+                          {new Date(ticket.date).toLocaleString("uk-UA")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "#9a8f70",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                          marginBottom: 4,
+                        }}
+                      >
+                        Опис
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 15,
+                          color: "#4a4a4a",
+                          lineHeight: 1.6,
+                          margin: 0,
+                        }}
+                      >
+                        {ticket.message}
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: 12,
+                          background:
+                            ticket.status === "open" ? "#eef0df" : "#f0ede5",
+                          color: ticket.status === "open" ? "#8a8a45" : "#5c574a",
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {ticket.status === "open" ? "Відкрито" : "Вирішено"}
+                      </div>
+                      {ticket.status === "open" && (
+                        <button
+                          onClick={() => updateTicketStatus(ticket.id, "closed")}
+                          style={{
+                            background: "#8a8a45",
+                            color: "#fff",
+                            border: "none",
+                            padding: "8px 16px",
+                            borderRadius: 6,
+                            fontWeight: 600,
+                            fontSize: 13,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Позначити як вирішене
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ВКЛАДКА КЕРУВАННЯ ДОСТУПОМ */}
+        {tab === "users" && (
+          <div style={{ animation: "fadeIn 0.3s ease" }}>
+            <h2
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                marginBottom: 24,
+                color: "#3a3528",
+              }}
+            >
+              <Users size={24} style={{ display: "inline", marginRight: 8 }} />
+              Керування доступом
+            </h2>
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 12,
+                border: "1px solid #e0dcd0",
+                overflow: "hidden",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr
+                    style={{
+                      background: "#f0ede5",
+                      borderBottom: "2px solid #e0dcd0",
+                    }}
+                  >
+                    <th
+                      style={{
+                        padding: 16,
+                        textAlign: "left",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#5c574a",
+                      }}
+                    >
+                      Ім'я
+                    </th>
+                    <th
+                      style={{
+                        padding: 16,
+                        textAlign: "left",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#5c574a",
+                      }}
+                    >
+                      Роль
+                    </th>
+                    <th
+                      style={{
+                        padding: 16,
+                        textAlign: "left",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#5c574a",
+                      }}
+                    >
+                      Статус
+                    </th>
+                    <th
+                      style={{
+                        padding: 16,
+                        textAlign: "left",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#5c574a",
+                      }}
+                    >
+                      Прогрес
+                    </th>
+                    <th
+                      style={{
+                        padding: 16,
+                        textAlign: "right",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#5c574a",
+                      }}
+                    >
+                      Дії
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleUsers.map((u) => (
+                    <tr
+                      key={u.id}
+                      style={{
+                        borderBottom: "1px solid #e0dcd0",
+                      }}
+                    >
+                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                        {u.name}
+                      </td>
+                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                        <span
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: 4,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background:
+                              u.role === "admin"
+                                ? "#4a4231"
+                                : u.role === "teacher"
+                                ? "#8a8a45"
+                                : "#e0dcd0",
+                            color:
+                              u.role === "admin"
+                                ? "#f6f1e4"
+                                : u.role === "teacher"
+                                ? "#fff"
+                                : "#5c574a",
+                          }}
+                        >
+                          {u.role === "admin"
+                            ? "Адмін"
+                            : u.role === "teacher"
+                            ? "Викладач"
+                            : "Курсант"}
+                        </span>
+                      </td>
+                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                        <span
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: 4,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background:
+                              u.status === "approved"
+                                ? "#eef0df"
+                                : "#fdeced",
+                            color:
+                              u.status === "approved"
+                                ? "#8a8a45"
+                                : "#c97a4a",
+                          }}
+                        >
+                          {u.status === "approved" ? "Активний" : "Очікує"}
+                        </span>
+                      </td>
+                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                        {u.role === "student" ? (
+                          (() => {
+                            const userAnswers = answers.filter(
+                              (a) => a.studentName === u.name && a.status === "reviewed"
+                            );
+                            const totalLessons = courses.reduce(
+                              (sum, c) =>
+                                sum +
+                                c.modules.reduce((modSum, m) => modSum + m.lessons.length, 0),
+                              0
+                            );
+                            const progress = totalLessons > 0
+                              ? Math.round((userAnswers.length / totalLessons) * 100)
+                              : 0;
+                            return (
+                              <div>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    fontSize: 12,
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  <span>{userAnswers.length}/{totalLessons} уроків</span>
+                                  <span>{progress}%</span>
+                                </div>
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    height: 6,
+                                    background: "#e0dcd0",
+                                    borderRadius: 3,
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: `${progress}%`,
+                                      height: "100%",
+                                      background: "#8a8a45",
+                                      borderRadius: 3,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <span style={{ color: "#9a8f70", fontSize: 13 }}>-</span>
+                        )}
+                      </td>
+                      <td style={{ padding: 16, textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                          {u.status === "pending" && (
+                            <button
+                              onClick={() => approveUser(u.id)}
+                              style={{
+                                background: "#8a8a45",
+                                color: "#fff",
+                                border: "none",
+                                padding: "6px 12px",
+                                borderRadius: 6,
+                                cursor: "pointer",
+                                fontSize: 13,
+                                fontWeight: 600,
+                              }}
+                            >
+                              ✓
+                            </button>
+                          )}
+                          {user.role === "admin" && (
+                            <button
+                              onClick={() => {
+                                setEditingPasswordId(u.id);
+                                setNewPasswordValue("");
+                              }}
+                              style={{
+                                background: "transparent",
+                                border: "1px solid #8a8a45",
+                                color: "#8a8a45",
+                                padding: "6px 12px",
+                                borderRadius: 6,
+                                cursor: "pointer",
+                                fontSize: 13,
+                                fontWeight: 600,
+                              }}
+                            >
+                              <Key size={14} style={{ display: "inline", marginRight: 4 }} />
+                              Пароль
+                            </button>
+                          )}
+                          <button
+                            onClick={() => rejectUser(u.id)}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid #c97a4a",
+                              color: "#c97a4a",
+                              padding: "6px 12px",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              fontSize: 13,
+                              fontWeight: 600,
+                            }}
+                          >
+                            <Trash2 size={14} style={{ display: "inline", marginRight: 4 }} />
+                            Видалити
+                          </button>
+                        </div>
+                        {editingPasswordId === u.id && (
+                          <div
+                            style={{
+                              marginTop: 12,
+                              padding: 12,
+                              background: "#faf9f6",
+                              borderRadius: 6,
+                              border: "1px solid #d8cdb4",
+                            }}
+                          >
+                            <input
+                              type="password"
+                              placeholder="Новий пароль"
+                              value={newPasswordValue}
+                              onChange={(e) => setNewPasswordValue(e.target.value)}
+                              style={{
+                                width: "100%",
+                                padding: 8,
+                                borderRadius: 4,
+                                border: "1px solid #d8cdb4",
+                                marginBottom: 8,
+                                fontSize: 13,
+                              }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                onClick={async () => {
+                                  if (newPasswordValue.trim()) {
+                                    await changeUserPassword(u.id, newPasswordValue);
+                                    setEditingPasswordId(null);
+                                    setNewPasswordValue("");
+                                  }
+                                }}
+                                style={{
+                                  background: "#8a8a45",
+                                  color: "#fff",
+                                  border: "none",
+                                  padding: "6px 12px",
+                                  borderRadius: 4,
+                                  cursor: "pointer",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Зберегти
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingPasswordId(null);
+                                  setNewPasswordValue("");
+                                }}
+                                style={{
+                                  background: "transparent",
+                                  border: "1px solid #c97a4a",
+                                  color: "#c97a4a",
+                                  padding: "6px 12px",
+                                  borderRadius: 4,
+                                  cursor: "pointer",
+                                  fontSize: 12,
+                                }}
+                              >
+                                Скасувати
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

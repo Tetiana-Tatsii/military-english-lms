@@ -13,6 +13,9 @@ import {
   Clock,
   BookOpen,
   Headphones,
+  ClipboardList,
+  StopCircle,
+  Paperclip,
 } from "lucide-react";
 
 export default function CoursePage() {
@@ -36,6 +39,14 @@ export default function CoursePage() {
   );
   const [homeworkText, setHomeworkText] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<{ [key: string]: string }>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizScore, setQuizScore] = useState<number | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -86,18 +97,99 @@ export default function CoursePage() {
     setFlippedCards((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const handleSendHomework = () => {
-    if (!homeworkText.trim() || !activeLesson) return;
-    submitAnswer({
-      lessonId: activeLesson.id,
-      courseId: course.id,
-      text: homeworkText,
-      voiceRecorded: false,
-      attachments: [],
+  const handleQuizAnswerChange = (questionId: string, answer: string) => {
+    setQuizAnswers((prev) => ({ ...prev, [questionId]: answer }));
+  };
+
+  const handleQuizSubmit = () => {
+    if (!activeLesson?.quiz) return;
+    
+    let correctCount = 0;
+    activeLesson.quiz.forEach((question) => {
+      if (quizAnswers[question.id] === question.correctAnswer) {
+        correctCount++;
+      }
     });
-    setHomeworkText("");
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 3000);
+    
+    const score = Math.round((correctCount / activeLesson.quiz.length) * 100);
+    setQuizScore(score);
+    setQuizSubmitted(true);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (e) => {
+        chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Помилка доступу до мікрофона:", error);
+      alert("Не вдалося отримати доступ до мікрофона. Перевірте налаштування браузера.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleRerecord = () => {
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setMediaRecorder(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachedFiles(files);
+  };
+
+  const handleSendHomework = async () => {
+    if (!homeworkText.trim() || !activeLesson) return;
+    try {
+      console.log("Відправка домашнього завдання:", {
+        lessonId: activeLesson.id,
+        courseId: course.id,
+        text: homeworkText,
+        audioBlob: !!audioBlob,
+        files: attachedFiles.length,
+      });
+      await submitAnswer({
+        lessonId: activeLesson.id,
+        courseId: course.id,
+        text: homeworkText,
+        voiceRecorded: false,
+        attachments: [],
+        audioBlob,
+        files: attachedFiles,
+      } as any);
+      setHomeworkText("");
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setAttachedFiles([]);
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 3000);
+    } catch (error) {
+      console.error("Помилка при відправці домашнього завдання:", error);
+      alert("Сталася помилка при відправці домашнього завдання. Спробуйте ще раз.");
+    }
   };
 
   return (
@@ -203,14 +295,25 @@ export default function CoursePage() {
                         gap: 12,
                         transition: "background 0.2s",
                       }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "scale(1.02)";
+                        e.currentTarget.style.transition = "transform 0.2s";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "scale(1)";
+                      }}
                     >
                       {isCompleted ? (
-                        <CheckCircle size={16} color="#8a8a45" />
+                        <div style={{ flexShrink: 0, minWidth: "18px" }}>
+                          <CheckCircle size={18} color="#8a8a45" />
+                        </div>
                       ) : (
-                        <PlayCircle
-                          size={16}
-                          color={isActive ? "#c97a4a" : "#a39f93"}
-                        />
+                        <div style={{ flexShrink: 0, minWidth: "18px" }}>
+                          <PlayCircle
+                            size={18}
+                            color={isActive ? "#c97a4a" : "#a39f93"}
+                          />
+                        </div>
                       )}
                       <span
                         style={{
@@ -436,7 +539,61 @@ export default function CoursePage() {
               </div>
             )}
 
-            {/* 7. СЛОВНИК (КАРТКИ QUIZLET) */}
+            {/* 7. ДОКУМЕНТИ УРОКУ */}
+            {activeLesson.documents && activeLesson.documents.length > 0 && (
+              <div
+                style={{
+                  background: "#faf9f6",
+                  padding: 32,
+                  borderRadius: 12,
+                  border: "1px solid #e0dcd0",
+                  marginBottom: 40,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 20,
+                    color: "#8a8a45",
+                    fontWeight: 700,
+                    fontSize: 18,
+                  }}
+                >
+                  <FileText size={22} /> Навчальні документи
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {activeLesson.documents.map((doc) => (
+                    <a
+                      key={doc.id}
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: 16,
+                        background: "#fff",
+                        borderRadius: 8,
+                        border: "1px solid #d8cdb4",
+                        textDecoration: "none",
+                        color: "#4a4a4a",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <FileText size={20} color="#8a8a45" />
+                      <span style={{ fontSize: 15, fontWeight: 600 }}>
+                        {doc.name}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 8. СЛОВНИК (КАРТКИ QUIZLET) */}
             {activeLesson.quizlet && activeLesson.quizlet.length > 0 && (
               <div style={{ marginBottom: 48 }}>
                 <h3
@@ -511,7 +668,159 @@ export default function CoursePage() {
               </div>
             )}
 
-            {/* БЛОК ВІДПРАВКИ ЗАВДАННЯ */}
+            {/* 9. ПРАКТИЧНИЙ ТЕСТ (QUIZ) */}
+            {activeLesson.quiz && activeLesson.quiz.length > 0 && (
+              <div
+                style={{
+                  background: "#faf9f6",
+                  padding: 32,
+                  borderRadius: 12,
+                  border: "1px solid #e0dcd0",
+                  marginBottom: 40,
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: 20,
+                    color: "#3a3528",
+                    marginBottom: 20,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <CheckCircle size={22} color="#8a8a45" /> Практичний тест
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                  {activeLesson.quiz.map((question, index) => (
+                    <div key={question.id}>
+                      <p
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 600,
+                          color: "#3a3528",
+                          marginBottom: 12,
+                        }}
+                      >
+                        {index + 1}. {question.text}
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {question.options.map((option, optIndex) => (
+                          <label
+                            key={optIndex}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              padding: 12,
+                              background: "#fff",
+                              borderRadius: 8,
+                              border: "1px solid #d8cdb4",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${question.id}`}
+                              value={option}
+                              checked={quizAnswers[question.id] === option}
+                              onChange={(e) => handleQuizAnswerChange(question.id, e.target.value)}
+                              disabled={quizSubmitted}
+                              style={{ width: 18, height: 18, accentColor: "#8a8a45" }}
+                            />
+                            <span style={{ fontSize: 15, color: "#4a4a4a" }}>
+                              {option}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {!quizSubmitted ? (
+                  <button
+                    onClick={handleQuizSubmit}
+                    style={{
+                      marginTop: 24,
+                      background: "#8a8a45",
+                      color: "#fff",
+                      border: "none",
+                      padding: "12px 24px",
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    Завершити тест
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      marginTop: 24,
+                      padding: 16,
+                      background: "#eef0df",
+                      borderRadius: 8,
+                      border: "1px solid #8a8a45",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: "#8a8a45",
+                      }}
+                    >
+                      Ваш результат: {quizScore}%
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 10. ІНСТРУКЦІЯ ДО ДОМАШНЬОГО ЗАВДАННЯ */}
+            {activeLesson.homeworkInstruction && (
+              <div
+                style={{
+                  background: "#fdf8f5",
+                  padding: 32,
+                  borderRadius: 12,
+                  border: "1px solid #facbce",
+                  marginBottom: 40,
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: 20,
+                    color: "#c97a4a",
+                    marginBottom: 20,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <ClipboardList size={22} /> Інструкція до домашнього завдання
+                </h3>
+                <div
+                  style={{
+                    fontSize: 16,
+                    lineHeight: 1.8,
+                    color: "#4a4a4a",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {activeLesson.homeworkInstruction}
+                </div>
+              </div>
+            )}
+
+            {/* 11. БЛОК ВІДПРАВКИ ЗАВДАННЯ */}
             <div
               style={{
                 background: "#f0ede5",
@@ -552,6 +861,181 @@ export default function CoursePage() {
                 }}
               />
 
+              {/* АУДІОЗАПИС */}
+              <div
+                style={{
+                  background: "#fff",
+                  padding: 16,
+                  borderRadius: 8,
+                  border: "1px solid #d8cdb4",
+                  marginBottom: 16,
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0 0 12px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#5c574a",
+                  }}
+                >
+                  <Headphones size={16} style={{ display: "inline", marginRight: 6 }} />
+                  Голосова відповідь
+                </p>
+                {!audioUrl ? (
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    {!isRecording ? (
+                      <button
+                        onClick={startRecording}
+                        style={{
+                          background: "#8a8a45",
+                          color: "#fff",
+                          border: "none",
+                          padding: "10px 20px",
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Volume2 size={16} /> Почати запис
+                      </button>
+                    ) : (
+                      <button
+                        onClick={stopRecording}
+                        style={{
+                          background: "#c97a4a",
+                          color: "#fff",
+                          border: "none",
+                          padding: "10px 20px",
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <StopCircle size={16} /> Зупинити запис
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <audio
+                      controls
+                      style={{ width: "100%", height: "40px" }}
+                      src={audioUrl}
+                    >
+                      Ваш браузер не підтримує аудіо елемент.
+                    </audio>
+                    <button
+                      onClick={handleRerecord}
+                      style={{
+                        background: "#f0ede5",
+                        color: "#8a8a45",
+                        border: "1px solid #8a8a45",
+                        padding: "8px 16px",
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        alignSelf: "flex-start",
+                      }}
+                    >
+                      <Volume2 size={14} /> Перезаписати
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ПРИКРІПЛЕННЯ ФАЙЛІВ */}
+              <div
+                style={{
+                  background: "#fff",
+                  padding: 16,
+                  borderRadius: 8,
+                  border: "1px solid #d8cdb4",
+                  marginBottom: 16,
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0 0 12px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#5c574a",
+                  }}
+                >
+                  <FileText size={16} style={{ display: "inline", marginRight: 6 }} />
+                  Прикріпити файли (PDF, Word, фото)
+                </p>
+                <input
+                  type="file"
+                  id="file-input"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                />
+                <label
+                  htmlFor="file-input"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 20px",
+                    background: "#8a8a45",
+                    color: "#fff",
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    transition: "background 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#7a7a3d";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#8a8a45";
+                  }}
+                >
+                  <Paperclip size={16} />
+                  📎 Обрати файли
+                </label>
+                {attachedFiles.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <p style={{ fontSize: 13, color: "#8a8a45", marginBottom: 8 }}>
+                      Обрано файлів: {attachedFiles.length}
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {attachedFiles.map((file, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            fontSize: 12,
+                            color: "#5c574a",
+                            padding: "4px 8px",
+                            background: "#f0ede5",
+                            borderRadius: 4,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <FileText size={12} />
+                          {file.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div
                 style={{
                   display: "flex",
@@ -559,22 +1043,15 @@ export default function CoursePage() {
                   alignItems: "center",
                 }}
               >
-                <div>
-                  <input
-                    type="file"
-                    multiple
-                    style={{ fontSize: 13, color: "#5c574a" }}
-                  />
-                  <p
-                    style={{
-                      margin: "6px 0 0",
-                      fontSize: 12,
-                      color: "#9a8f70",
-                    }}
-                  >
-                    *Ви можете прикріпити фото документа або аудіо-відповідь
-                  </p>
-                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 12,
+                    color: "#9a8f70",
+                  }}
+                >
+                  *Ви можете прикріпити файли та/або записати голосову відповідь
+                </p>
 
                 <button
                   onClick={handleSendHomework}

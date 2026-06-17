@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "../../context/AppContext";
 
@@ -9,8 +9,18 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login, registerUser } = useAppContext();
+  const { login, registerUser, user } = useAppContext();
   const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "teacher" || user.role === "admin") {
+        router.push("/teacher");
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,17 +41,6 @@ export default function LoginPage() {
         const err = await login(name, password);
         if (err) {
           setError(err);
-        } else {
-          // ДОДАЄМО ПЕРЕНАПРАВЛЕННЯ ТУТ:
-          // Якщо це Адмін або Викладач — кидаємо в панель керування, інакше — в кабінет курсанта
-          if (
-            name.toLowerCase() === "адмін" ||
-            name.toLowerCase() === "викладач"
-          ) {
-            router.push("/teacher");
-          } else {
-            router.push("/dashboard");
-          }
         }
       }
     } catch (error) {
@@ -52,181 +51,54 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        background: "#e9e1cd", // Трохи темніший фон для контрасту
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
+    <div className="flex min-h-screen bg-[#e9e1cd] font-sans">
       {/* ЛІВА ЧАСТИНА: Інформаційна панель (зникає на малих екранах) */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: "40px",
-          background: "#4a4a35", // Темно-зелений військовий колір
-          color: "#f0e9d8",
-          textAlign: "center",
-        }}
-      >
+      <div className="hidden flex-col items-center justify-center bg-[#4a4a35] p-10 text-center text-[#f0e9d8] md:flex">
         <img
-          src="/logo.jpg" // Твоя емблема
+          src="/logo.jpg"
           alt="Емблема кафедри"
-          style={{
-            width: "160px",
-            height: "auto",
-            marginBottom: "24px",
-            borderRadius: "8px",
-          }}
+          className="mb-6 h-auto w-40 rounded-lg"
         />
-        <h1
-          style={{
-            fontSize: "36px",
-            fontWeight: 800,
-            margin: "0 0 16px",
-            letterSpacing: "1px",
-          }}
-        >
+        <h1 className="mb-4 text-[36px] font-extrabold tracking-wide">
           MILITARY LMS
         </h1>
-        <p
-          style={{
-            fontSize: "18px",
-            maxWidth: "400px",
-            lineHeight: "1.6",
-            color: "#d8cdb4",
-            marginBottom: "32px",
-          }}
-        >
+        <p className="mb-8 max-w-[400px] text-[18px] leading-relaxed text-[#d8cdb4]">
           Комплексна платформа для підготовки військовослужбовців до складання
           іспиту STANAG 6001.
         </p>
 
         {/* Місце під шеврони або додаткові логотипи */}
-        <div
-          style={{
-            display: "flex",
-            gap: "24px",
-            justifyContent: "center",
-            marginTop: "auto",
-          }}
-        >
-          {/* Заглушки під шеврони. Можеш замінити на <img> коли матимеш файли */}
-          <div
-            style={{
-              width: "80px",
-              height: "80px",
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "12px",
-              border: "1px solid rgba(255,255,255,0.2)",
-            }}
-          >
+        <div className="mt-auto flex justify-center gap-6">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[12px]">
             NGU
           </div>
-          <div
-            style={{
-              width: "80px",
-              height: "80px",
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "12px",
-              border: "1px solid rgba(255,255,255,0.2)",
-            }}
-          >
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[12px]">
             Training
           </div>
-          <div
-            style={{
-              width: "80px",
-              height: "80px",
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "12px",
-              border: "1px solid rgba(255,255,255,0.2)",
-            }}
-          >
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[12px]">
             Language
           </div>
         </div>
       </div>
 
       {/* ПРАВА ЧАСТИНА: Форма входу */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "20px",
-        }}
-      >
-        <div
-          style={{
-            background: "#f6f1e4",
-            padding: "48px 40px",
-            borderRadius: "16px",
-            width: "100%",
-            maxWidth: "400px",
-            boxShadow: "0 12px 32px rgba(0,0,0,0.1)",
-            border: "1px solid #d8cdb4",
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: "32px" }}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: 700,
-                margin: "0 0 8px",
-                color: "#3a3528",
-              }}
-            >
+      <div className="flex flex-1 items-center justify-center p-5">
+        <div className="w-full max-w-[400px] rounded-2xl border border-[#d8cdb4] bg-[#f6f1e4] p-10 shadow-[0_12px_32px_rgba(0,0,0,0.1)]">
+          <div className="mb-8 text-center">
+            <h2 className="mb-2 text-[24px] font-bold text-[#3a3528]">
               {isRegister ? "Створення акаунту" : "Вхід у систему"}
             </h2>
-            <p
-              style={{
-                fontSize: "14px",
-                fontStyle: "italic",
-                color: "#8a8a45",
-                margin: 0,
-              }}
-            >
+            <p className="text-[14px] italic text-[#8a8a45]">
               &quot;English is always a good idea!&quot;
             </p>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-          >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <input
               placeholder="Ім'я або логін"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                borderRadius: "8px",
-                border: "1px solid #d8cdb4",
-                background: "#fff",
-                fontSize: "15px",
-                color: "#3a3528",
-                boxSizing: "border-box",
-              }}
+              className="w-full rounded-lg border border-[#d8cdb4] bg-white px-4 py-3.5 text-[15px] text-[#3a3528]"
               required
             />
             <input
@@ -234,82 +106,32 @@ export default function LoginPage() {
               placeholder="Пароль"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                borderRadius: "8px",
-                border: "1px solid #d8cdb4",
-                background: "#fff",
-                fontSize: "15px",
-                color: "#3a3528",
-                boxSizing: "border-box",
-              }}
+              className="w-full rounded-lg border border-[#d8cdb4] bg-white px-4 py-3.5 text-[15px] text-[#3a3528]"
               required
             />
 
             {error && (
-              <div
-                style={{
-                  background: "#fdeced",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  borderLeft: "4px solid #c97a4a",
-                }}
-              >
-                <p
-                  style={{
-                    color: "#c97a4a",
-                    fontSize: "13px",
-                    margin: "0",
-                    fontWeight: 500,
-                  }}
-                >
-                  {error}
-                </p>
+              <div className="rounded-md border-l-4 border-[#c97a4a] bg-[#fdeced] p-2.5">
+                <p className="text-[13px] font-medium text-[#c97a4a]">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
-              style={{
-                width: "100%",
-                padding: "14px",
-                background: "#8a8a45",
-                color: "#f6f1e4",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "15px",
-                fontWeight: 600,
-                marginTop: "8px",
-                transition: "background 0.2s",
-              }}
+              className="mt-2 w-full rounded-lg bg-[#8a8a45] px-4 py-3.5 text-[15px] font-semibold text-[#f6f1e4] transition-colors hover:bg-[#7a7a3d]"
             >
               {isRegister ? "Зареєструватися" : "Увійти"}
             </button>
           </form>
 
-          <p
-            style={{
-              textAlign: "center",
-              marginTop: "32px",
-              fontSize: "14px",
-              color: "#6b6b3a",
-            }}
-          >
+          <p className="mt-8 text-center text-[14px] text-[#6b6b3a]">
             {isRegister ? "Вже маєте акаунт? " : "Немає акаунту? "}
             <span
               onClick={() => {
                 setIsRegister(!isRegister);
                 setError("");
               }}
-              style={{
-                color: "#8a8a45",
-                cursor: "pointer",
-                fontWeight: 600,
-                textDecoration: "underline",
-                textUnderlineOffset: "4px",
-              }}
+              className="cursor-pointer font-semibold text-[#8a8a45] underline underline-offset-4"
             >
               {isRegister ? "Увійти" : "Створити"}
             </span>

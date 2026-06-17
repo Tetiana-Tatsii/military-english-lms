@@ -8,102 +8,36 @@ export default function CourseCard({ course }: { course: Course }) {
   const router = useRouter();
 
   return (
-    <div
-      style={{
-        background: "#f6f1e4",
-        borderRadius: 12,
-        padding: "20px",
-        border: "0.5px solid #d8cdb4",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
+    <div className="relative overflow-hidden rounded-xl border border-[#d8cdb4] bg-[#f6f1e4] p-5">
       {course.status === "draft" && (
-        <div
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            background: "#e9e1cd",
-            padding: "4px 8px",
-            borderRadius: 4,
-            fontSize: 10,
-            fontWeight: 600,
-            color: "#9a8f70",
-            textTransform: "uppercase",
-          }}
-        >
+        <div className="absolute right-3 top-3 rounded bg-[#e9e1cd px-2 py-1 text-[10px] font-semibold uppercase text-[#9a8f70]">
           У розробці
         </div>
       )}
 
-      <h3
-        style={{
-          fontSize: 18,
-          fontWeight: 600,
-          margin: "0 0 4px",
-          color: "#3a3528",
-          paddingRight: "80px",
-        }}
-      >
+      <h3 className="pr-20 text-lg font-semibold text-[#3a3528]">
         {course.title}
       </h3>
-      <p
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          color: "#8a8a45",
-          margin: "0 0 12px",
-        }}
-      >
+      <p className="mb-3 text-sm font-medium text-[#8a8a45]">
         {course.subtitle}
       </p>
-      <p
-        style={{
-          fontSize: 14,
-          color: "#5a5440",
-          lineHeight: 1.6,
-          marginBottom: "20px",
-        }}
-      >
+      <p className="mb-5 text-sm leading-relaxed text-[#5a5440]">
         {course.description}
       </p>
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 12,
-            color: "#9a8f70",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1 text-xs text-[#9a8f70]">
           <Target size={14} /> Модулів: {course.modules.length}
         </span>
 
         <button
           onClick={() => router.push(`/courses/${course.id}`)}
           disabled={course.status === "draft"}
-          style={{
-            background: course.status === "draft" ? "#e9e1cd" : "#8a8a45",
-            color: course.status === "draft" ? "#9a8f70" : "#f6f1e4",
-            border: "none",
-            padding: "8px 16px",
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: course.status === "draft" ? "not-allowed" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium ${
+            course.status === "draft"
+              ? "cursor-not-allowed bg-[#e9e1cd] text-[#9a8f70]"
+              : "cursor-pointer bg-[#8a8a45] text-[#f6f1e4]"
+          }`}
         >
           {course.status === "draft" ? "Недоступно" : "Перейти до курсу"}{" "}
           <ChevronRight size={16} />

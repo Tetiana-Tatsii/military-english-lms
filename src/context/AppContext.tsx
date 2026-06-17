@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, {
   createContext,
@@ -10,6 +9,7 @@ import React, {
 } from "react";
 import { initialCourses } from "../data/courses";
 import { supabase } from "../lib/supabase"; // Підключаємо наш міст до хмари
+import { hashPassword, verifyPassword } from "../lib/password";
 
 export type SkillType =
   | "listening"
@@ -23,6 +23,20 @@ export type AccountStatus = "pending" | "approved";
 export interface QuizletCard {
   term: string;
   translation: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+export interface LessonDocument {
+  id: string;
+  name: string;
+  url: string;
+  type: "pdf" | "doc" | "docx";
 }
 
 export type Lesson = {
@@ -39,6 +53,9 @@ export type Lesson = {
   audioUrl?: string;
   grammarContent?: string;
   imageUrl?: string;
+  quiz?: QuizQuestion[];
+  documents?: LessonDocument[];
+  homeworkInstruction?: string;
 };
 
 export interface Module {
@@ -55,7 +72,7 @@ export interface Course {
   description: string;
   status: "active" | "draft";
   modules: Module[];
-  finalTest: { title: string; questions: any[] };
+  finalTest: { title: string; questions: Question[] };
 }
 
 export interface Answer {
@@ -74,11 +91,28 @@ export interface Answer {
   score?: number;
 }
 
+export interface SupportTicket {
+  id: string;
+  userName: string;
+  type: "bug" | "improvement";
+  message: string;
+  date: string;
+  status: "open" | "closed";
+}
+
 export interface GrammarRule {
   id: string;
   title: string;
   category: string;
   content: string;
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  options?: string[];
+  correctAnswer?: string;
+  type?: "multiple-choice" | "text" | "true-false";
 }
 
 export interface UserAccount {
@@ -96,6 +130,7 @@ interface AppState {
   answers: Answer[];
   grammarBase: GrammarRule[];
   usersDb: UserAccount[];
+  supportTickets: SupportTicket[];
 
   registerUser: (
     name: string,
@@ -121,6 +156,9 @@ interface AppState {
     feedbackAudio: boolean,
     score?: number,
   ) => void;
+
+  addSupportTicket: (type: "bug" | "improvement", message: string) => void;
+  updateTicketStatus: (ticketId: string, status: "open" | "closed") => void;
 
   addCourse: (title: string, subtitle: string, description: string) => void;
   updateCourse: (courseId: string, updatedData: Partial<Course>) => void;
@@ -154,6 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [courses, setCourses] = useState<Course[]>(initialCourses as Course[]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [usersDb, setUsersDb] = useState<UserAccount[]>([]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [grammarBase] = useState<GrammarRule[]>([
     {
@@ -174,12 +213,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (!error && data) {
       // Трансформуємо змійок snake_case з бази у camelCase для нашого React-коду
-      const formattedUsers: UserAccount[] = data.map((u: any) => ({
+      const formattedUsers: UserAccount[] = data.map((u) => ({
         id: u.id,
         name: u.name,
         password: u.password,
-        role: u.role,
-        status: u.status,
+        role: u.role as UserRole,
+        status: u.status as AccountStatus,
         squadId: u.squad_id,
       }));
       setUsersDb(formattedUsers);
@@ -193,10 +232,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const savedCourses = localStorage.getItem("lanp_courses");
         const savedAnswers = localStorage.getItem("lanp_answers");
         const savedUserSession = sessionStorage.getItem("lanp_user");
+        const savedSupportTickets = localStorage.getItem("lanp_support_tickets");
 
-        if (savedCourses) setCourses(JSON.parse(savedCourses));
-        if (savedAnswers) setAnswers(JSON.parse(savedAnswers));
-        if (savedUserSession) setUser(JSON.parse(savedUserSession));
+        if (savedCourses) {
+          try {
+            setCourses(JSON.parse(savedCourses));
+          } catch (e) {
+            console.error("Помилка парсингу курсів:", e);
+          }
+        }
+        if (savedAnswers) {
+          try {
+            setAnswers(JSON.parse(savedAnswers));
+          } catch (e) {
+            console.error("Помилка парсингу відповідей:", e);
+          }
+        }
+        if (savedSupportTickets) {
+          try {
+            setSupportTickets(JSON.parse(savedSupportTickets));
+          } catch (e) {
+            console.error("Помилка парсингу тікетів підтримки:", e);
+          }
+        }
+        if (savedUserSession) {
+          try {
+            setUser(JSON.parse(savedUserSession));
+          } catch (e) {
+            console.error("Помилка парсингу сесії:", e);
+          }
+        }
 
         // Обов'язково завантажуємо актуальних користувачів з хмари
         await fetchUsersFromSupabase();
@@ -223,12 +288,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // 2. ЗБЕРЕЖЕННЯ КУРСІВ ТА ВІДПОВІДЕЙ (Поки що в LocalStorage, наступним кроком перенесемо теж в хмару)
   useEffect(() => {
-    if (isInitialized)
-      localStorage.setItem("lanp_courses", JSON.stringify(courses));
+    if (isInitialized) {
+      try {
+        localStorage.setItem("lanp_courses", JSON.stringify(courses));
+      } catch (e) {
+        console.error("Помилка збереження курсів:", e);
+      }
+    }
   }, [courses, isInitialized]);
   useEffect(() => {
-    if (isInitialized)
-      localStorage.setItem("lanp_answers", JSON.stringify(answers));
+    if (isInitialized) {
+      try {
+        localStorage.setItem("lanp_answers", JSON.stringify(answers));
+      } catch (e) {
+        console.error("Помилка збереження відповідей:", e);
+      }
+    }
   }, [answers, isInitialized]);
 
   // --- СЕРВЕРНА ЛОГІКА АВТОРИЗАЦІЇ (SUPABASE) ---
@@ -247,12 +322,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return "Користувач з таким іменем вже існує.";
     }
 
+    // Хешуємо пароль перед збереженням
+    const hashedPassword = await hashPassword(password);
+
     const uid = `usr-${Date.now()}`;
     const { error } = await supabase.from("profiles").insert([
       {
         id: uid,
         name,
-        password,
+        password: hashedPassword,
         role,
         status: "pending", // Всі за замовчуванням чекають перевірки
         squad_id: role === "student" ? "Alpha Squad" : null,
@@ -275,7 +353,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (error || !data) return "Користувача не знайдено.";
-    if (data.password !== password) return "Невірний пароль.";
+    
+    // Перевіряємо, чи пароль вже хешований (bcrypt хеш починається з $2b$ або $2a$)
+    const isHashed = data.password.startsWith("$2b$") || data.password.startsWith("$2a$");
+    
+    let isPasswordValid: boolean;
+    
+    if (isHashed) {
+      // Якщо пароль вже хешований - перевіряємо з bcrypt
+      isPasswordValid = await verifyPassword(password, data.password);
+    } else {
+      // Якщо пароль не хешований (старі дані) - порівнюємо як plain text
+      isPasswordValid = password === data.password;
+      
+      // Якщо пароль вірний - хешуємо його і оновлюємо в базі
+      if (isPasswordValid) {
+        const hashedPassword = await hashPassword(password);
+        await supabase
+          .from("profiles")
+          .update({ password: hashedPassword })
+          .eq("id", data.id);
+      }
+    }
+    
+    if (!isPasswordValid) return "Невірний пароль.";
+    
     if (data.status === "pending")
       return "Ваш акаунт ще не активовано адміністрацією.";
 
@@ -323,24 +425,98 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // --- ІНШІ ФУНКЦІЇ (ВІДПОВІДІ ТА CRUD КУРСІВ) ---
-  const submitAnswer = (
+  const submitAnswer = async (
     answerData: Omit<
       Answer,
       "id" | "submittedAt" | "status" | "studentName" | "squadId"
-    >,
+    > & { audioBlob?: Blob | null; files?: File[] },
   ) => {
-    if (!user) return;
-    setAnswers((prev) => [
-      ...prev,
-      {
-        ...answerData,
-        id: `ans-${Date.now()}`,
-        studentName: user.name,
-        squadId: user.squadId || "General",
-        submittedAt: new Date().toISOString(),
-        status: "pending",
-      },
-    ]);
+    console.log("submitAnswer викликано:", answerData);
+    if (!user) {
+      console.error("Користувач не авторизований для відправки відповіді");
+      return;
+    }
+
+    let audioUrl: string | undefined;
+    let fileUrls: string[] = [];
+
+    try {
+      // Завантаження аудіо в Supabase Storage
+      if (answerData.audioBlob) {
+        try {
+          const fileExt = "webm";
+          const fileName = `audio-${Date.now()}.${fileExt}`;
+          const filePath = `student-answers/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("lesson-media")
+            .upload(filePath, answerData.audioBlob);
+
+          if (!uploadError) {
+            const { data } = supabase.storage
+              .from("lesson-media")
+              .getPublicUrl(filePath);
+            audioUrl = data.publicUrl;
+          } else {
+            console.error("Помилка завантаження аудіо:", uploadError);
+          }
+        } catch (error) {
+          console.error("Помилка завантаження аудіо:", error);
+        }
+      }
+
+      // Завантаження файлів в Supabase Storage
+      if (answerData.files && answerData.files.length > 0) {
+        for (const file of answerData.files) {
+          try {
+            const fileExt = file.name.split(".").pop();
+            const fileName = `file-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `student-answers/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from("lesson-media")
+              .upload(filePath, file);
+
+            if (!uploadError) {
+              const { data } = supabase.storage
+                .from("lesson-media")
+                .getPublicUrl(filePath);
+              fileUrls.push(data.publicUrl);
+            } else {
+              console.error("Помилка завантаження файлу:", uploadError);
+            }
+          } catch (error) {
+            console.error("Помилка завантаження файлу:", error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Помилка при обробці відповіді:", error);
+    }
+
+    // КРИТИЧНО: Формуємо об'єкт нової відповіді
+    const newAnswer: Answer = {
+      id: `ans-${Date.now()}`,
+      lessonId: answerData.lessonId,
+      courseId: answerData.courseId,
+      text: answerData.text,
+      studentName: user.name,
+      squadId: user.squadId || "General",
+      submittedAt: new Date().toISOString(),
+      status: "pending",
+      voiceRecorded: !!audioUrl,
+      attachments: [...(answerData.attachments || []), ...(fileUrls || [])],
+    };
+
+    console.log("Нова відповідь для додавання:", newAnswer);
+
+    // КРИТИЧНО: Зберігаємо відповідь в локальному стані в будь-якому випадку
+    setAnswers((prev) => {
+      const updated = [...prev, newAnswer];
+      console.log("Оновлений список відповідей:", updated);
+      localStorage.setItem("lanp_answers", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const provideFeedback = (
@@ -507,6 +683,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const addSupportTicket = (type: "bug" | "improvement", message: string) => {
+    console.log("Додавання тікета підтримки:", { type, message, user });
+    if (!user) {
+      console.error("Користувач не авторизований для додавання тікета");
+      return;
+    }
+    const newTicket: SupportTicket = {
+      id: `ticket-${Date.now()}`,
+      userName: user.name,
+      type,
+      message,
+      date: new Date().toISOString(),
+      status: "open",
+    };
+    console.log("Новий тікет:", newTicket);
+    setSupportTickets((prev) => {
+      const updated = [...prev, newTicket];
+      console.log("Оновлений список тікетів:", updated);
+      localStorage.setItem("lanp_support_tickets", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const updateTicketStatus = (ticketId: string, status: "open" | "closed") => {
+    setSupportTickets((prev) => {
+      const updated = prev.map((ticket) =>
+        ticket.id === ticketId ? { ...ticket, status } : ticket,
+      );
+      localStorage.setItem("lanp_support_tickets", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -515,6 +724,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         answers,
         grammarBase,
         usersDb,
+        supportTickets,
         isInitialized,
         registerUser,
         login,
@@ -524,6 +734,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         changeUserPassword,
         submitAnswer,
         provideFeedback,
+        addSupportTicket,
+        updateTicketStatus,
         addCourse,
         updateCourse,
         deleteCourse,
