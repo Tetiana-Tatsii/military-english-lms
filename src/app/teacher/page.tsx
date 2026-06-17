@@ -2174,7 +2174,7 @@ export default function TeacherDashboard() {
                               <audio
                                 controls
                                 style={{ width: "100%", height: 40 }}
-                                src={ans.attachments.find((a) => a.endsWith(".webm")) || ans.attachments[0]}
+                                src={ans.audioUrl}
                               >
                                 Ваш браузер не підтримує аудіо.
                               </audio>

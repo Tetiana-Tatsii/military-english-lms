@@ -162,7 +162,29 @@ export default function CoursePage() {
   };
 
   const handleSendHomework = async () => {
-    if (!homeworkText.trim() || !activeLesson) return;
+    console.log("handleSendHomework викликано:", {
+      homeworkText,
+      homeworkTextTrimmed: homeworkText.trim(),
+      activeLesson,
+      activeLessonId: activeLesson?.id,
+      audioBlob: !!audioBlob,
+      files: attachedFiles.length,
+    });
+    
+    // Валідація: потрібен або текст, або аудіо, або файли
+    const hasContent = homeworkText.trim() || audioBlob || attachedFiles.length > 0;
+    
+    if (!hasContent || !activeLesson) {
+      console.error("Валідація не пройдена:", {
+        hasContent,
+        hasText: !!homeworkText.trim(),
+        hasAudio: !!audioBlob,
+        hasFiles: attachedFiles.length > 0,
+        hasLesson: !!activeLesson,
+      });
+      alert("Будь ласка, додайте текст, аудіо або файли перед відправкою.");
+      return;
+    }
     try {
       console.log("Відправка домашнього завдання:", {
         lessonId: activeLesson.id,

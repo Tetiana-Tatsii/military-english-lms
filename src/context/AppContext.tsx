@@ -83,6 +83,7 @@ export interface Answer {
   squadId: string;
   text: string;
   voiceRecorded: boolean;
+  audioUrl?: string;
   attachments: string[];
   submittedAt: string;
   status: "pending" | "reviewed";
@@ -505,6 +506,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       submittedAt: new Date().toISOString(),
       status: "pending",
       voiceRecorded: !!audioUrl,
+      audioUrl: audioUrl,
       attachments: [...(answerData.attachments || []), ...(fileUrls || [])],
     };
 
