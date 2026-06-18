@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAppContext } from "../../context/AppContext";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import CourseList from "../../components/dashboard/CourseList";
-import AnswerList from "../../components/dashboard/AnswerList";
 import ProfileStats from "../../components/dashboard/ProfileStats";
 
 export default function DashboardPage() {
@@ -84,14 +83,10 @@ export default function DashboardPage() {
         <div>
           <CourseList
             courses={courses}
-            getCourseProgress={getCourseProgress}
-            onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}
-            isDarkMode={isDarkMode}
-          />
-
-          <AnswerList
             answers={myAnswers}
+            getCourseProgress={getCourseProgress}
             getLessonTitle={getLessonTitle}
+            onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}
             isDarkMode={isDarkMode}
           />
         </div>

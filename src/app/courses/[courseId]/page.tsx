@@ -16,6 +16,7 @@ import {
   ClipboardList,
   StopCircle,
   Paperclip,
+  X,
 } from "lucide-react";
 
 export default function CoursePage() {
@@ -39,10 +40,12 @@ export default function CoursePage() {
   );
   const [homeworkText, setHomeworkText] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<{ [key: string]: string }>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -53,6 +56,26 @@ export default function CoursePage() {
       if (!user) router.push("/login");
     }
   }, [user, router, isInitialized]);
+
+  // Відлік часу під час аудіозапису
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setRecordingTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  // Форматування часу у форматі MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   if (!isInitialized || !user || !course) {
     return (
@@ -161,6 +184,10 @@ export default function CoursePage() {
     setAttachedFiles(files);
   };
 
+  const handleRemoveFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendHomework = async () => {
     console.log("handleSendHomework викликано:", {
       homeworkText,
@@ -185,6 +212,8 @@ export default function CoursePage() {
       alert("Будь ласка, додайте текст, аудіо або файли перед відправкою.");
       return;
     }
+    
+    setIsSubmitting(true);
     try {
       console.log("Відправка домашнього завдання:", {
         lessonId: activeLesson.id,
@@ -211,6 +240,8 @@ export default function CoursePage() {
     } catch (error) {
       console.error("Помилка при відправці домашнього завдання:", error);
       alert("Сталася помилка при відправці домашнього завдання. Спробуйте ще раз.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -940,7 +971,7 @@ export default function CoursePage() {
                           gap: 8,
                         }}
                       >
-                        <StopCircle size={16} /> Зупинити запис
+                        <StopCircle size={16} /> Зупинити запис ({formatTime(recordingTime)})
                       </button>
                     )}
                   </div>
@@ -1046,11 +1077,29 @@ export default function CoursePage() {
                             borderRadius: 4,
                             display: "flex",
                             alignItems: "center",
+                            justifyContent: "space-between",
                             gap: 6,
                           }}
                         >
-                          <FileText size={12} />
-                          {file.name}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <FileText size={12} />
+                            {file.name}
+                          </div>
+                          <button
+                            onClick={() => handleRemoveFile(idx)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#c97a4a",
+                              padding: 2,
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                            title="Видалити файл"
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -1077,9 +1126,9 @@ export default function CoursePage() {
 
                 <button
                   onClick={handleSendHomework}
-                  disabled={isSubmitted}
+                  disabled={isSubmitted || isSubmitting}
                   style={{
-                    background: isSubmitted ? "#8a8a45" : "#3a3528",
+                    background: isSubmitted ? "#8a8a45" : isSubmitting ? "#c97a4a" : "#3a3528",
                     color: "#fff",
                     border: "none",
                     padding: "12px 24px",
@@ -1092,7 +1141,7 @@ export default function CoursePage() {
                     transition: "background 0.3s",
                   }}
                 >
-                  {isSubmitted ? "Відправлено!" : "Надіслати на перевірку"}
+                  {isSubmitting ? "⏳ Відправлення..." : isSubmitted ? "Відправлено!" : "Надіслати на перевірку"}
                 </button>
               </div>
 
@@ -1139,6 +1188,30 @@ export default function CoursePage() {
                   >
                     Ваша відповідь: {existingAnswer.text}
                   </p>
+                  {existingAnswer.audioUrl && (
+                    <div style={{ marginTop: 12 }}>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#7a7568",
+                          marginBottom: 8,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <Headphones size={16} /> Голосова відповідь
+                      </p>
+                      <audio
+                        controls
+                        style={{ width: "100%", height: 40 }}
+                        src={existingAnswer.audioUrl}
+                      >
+                        Ваш браузер не підтримує аудіо.
+                      </audio>
+                    </div>
+                  )}
                   {existingAnswer.teacherFeedbackText && (
                     <div
                       style={{

@@ -14,18 +14,27 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
   const [supportType, setSupportType] = useState<"bug" | "improvement">("bug");
   const [message, setMessage] = useState("");
   const [isSent, setIsSent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!message.trim()) {
       alert("Будь ласка, опишіть проблему або пропозицію.");
       return;
     }
 
-    // Відправляємо тікет в систему
-    addSupportTicket(supportType, message);
-    setIsSent(true);
+    setIsSubmitting(true);
+    try {
+      // Відправляємо тікет в систему
+      await addSupportTicket(supportType, message);
+      setIsSent(true);
+    } catch (error) {
+      console.error("Помилка при відправці тікета:", error);
+      alert("Сталася помилка при відправці тікета. Спробуйте ще раз.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -233,18 +242,19 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               </button>
               <button
                 onClick={handleSubmit}
+                disabled={isSubmitting}
                 style={{
-                  background: "#8a8a45",
+                  background: isSubmitting ? "#c97a4a" : "#8a8a45",
                   color: "#fff",
                   border: "none",
                   padding: "12px 24px",
                   borderRadius: 8,
                   fontWeight: 600,
                   fontSize: 14,
-                  cursor: "pointer",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
                 }}
               >
-                Надіслати
+                {isSubmitting ? "⏳ Відправлення..." : "Надіслати"}
               </button>
             </div>
           </>

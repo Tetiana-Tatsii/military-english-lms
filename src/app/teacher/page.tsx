@@ -18,6 +18,14 @@ import {
   CheckCircle,
   Key,
   ChevronDown,
+  Upload,
+  FileText,
+  Headphones,
+  ClipboardList,
+  Clock,
+  Award,
+  Loader2,
+  Image as ImageIcon,
   Sun,
   Moon,
   LifeBuoy,
@@ -27,12 +35,7 @@ import {
   AlignLeft,
   Target,
   ArrowLeft,
-  Headphones,
   Layers,
-  Image as ImageIcon,
-  FileText,
-  Loader2,
-  ClipboardList,
 } from "lucide-react";
 
 // Динамічний імпорт текстового редактора
@@ -62,6 +65,7 @@ export default function TeacherDashboard() {
     provideFeedback,
     addSupportTicket,
     updateTicketStatus,
+    fetchSupportTickets,
     isInitialized,
   } = useAppContext();
   const router = useRouter();
@@ -117,8 +121,12 @@ export default function TeacherDashboard() {
     if (isInitialized) {
       if (!user) router.push("/login");
       else if (user.role === "student") router.push("/dashboard");
+      else if (user.role === "admin") {
+        // Завантажуємо тікети підтримки для адміна
+        fetchSupportTickets();
+      }
     }
-  }, [user, router, isInitialized]);
+  }, [user, router, isInitialized, fetchSupportTickets]);
 
   if (!isInitialized || !user || user.role === "student") {
     return (
@@ -444,10 +452,10 @@ export default function TeacherDashboard() {
   return (
     <div
       style={{
-        background: "#faf9f6",
+        background: isDarkMode ? "#0a0a0a" : "#faf9f6",
         minHeight: "100vh",
         fontFamily: "system-ui, sans-serif",
-        color: "#4a4a4a",
+        color: isDarkMode ? "#fff" : "#4a4a4a",
       }}
     >
       {/* ВЕРХНЯ ПАНЕЛЬ */}
@@ -457,8 +465,8 @@ export default function TeacherDashboard() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 24px",
-          borderBottom: "1px solid #e0dcd0",
-          background: "#f0ede5",
+          borderBottom: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
+          background: isDarkMode ? "#1a1a1a" : "#f0ede5",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -476,7 +484,7 @@ export default function TeacherDashboard() {
             <Shield size={20} color="#fff" />
           </div>
           <div>
-            <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+            <p style={{ fontSize: 16, fontWeight: 700, margin: 0, color: isDarkMode ? "#fff" : "#3a3528" }}>
               MILITARY LMS
             </p>
             <p style={{ fontSize: 12, margin: 0, color: "#8a8a45" }}>
@@ -505,6 +513,17 @@ export default function TeacherDashboard() {
                   ? "2px solid #8a8a45"
                   : "2px solid transparent",
               paddingBottom: 4,
+              transition: "color 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (tab !== "answers") {
+                e.currentTarget.style.color = "#8a8a45";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (tab !== "answers") {
+                e.currentTarget.style.color = "#7a7568";
+              }
             }}
           >
             <Inbox size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
@@ -526,6 +545,17 @@ export default function TeacherDashboard() {
                 borderBottom:
                   tab === "support" ? "2px solid #8a8a45" : "2px solid transparent",
                 paddingBottom: 4,
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                if (tab !== "support") {
+                  e.currentTarget.style.color = "#8a8a45";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (tab !== "support") {
+                  e.currentTarget.style.color = "#7a7568";
+                }
               }}
             >
               <LifeBuoy size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
@@ -547,6 +577,17 @@ export default function TeacherDashboard() {
               borderBottom:
                 tab === "users" ? "2px solid #8a8a45" : "2px solid transparent",
               paddingBottom: 4,
+              transition: "color 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (tab !== "users") {
+                e.currentTarget.style.color = "#8a8a45";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (tab !== "users") {
+                e.currentTarget.style.color = "#7a7568";
+              }
             }}
           >
             <Users size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
@@ -569,6 +610,17 @@ export default function TeacherDashboard() {
                   ? "2px solid #8a8a45"
                   : "2px solid transparent",
               paddingBottom: 4,
+              transition: "color 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              if (tab !== "editor") {
+                e.currentTarget.style.color = "#8a8a45";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (tab !== "editor") {
+                e.currentTarget.style.color = "#7a7568";
+              }
             }}
           >
             <Edit3 size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
@@ -606,14 +658,36 @@ export default function TeacherDashboard() {
                 top: "110%",
                 right: 0,
                 width: 220,
-                background: "#fff",
+                background: isDarkMode ? "#1a1a1a" : "#fff",
                 borderRadius: 12,
                 boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-                border: "1px solid #e0dcd0",
+                border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
                 padding: "8px",
                 zIndex: 100,
               }}
             >
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  background: isDarkMode ? "#2a2a2a" : "#faf9f6",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: isDarkMode ? "#fff" : "#3a3528",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textAlign: "left",
+                  marginBottom: 8,
+                }}
+              >
+                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                {isDarkMode ? "Світла тема" : "Темна тема"}
+              </button>
               <button
                 onClick={() => {
                   logout();
@@ -625,11 +699,11 @@ export default function TeacherDashboard() {
                   alignItems: "center",
                   gap: 10,
                   padding: "10px 12px",
-                  background: "#fdeced",
+                  background: isDarkMode ? "#3a1a1a" : "#fdeced",
                   border: "none",
                   borderRadius: 8,
                   cursor: "pointer",
-                  color: "#c97a4a",
+                  color: isDarkMode ? "#ff6b6b" : "#c97a4a",
                   fontSize: 14,
                   fontWeight: 600,
                   textAlign: "left",
@@ -662,12 +736,12 @@ export default function TeacherDashboard() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 8,
-                  border: "1px solid #d8cdb4",
+                  border: isDarkMode ? "1px solid #333" : "1px solid #d8cdb4",
                   fontSize: 16,
                   minWidth: 300,
                   fontWeight: 600,
-                  background: "#fff",
-                  color: "#4a4a4a",
+                  background: isDarkMode ? "#2a2a2a" : "#fff",
+                  color: isDarkMode ? "#fff" : "#4a4a4a",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                 }}
               >
@@ -700,10 +774,10 @@ export default function TeacherDashboard() {
             {activeCourse ? (
               <div
                 style={{
-                  background: "#fff",
+                  background: isDarkMode ? "#1a1a1a" : "#fff",
                   padding: 32,
                   borderRadius: 12,
-                  border: "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
                 }}
               >
                 <div
@@ -1225,13 +1299,34 @@ export default function TeacherDashboard() {
                       </button>
                     </div>
                   ) : (
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      disabled={isUploadingPhoto}
-                      style={{ display: "block", marginTop: 8 }}
-                    />
+                    <div>
+                      <label
+                        htmlFor="photo-upload"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          background: "#8a8a45",
+                          color: "#fff",
+                          padding: "10px 20px",
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          fontSize: 13,
+                          cursor: "pointer",
+                          border: "none",
+                        }}
+                      >
+                        <ImageIcon size={16} /> Обрати фото
+                      </label>
+                      <input
+                        id="photo-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        disabled={isUploadingPhoto}
+                        style={{ display: "none" }}
+                      />
+                    </div>
                   )}
 
                   {isUploadingPhoto && (
@@ -1253,24 +1348,30 @@ export default function TeacherDashboard() {
 
                 <div style={{ flex: 1 }}>
                   <label
+                    htmlFor="audio-upload"
                     style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "#5c574a",
-                      marginBottom: 8,
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
-                      gap: 6,
+                      gap: 8,
+                      background: "#8a8a45",
+                      color: "#fff",
+                      padding: "10px 20px",
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      border: "none",
                     }}
                   >
-                    <Headphones size={16} /> 2. Завантажити аудіо (mp3)
+                    <Headphones size={16} /> Завантажити аудіо (mp3)
                   </label>
                   <input
+                    id="audio-upload"
                     type="file"
                     accept="audio/mp3"
                     onChange={handleAudioUpload}
                     disabled={isUploadingAudio}
-                    style={{ display: "block", marginTop: 8 }}
+                    style={{ display: "none" }}
                   />
                   {isUploadingAudio && (
                     <p
@@ -1305,24 +1406,30 @@ export default function TeacherDashboard() {
                 }}
               >
                 <label
+                  htmlFor="document-upload"
                   style={{
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: "#5c574a",
-                    marginBottom: 8,
-                    display: "flex",
+                    display: "inline-flex",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 8,
+                    background: "#8a8a45",
+                    color: "#fff",
+                    padding: "10px 20px",
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    border: "none",
                   }}
                 >
-                  <FileText size={16} /> Навчальні документи (PDF, Word)
+                  <FileText size={16} /> Завантажити документи (PDF, Word)
                 </label>
                 <input
+                  id="document-upload"
                   type="file"
                   accept=".pdf,.doc,.docx"
                   onChange={handleDocumentUpload}
                   disabled={isUploadingDocument}
-                  style={{ display: "block", marginTop: 8 }}
+                  style={{ display: "none" }}
                 />
                 {isUploadingDocument && (
                   <p
@@ -1988,10 +2095,10 @@ export default function TeacherDashboard() {
             {answers.filter((a) => a.status === answerFilter).length === 0 ? (
               <div
                 style={{
-                  background: "#fff",
+                  background: isDarkMode ? "#1a1a1a" : "#fff",
                   padding: 40,
                   borderRadius: 12,
-                  border: "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
                   textAlign: "center",
                 }}
               >
@@ -2009,10 +2116,10 @@ export default function TeacherDashboard() {
                     <div
                       key={ans.id}
                       style={{
-                        background: "#fff",
+                        background: isDarkMode ? "#1a1a1a" : "#fff",
                         padding: 24,
                         borderRadius: 12,
-                        border: "1px solid #e0dcd0",
+                        border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                       }}
                     >
@@ -2023,7 +2130,7 @@ export default function TeacherDashboard() {
                           alignItems: "flex-start",
                           marginBottom: 16,
                           paddingBottom: 16,
-                          borderBottom: "1px solid #e0dcd0",
+                          borderBottom: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
                         }}
                       >
                         <div>
@@ -2227,23 +2334,59 @@ export default function TeacherDashboard() {
                         </div>
                       )}
 
-                      {/* Форма оцінювання */}
-                      <div
-                        style={{
-                          background: "#f0ede5",
-                          padding: 20,
-                          borderRadius: 8,
-                        }}
-                      >
+                      {/* Форма оцінювання або відображення результату */}
+                      {answerFilter === "pending" ? (
                         <div
                           style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: 16,
-                            marginBottom: 16,
+                            background: isDarkMode ? "#2a2a2a" : "#f0ede5",
+                            padding: 20,
+                            borderRadius: 8,
                           }}
                         >
-                          <div>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: 16,
+                              marginBottom: 16,
+                            }}
+                          >
+                            <div>
+                              <label
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: "#7a7568",
+                                  marginBottom: 8,
+                                  display: "block",
+                                }}
+                              >
+                                Оцінка (0-100)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={scores[ans.id] || ""}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value) || 0;
+                                  const clampedValue = Math.min(100, Math.max(0, value));
+                                  setScores({
+                                    ...scores,
+                                    [ans.id]: clampedValue,
+                                  });
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: 10,
+                                  borderRadius: 6,
+                                  border: "1px solid #d8cdb4",
+                                  fontSize: 14,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: 16 }}>
                             <label
                               style={{
                                 fontSize: 13,
@@ -2253,88 +2396,128 @@ export default function TeacherDashboard() {
                                 display: "block",
                               }}
                             >
-                              Оцінка (0-100)
+                              Фідбек
                             </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={scores[ans.id] || ""}
+                            <textarea
+                              value={feedbackTexts[ans.id] || ""}
                               onChange={(e) =>
-                                setScores({
-                                  ...scores,
-                                  [ans.id]: parseInt(e.target.value) || 0,
+                                setFeedbackTexts({
+                                  ...feedbackTexts,
+                                  [ans.id]: e.target.value,
                                 })
                               }
+                              placeholder="Введіть коментар до роботи..."
                               style={{
                                 width: "100%",
                                 padding: 10,
                                 borderRadius: 6,
                                 border: "1px solid #d8cdb4",
                                 fontSize: 14,
+                                minHeight: 80,
+                                resize: "vertical",
                               }}
                             />
                           </div>
-                        </div>
-                        <div style={{ marginBottom: 16 }}>
-                          <label
+                          <button
+                            onClick={() => {
+                              provideFeedback(
+                                ans.id,
+                                feedbackTexts[ans.id] || "",
+                                false,
+                                scores[ans.id],
+                              );
+                              setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
+                              setScores({ ...scores, [ans.id]: 0 });
+                            }}
                             style={{
-                              fontSize: 13,
+                              background: "#8a8a45",
+                              color: "#fff",
+                              border: "none",
+                              padding: "12px 24px",
+                              borderRadius: 6,
+                              cursor: "pointer",
                               fontWeight: 600,
-                              color: "#7a7568",
-                              marginBottom: 8,
-                              display: "block",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
                             }}
                           >
-                            Фідбек
-                          </label>
-                          <textarea
-                            value={feedbackTexts[ans.id] || ""}
-                            onChange={(e) =>
-                              setFeedbackTexts({
-                                ...feedbackTexts,
-                                [ans.id]: e.target.value,
-                              })
-                            }
-                            placeholder="Введіть коментар до роботи..."
-                            style={{
-                              width: "100%",
-                              padding: 10,
-                              borderRadius: 6,
-                              border: "1px solid #d8cdb4",
-                              fontSize: 14,
-                              minHeight: 80,
-                              resize: "vertical",
-                            }}
-                          />
+                            <CheckCircle size={18} /> Зберегти оцінку
+                          </button>
                         </div>
-                        <button
-                          onClick={() => {
-                            provideFeedback(
-                              ans.id,
-                              feedbackTexts[ans.id] || "",
-                              false,
-                              scores[ans.id],
-                            );
-                            setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
-                            setScores({ ...scores, [ans.id]: 0 });
-                          }}
+                      ) : (
+                        <div
                           style={{
-                            background: "#8a8a45",
-                            color: "#fff",
-                            border: "none",
-                            padding: "12px 24px",
-                            borderRadius: 6,
-                            cursor: "pointer",
-                            fontWeight: 600,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
+                            background: isDarkMode ? "#2a2a2a" : "#f0ede5",
+                            padding: 20,
+                            borderRadius: 8,
                           }}
                         >
-                          <CheckCircle size={18} /> Зберегти оцінку
-                        </button>
-                      </div>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: 16,
+                              marginBottom: 16,
+                            }}
+                          >
+                            <div>
+                              <label
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: "#7a7568",
+                                  marginBottom: 8,
+                                  display: "block",
+                                }}
+                              >
+                                Оцінка
+                              </label>
+                              <div
+                                style={{
+                                  fontSize: 18,
+                                  fontWeight: 700,
+                                  color: "#8a8a45",
+                                  padding: 10,
+                                  background: isDarkMode ? "#2a2a2a" : "#fff",
+                                  borderRadius: 6,
+                                  border: isDarkMode ? "1px solid #333" : "1px solid #d8cdb4",
+                                }}
+                              >
+                                {ans.score || 0}/100
+                              </div>
+                            </div>
+                          </div>
+                          {ans.teacherFeedbackText && (
+                            <div>
+                              <label
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: "#7a7568",
+                                  marginBottom: 8,
+                                  display: "block",
+                                }}
+                              >
+                                Фідбек
+                              </label>
+                              <div
+                                style={{
+                                  fontSize: 14,
+                                  color: isDarkMode ? "#fff" : "#4a4a4a",
+                                  padding: 10,
+                                  background: isDarkMode ? "#2a2a2a" : "#fff",
+                                  borderRadius: 6,
+                                  border: isDarkMode ? "1px solid #333" : "1px solid #d8cdb4",
+                                  lineHeight: 1.6,
+                                }}
+                              >
+                                {ans.teacherFeedbackText}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
               </div>
@@ -2684,6 +2867,7 @@ export default function TeacherDashboard() {
                             const userAnswers = answers.filter(
                               (a) => a.studentName === u.name && a.status === "reviewed"
                             );
+                            const uniqueLessonIds = new Set(userAnswers.map((a) => a.lessonId));
                             const totalLessons = courses.reduce(
                               (sum, c) =>
                                 sum +
@@ -2691,7 +2875,7 @@ export default function TeacherDashboard() {
                               0
                             );
                             const progress = totalLessons > 0
-                              ? Math.round((userAnswers.length / totalLessons) * 100)
+                              ? Math.round((uniqueLessonIds.size / totalLessons) * 100)
                               : 0;
                             return (
                               <div>
@@ -2703,7 +2887,7 @@ export default function TeacherDashboard() {
                                     marginBottom: 4,
                                   }}
                                 >
-                                  <span>{userAnswers.length}/{totalLessons} уроків</span>
+                                  <span>{uniqueLessonIds.size}/{totalLessons} уроків</span>
                                   <span>{progress}%</span>
                                 </div>
                                 <div
@@ -2863,6 +3047,175 @@ export default function TeacherDashboard() {
           </div>
         )}
       </div>
+
+      {/* МОДАЛКА СТВОРЕННЯ/РЕДАГУВАННЯ КУРСУ */}
+      {(isAddingCourse || isEditingCourse) && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => {
+            setIsAddingCourse(false);
+            setIsEditingCourse(false);
+            setCourseData({ title: "", subtitle: "", description: "" });
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 32,
+              maxWidth: 500,
+              width: "90%",
+              boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              style={{
+                margin: "0 0 24px",
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#3a3528",
+              }}
+            >
+              {isAddingCourse ? "Створити новий курс" : "Редагувати курс"}
+            </h2>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#3a3528",
+                  marginBottom: 8,
+                  display: "block",
+                }}
+              >
+                Назва курсу *
+              </label>
+              <input
+                type="text"
+                value={courseData.title}
+                onChange={(e) => setCourseData({ ...courseData, title: e.target.value })}
+                placeholder="Введіть назву курсу"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid #d8cdb4",
+                  fontSize: 14,
+                  background: "#fff",
+                  color: "#3a3528",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#3a3528",
+                  marginBottom: 8,
+                  display: "block",
+                }}
+              >
+                Підзаголовок
+              </label>
+              <input
+                type="text"
+                value={courseData.subtitle}
+                onChange={(e) => setCourseData({ ...courseData, subtitle: e.target.value })}
+                placeholder="Введіть підзаголовок курсу"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid #d8cdb4",
+                  fontSize: 14,
+                  background: "#fff",
+                  color: "#3a3528",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#3a3528",
+                  marginBottom: 8,
+                  display: "block",
+                }}
+              >
+                Опис курсу
+              </label>
+              <textarea
+                value={courseData.description}
+                onChange={(e) => setCourseData({ ...courseData, description: e.target.value })}
+                placeholder="Введіть опис курсу"
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid #d8cdb4",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  lineHeight: 1.6,
+                  background: "#fff",
+                  color: "#3a3528",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => {
+                  setIsAddingCourse(false);
+                  setIsEditingCourse(false);
+                  setCourseData({ title: "", subtitle: "", description: "" });
+                }}
+                style={{
+                  background: "#fff",
+                  color: "#5c574a",
+                  border: "1px solid #d8cdb4",
+                  padding: "12px 24px",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Скасувати
+              </button>
+              <button
+                onClick={isAddingCourse ? handleCreateCourse : handleUpdateCourse}
+                style={{
+                  background: "#8a8a45",
+                  color: "#fff",
+                  border: "none",
+                  padding: "12px 24px",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                {isAddingCourse ? "Створити" : "Зберегти"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -158,8 +158,9 @@ interface AppState {
     score?: number,
   ) => void;
 
-  addSupportTicket: (type: "bug" | "improvement", message: string) => void;
-  updateTicketStatus: (ticketId: string, status: "open" | "closed") => void;
+  addSupportTicket: (type: "bug" | "improvement", message: string) => Promise<void>;
+  updateTicketStatus: (ticketId: string, status: "open" | "closed") => Promise<void>;
+  fetchSupportTickets: () => Promise<void>;
 
   addCourse: (title: string, subtitle: string, description: string) => void;
   updateCourse: (courseId: string, updatedData: Partial<Course>) => void;
@@ -685,37 +686,108 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const addSupportTicket = (type: "bug" | "improvement", message: string) => {
+  const addSupportTicket = async (type: "bug" | "improvement", message: string) => {
     console.log("Додавання тікета підтримки:", { type, message, user });
     if (!user) {
       console.error("Користувач не авторизований для додавання тікета");
+      alert("Ви повинні бути авторизовані для відправки тікета підтримки.");
       return;
     }
-    const newTicket: SupportTicket = {
-      id: `ticket-${Date.now()}`,
-      userName: user.name,
-      type,
-      message,
-      date: new Date().toISOString(),
-      status: "open",
-    };
-    console.log("Новий тікет:", newTicket);
-    setSupportTickets((prev) => {
-      const updated = [...prev, newTicket];
-      console.log("Оновлений список тікетів:", updated);
-      localStorage.setItem("lanp_support_tickets", JSON.stringify(updated));
-      return updated;
-    });
+    try {
+      const { data, error } = await supabase
+        .from("support_tickets")
+        .insert({
+          user_name: user.name,
+          type,
+          message,
+          status: "open",
+        })
+        .select();
+
+      if (error) {
+        console.error("Помилка при додаванні тікета в Supabase:", error);
+        alert("Сталася помилка при відправці тікета. Спробуйте ще раз.");
+        return;
+      }
+
+      console.log("Тікет успішно додано в Supabase:", data);
+      
+      // Оновлюємо локальний стан
+      const newTicket: SupportTicket = {
+        id: data[0].id,
+        userName: user.name,
+        type,
+        message,
+        date: data[0].created_at,
+        status: "open",
+      };
+      
+      setSupportTickets((prev) => {
+        const updated = [...prev, newTicket];
+        console.log("Оновлений список тікетів:", updated);
+        localStorage.setItem("lanp_support_tickets", JSON.stringify(updated));
+        return updated;
+      });
+    } catch (error) {
+      console.error("Помилка при додаванні тікета:", error);
+      alert("Сталася помилка при відправці тікета. Спробуйте ще раз.");
+    }
   };
 
-  const updateTicketStatus = (ticketId: string, status: "open" | "closed") => {
-    setSupportTickets((prev) => {
-      const updated = prev.map((ticket) =>
-        ticket.id === ticketId ? { ...ticket, status } : ticket,
-      );
-      localStorage.setItem("lanp_support_tickets", JSON.stringify(updated));
-      return updated;
-    });
+  const updateTicketStatus = async (ticketId: string, status: "open" | "closed") => {
+    try {
+      const { error } = await supabase
+        .from("support_tickets")
+        .update({ status })
+        .eq("id", ticketId);
+
+      if (error) {
+        console.error("Помилка при оновленні статусу тікета в Supabase:", error);
+        alert("Сталася помилка при оновленні статусу тікета. Спробуйте ще раз.");
+        return;
+      }
+
+      // Оновлюємо локальний стан
+      setSupportTickets((prev) => {
+        const updated = prev.map((ticket) =>
+          ticket.id === ticketId ? { ...ticket, status } : ticket,
+        );
+        localStorage.setItem("lanp_support_tickets", JSON.stringify(updated));
+        return updated;
+      });
+    } catch (error) {
+      console.error("Помилка при оновленні статусу тікета:", error);
+      alert("Сталася помилка при оновленні статусу тікета. Спробуйте ще раз.");
+    }
+  };
+
+  const fetchSupportTickets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("support_tickets")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Помилка при завантаженні тікетів з Supabase:", error);
+        return;
+      }
+
+      const tickets: SupportTicket[] = data.map((ticket) => ({
+        id: ticket.id,
+        userName: ticket.user_name,
+        type: ticket.type,
+        message: ticket.message,
+        date: ticket.created_at,
+        status: ticket.status,
+      }));
+
+      setSupportTickets(tickets);
+      localStorage.setItem("lanp_support_tickets", JSON.stringify(tickets));
+      console.log("Тікети успішно завантажено з Supabase:", tickets);
+    } catch (error) {
+      console.error("Помилка при завантаженні тікетів:", error);
+    }
   };
 
   return (
@@ -738,6 +810,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         provideFeedback,
         addSupportTicket,
         updateTicketStatus,
+        fetchSupportTickets,
         addCourse,
         updateCourse,
         deleteCourse,
