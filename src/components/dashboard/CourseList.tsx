@@ -52,7 +52,7 @@ export default function CourseList({
               key={course.id}
               className={`rounded-xl border p-6 ${
                 isDarkMode
-                  ? "bg-[#3a3326] border-[#4a4231]"
+                  ? "bg-[#2d2f2a] border-[#3e403a]"
                   : "bg-[#f6f1e4] border-[#d8cdb4]"
               }`}
             >
@@ -60,7 +60,7 @@ export default function CourseList({
                 <div>
                   <h3
                     className={`mb-1 text-lg font-bold ${
-                      isDarkMode ? "text-white" : "text-[#3a3528]"
+                      isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
                     }`}
                   >
                     {course.title}
@@ -80,7 +80,7 @@ export default function CourseList({
                   <span
                     className={`rounded px-3 py-1.5 text-xs font-semibold ${
                       isDarkMode
-                        ? "bg-[#4a4231] text-[#d8cdb4]"
+                        ? "bg-[#3e403a] text-[#a3a198]"
                         : "bg-[#e9e1cd] text-[#9a8f70]"
                     }`}
                   >
@@ -93,7 +93,7 @@ export default function CourseList({
                 <div>
                   <div
                     className={`mb-1.5 flex justify-between text-sm font-medium ${
-                      isDarkMode ? "text-[#d8cdb4]" : "text-[#6b6b3a]"
+                      isDarkMode ? "text-[#a3a198]" : "text-[#6b6b3a]"
                     }`}
                   >
                     <span>Прогрес курсу</span>
@@ -113,7 +113,7 @@ export default function CourseList({
                   <button
                     onClick={() => toggleCourse(course.id)}
                     className={`flex items-center gap-2 text-sm font-semibold cursor-pointer hover:text-[#8a8a45] transition-colors duration-200 ${
-                      isDarkMode ? "text-[#f6f1e4]" : "text-[#3a3528]"
+                      isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
                     }`}
                   >
                     {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -126,7 +126,7 @@ export default function CourseList({
                           key={ans.id}
                           className={`rounded-lg border p-4 ${
                             isDarkMode
-                              ? "bg-[#4a4231] border-[#5a5241]"
+                              ? "bg-[#2a2c27] border-[#3e403a]"
                               : "bg-[#e9e1cd] border-[#d8cdb4]"
                           }`}
                         >
@@ -137,7 +137,7 @@ export default function CourseList({
                               </p>
                               <h4
                                 className={`m-0 text-sm font-semibold ${
-                                  isDarkMode ? "text-white" : "text-[#3a3528]"
+                                  isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
                                 }`}
                               >
                                 {getLessonTitle(ans.courseId, ans.lessonId)}
@@ -157,12 +157,12 @@ export default function CourseList({
                           {ans.status === "reviewed" && (
                             <div
                               className={`mt-2 rounded-lg p-3 ${
-                                isDarkMode ? "bg-[#5a5241]" : "bg-[#f6f1e4]"
+                                isDarkMode ? "bg-[#2d2f2a]" : "bg-[#f6f1e4]"
                               }`}
                             >
                               <p
                                 className={`mb-2 text-sm ${
-                                  isDarkMode ? "text-[#f6f1e4]" : "text-[#4a4435]"
+                                  isDarkMode ? "text-[#e6e4dc]" : "text-[#4a4435]"
                                 }`}
                               >
                                 <strong>Коментар викладача:</strong>{" "}

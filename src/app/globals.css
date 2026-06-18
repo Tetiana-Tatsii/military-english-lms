@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --panel-bg: #ffffff;
+  --card-bg: #ffffff;
+  --border-color: #e0dcd0;
+  --text-primary: #3a3528;
+  --text-secondary: #7a7568;
 }
 
 @theme inline {
@@ -14,8 +19,13 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1c1d1a;
+    --foreground: #e6e4dc;
+    --panel-bg: #2a2c27;
+    --card-bg: #2d2f2a;
+    --border-color: #3e403a;
+    --text-primary: #e6e4dc;
+    --text-secondary: #a3a198;
   }
 }
 

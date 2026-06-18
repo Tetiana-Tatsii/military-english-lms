@@ -78,7 +78,18 @@ export default function TeacherDashboard() {
   );
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("darkMode");
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Зберігаємо стан темної теми в localStorage
+  useEffect(() => {
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [isEditingCourse, setIsEditingCourse] = useState(false);
@@ -136,7 +147,7 @@ export default function TeacherDashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#faf9f6",
+          background: isDarkMode ? "#1c1d1a" : "#faf9f6",
           color: "#8a8a45",
           fontWeight: 600,
         }}
@@ -452,10 +463,10 @@ export default function TeacherDashboard() {
   return (
     <div
       style={{
-        background: isDarkMode ? "#0a0a0a" : "#faf9f6",
+        background: isDarkMode ? "#1c1d1a" : "#faf9f6",
         minHeight: "100vh",
         fontFamily: "system-ui, sans-serif",
-        color: isDarkMode ? "#fff" : "#4a4a4a",
+        color: isDarkMode ? "#e6e4dc" : "#4a4a4a",
       }}
     >
       {/* ВЕРХНЯ ПАНЕЛЬ */}
@@ -465,8 +476,8 @@ export default function TeacherDashboard() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 24px",
-          borderBottom: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
-          background: isDarkMode ? "#1a1a1a" : "#f0ede5",
+          borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+          background: isDarkMode ? "#2a2c27" : "#f0ede5",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -484,10 +495,10 @@ export default function TeacherDashboard() {
             <Shield size={20} color="#fff" />
           </div>
           <div>
-            <p style={{ fontSize: 16, fontWeight: 700, margin: 0, color: isDarkMode ? "#fff" : "#3a3528" }}>
+            <p style={{ fontSize: 16, fontWeight: 700, margin: 0, color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
               MILITARY LMS
             </p>
-            <p style={{ fontSize: 12, margin: 0, color: "#8a8a45" }}>
+            <p style={{ fontSize: 12, margin: 0, color: isDarkMode ? "#a3a198" : "#8a8a45" }}>
               {user.role === "admin"
                 ? "Панель Адміністратора"
                 : "Панель Викладача"}
@@ -506,7 +517,7 @@ export default function TeacherDashboard() {
               border: "none",
               fontSize: 15,
               fontWeight: tab === "answers" ? 700 : 500,
-              color: tab === "answers" ? "#8a8a45" : "#7a7568",
+              color: tab === "answers" ? "#8a8a45" : isDarkMode ? "#a3a198" : "#7a7568",
               cursor: "pointer",
               borderBottom:
                 tab === "answers"
@@ -522,7 +533,7 @@ export default function TeacherDashboard() {
             }}
             onMouseLeave={(e) => {
               if (tab !== "answers") {
-                e.currentTarget.style.color = "#7a7568";
+                e.currentTarget.style.color = isDarkMode ? "#a3a198" : "#7a7568";
               }
             }}
           >
@@ -554,7 +565,7 @@ export default function TeacherDashboard() {
               }}
               onMouseLeave={(e) => {
                 if (tab !== "support") {
-                  e.currentTarget.style.color = "#7a7568";
+                  e.currentTarget.style.color = isDarkMode ? "#a3a198" : "#7a7568";
                 }
               }}
             >
@@ -586,7 +597,7 @@ export default function TeacherDashboard() {
             }}
             onMouseLeave={(e) => {
               if (tab !== "users") {
-                e.currentTarget.style.color = "#7a7568";
+                e.currentTarget.style.color = isDarkMode ? "#a3a198" : "#7a7568";
               }
             }}
           >
@@ -619,7 +630,7 @@ export default function TeacherDashboard() {
             }}
             onMouseLeave={(e) => {
               if (tab !== "editor") {
-                e.currentTarget.style.color = "#7a7568";
+                e.currentTarget.style.color = isDarkMode ? "#a3a198" : "#7a7568";
               }
             }}
           >
@@ -658,10 +669,10 @@ export default function TeacherDashboard() {
                 top: "110%",
                 right: 0,
                 width: 220,
-                background: isDarkMode ? "#1a1a1a" : "#fff",
+                background: isDarkMode ? "#2d2f2a" : "#fff",
                 borderRadius: 12,
                 boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-                border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
+                border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                 padding: "8px",
                 zIndex: 100,
               }}
@@ -674,11 +685,11 @@ export default function TeacherDashboard() {
                   alignItems: "center",
                   gap: 10,
                   padding: "10px 12px",
-                  background: isDarkMode ? "#2a2a2a" : "#faf9f6",
+                  background: isDarkMode ? "#2a2c27" : "#faf9f6",
                   border: "none",
                   borderRadius: 8,
                   cursor: "pointer",
-                  color: isDarkMode ? "#fff" : "#3a3528",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   fontSize: 14,
                   fontWeight: 600,
                   textAlign: "left",
@@ -736,12 +747,12 @@ export default function TeacherDashboard() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 8,
-                  border: isDarkMode ? "1px solid #333" : "1px solid #d8cdb4",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                   fontSize: 16,
                   minWidth: 300,
                   fontWeight: 600,
-                  background: isDarkMode ? "#2a2a2a" : "#fff",
-                  color: isDarkMode ? "#fff" : "#4a4a4a",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#4a4a4a",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                 }}
               >
@@ -774,10 +785,10 @@ export default function TeacherDashboard() {
             {activeCourse ? (
               <div
                 style={{
-                  background: isDarkMode ? "#1a1a1a" : "#fff",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
                   padding: 32,
                   borderRadius: 12,
-                  border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                 }}
               >
                 <div
@@ -796,7 +807,7 @@ export default function TeacherDashboard() {
                         style={{
                           fontSize: 28,
                           margin: "0 0 8px",
-                          color: "#3a3528",
+                          color: isDarkMode ? "#e6e4dc" : "#3a3528",
                         }}
                       >
                         {activeCourse.title}
@@ -815,7 +826,7 @@ export default function TeacherDashboard() {
                     </div>
                     <p
                       style={{
-                        color: "#7a7568",
+                        color: isDarkMode ? "#a3a198" : "#7a7568",
                         margin: 0,
                         fontWeight: 500,
                         fontSize: 15,
@@ -855,11 +866,11 @@ export default function TeacherDashboard() {
                   <div
                     key={mod.id}
                     style={{
-                      background: "#faf9f6",
+                      background: isDarkMode ? "#2a2c27" : "#faf9f6",
                       padding: 20,
                       borderRadius: 12,
                       marginBottom: 20,
-                      border: "1px solid #e0dcd0",
+                      border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                     }}
                   >
                     <div
@@ -1019,7 +1030,7 @@ export default function TeacherDashboard() {
                               }
                               style={{
                                 cursor: "pointer",
-                                color: "#5c574a",
+                                color: isDarkMode ? "#a3a198" : "#5c574a",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 10,
@@ -1074,8 +1085,9 @@ export default function TeacherDashboard() {
                             flex: 1,
                             padding: "10px 14px",
                             borderRadius: 6,
-                            border: "1px solid #d8cdb4",
-                            background: "#fff",
+                            border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
+                            background: isDarkMode ? "#2d2f2a" : "#fff",
+                            color: isDarkMode ? "#e6e4dc" : "#3a3528",
                           }}
                         />
                         <button
@@ -1127,10 +1139,10 @@ export default function TeacherDashboard() {
 
             <div
               style={{
-                background: "#fff",
+                background: isDarkMode ? "#2d2f2a" : "#fff",
                 padding: "40px",
                 borderRadius: 12,
-                border: "1px solid #e0dcd0",
+                border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
               }}
             >
               <div style={{ marginBottom: 24 }}>
@@ -1163,7 +1175,8 @@ export default function TeacherDashboard() {
                     border: "1px solid #d8cdb4",
                     fontSize: 18,
                     fontWeight: 700,
-                    background: "#faf9f6",
+                    background: isDarkMode ? "#2d2f2a" : "#faf9f6",
+                    color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   }}
                 />
               </div>
@@ -1242,10 +1255,11 @@ export default function TeacherDashboard() {
               {/* АКТИВОВАНЕ ЗАВАНТАЖЕННЯ ФАЙЛІВ З КОМП'ЮТЕРА */}
               <div
                 style={{
-                  background: "#f0ede5",
+                  background: isDarkMode ? "#2a2c27" : "#f0ede5",
                   padding: 24,
                   borderRadius: 12,
                   marginBottom: 32,
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                   display: "flex",
                   gap: 24,
                 }}
@@ -1255,10 +1269,10 @@ export default function TeacherDashboard() {
                     style={{
                       fontSize: 14,
                       fontWeight: 700,
-                      color: "#5c574a",
+                      color: isDarkMode ? "#e6e4dc" : "#5c574a",
                       marginBottom: 8,
                       display: "flex",
-                      alignItems: "center",
+                        alignItems: "center",
                       gap: 6,
                     }}
                   >
@@ -1399,10 +1413,11 @@ export default function TeacherDashboard() {
               {/* ЗАВАНТАЖЕННЯ ДОКУМЕНТІВ */}
               <div
                 style={{
-                  background: "#f0ede5",
+                  background: isDarkMode ? "#2a2c27" : "#f0ede5",
                   padding: 24,
                   borderRadius: 12,
                   marginBottom: 32,
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                 }}
               >
                 <label
@@ -1452,7 +1467,7 @@ export default function TeacherDashboard() {
                         style={{
                           fontSize: 13,
                           fontWeight: 600,
-                          color: "#7a7568",
+                          color: isDarkMode ? "#a3a198" : "#7a7568",
                           marginBottom: 8,
                         }}
                       >
@@ -1473,15 +1488,15 @@ export default function TeacherDashboard() {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "space-between",
-                                background: "#fff",
+                                background: isDarkMode ? "#2d2f2a" : "#fff",
                                 padding: 10,
                                 borderRadius: 6,
-                                border: "1px solid #d8cdb4",
+                                border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                               }}
                             >
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 <FileText size={16} color="#8a8a45" />
-                                <span style={{ fontSize: 13, color: "#5c574a" }}>
+                                <span style={{ fontSize: 13, color: isDarkMode ? "#a3a198" : "#5c574a" }}>
                                   {doc.name}
                                 </span>
                               </div>
@@ -1519,9 +1534,9 @@ export default function TeacherDashboard() {
                 </label>
                 <div
                   style={{
-                    background: "#fff",
+                    background: isDarkMode ? "#2d2f2a" : "#fff",
                     borderRadius: 8,
-                    border: "1px solid #d8cdb4",
+                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                     overflow: "hidden",
                   }}
                 >
@@ -1583,10 +1598,10 @@ export default function TeacherDashboard() {
               <div
                 style={{
                   marginBottom: 32,
-                  background: "#faf9f6",
+                  background: isDarkMode ? "#2a2c27" : "#faf9f6",
                   padding: 24,
                   borderRadius: 12,
-                  border: "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                 }}
               >
                 <label
@@ -1623,7 +1638,8 @@ export default function TeacherDashboard() {
                     fontSize: 14,
                     lineHeight: 1.6,
                     resize: "vertical",
-                    background: "#fff",
+                    background: isDarkMode ? "#2d2f2a" : "#fff",
+                    color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   }}
                 />
               </div>
@@ -1633,10 +1649,10 @@ export default function TeacherDashboard() {
                 style={{
                   marginBottom: 32,
                   marginTop: 40,
-                  background: "#faf9f6",
+                  background: isDarkMode ? "#2a2c27" : "#faf9f6",
                   padding: 24,
                   borderRadius: 12,
-                  border: "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                 }}
               >
                 <div
@@ -1678,7 +1694,7 @@ export default function TeacherDashboard() {
                 editingLesson.lesson.quizlet.length === 0 ? (
                   <p
                     style={{
-                      color: "#9a8f70",
+                      color: isDarkMode ? "#a3a198" : "#9a8f70",
                       fontSize: 14,
                       fontStyle: "italic",
                     }}
@@ -1700,13 +1716,13 @@ export default function TeacherDashboard() {
                           display: "flex",
                           gap: 12,
                           alignItems: "center",
-                          background: "#fff",
+                          background: isDarkMode ? "#2d2f2a" : "#fff",
                           padding: 12,
                           borderRadius: 8,
-                          border: "1px solid #d8cdb4",
+                          border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                         }}
                       >
-                        <span style={{ color: "#9a8f70", fontWeight: 700 }}>
+                        <span style={{ color: isDarkMode ? "#a3a198" : "#9a8f70", fontWeight: 700 }}>
                           {index + 1}.
                         </span>
                         <input
@@ -1764,10 +1780,10 @@ export default function TeacherDashboard() {
               <div
                 style={{
                   marginBottom: 32,
-                  background: "#faf9f6",
+                  background: isDarkMode ? "#2a2c27" : "#faf9f6",
                   padding: 24,
                   borderRadius: 12,
-                  border: "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                 }}
               >
                 <div
@@ -1827,7 +1843,7 @@ export default function TeacherDashboard() {
                 (editingLesson.lesson as any).quiz.length === 0 ? (
                   <p
                     style={{
-                      color: "#9a8f70",
+                      color: isDarkMode ? "#a3a198" : "#9a8f70",
                       fontSize: 14,
                       fontStyle: "italic",
                     }}
@@ -1847,10 +1863,10 @@ export default function TeacherDashboard() {
                         <div
                           key={question.id}
                           style={{
-                            background: "#fff",
+                            background: isDarkMode ? "#2d2f2a" : "#fff",
                             padding: 16,
                             borderRadius: 8,
-                            border: "1px solid #d8cdb4",
+                            border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                           }}
                         >
                           <div
@@ -1863,7 +1879,7 @@ export default function TeacherDashboard() {
                           >
                             <span
                               style={{
-                                color: "#9a8f70",
+                                color: isDarkMode ? "#a3a198" : "#9a8f70",
                                 fontWeight: 700,
                                 fontSize: 13,
                               }}
@@ -1962,7 +1978,7 @@ export default function TeacherDashboard() {
                               style={{
                                 fontSize: 12,
                                 fontWeight: 600,
-                                color: "#7a7568",
+                                color: isDarkMode ? "#a3a198" : "#7a7568",
                                 marginBottom: 4,
                                 display: "block",
                               }}
@@ -2010,7 +2026,7 @@ export default function TeacherDashboard() {
                 style={{
                   display: "flex",
                   justifyContent: "flex-end",
-                  borderTop: "1px solid #e0dcd0",
+                  borderTop: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                   paddingTop: 24,
                 }}
               >
@@ -2053,7 +2069,7 @@ export default function TeacherDashboard() {
                   fontSize: 24,
                   fontWeight: 700,
                   margin: 0,
-                  color: "#3a3528",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                 }}
               >
                 <Inbox size={24} style={{ display: "inline", marginRight: 8 }} />
@@ -2066,8 +2082,8 @@ export default function TeacherDashboard() {
                     padding: "8px 16px",
                     borderRadius: 6,
                     border: "1px solid #e0dcd0",
-                    background: answerFilter === "pending" ? "#8a8a45" : "#fff",
-                    color: answerFilter === "pending" ? "#fff" : "#3a3528",
+                    background: answerFilter === "pending" ? "#8a8a45" : isDarkMode ? "#2d2f2a" : "#fff",
+                    color: answerFilter === "pending" ? "#fff" : isDarkMode ? "#e6e4dc" : "#3a3528",
                     fontWeight: 600,
                     fontSize: 14,
                     cursor: "pointer",
@@ -2081,8 +2097,8 @@ export default function TeacherDashboard() {
                     padding: "8px 16px",
                     borderRadius: 6,
                     border: "1px solid #e0dcd0",
-                    background: answerFilter === "reviewed" ? "#8a8a45" : "#fff",
-                    color: answerFilter === "reviewed" ? "#fff" : "#3a3528",
+                    background: answerFilter === "reviewed" ? "#8a8a45" : isDarkMode ? "#2d2f2a" : "#fff",
+                    color: answerFilter === "reviewed" ? "#fff" : isDarkMode ? "#e6e4dc" : "#3a3528",
                     fontWeight: 600,
                     fontSize: 14,
                     cursor: "pointer",
@@ -2095,14 +2111,14 @@ export default function TeacherDashboard() {
             {answers.filter((a) => a.status === answerFilter).length === 0 ? (
               <div
                 style={{
-                  background: isDarkMode ? "#1a1a1a" : "#fff",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
                   padding: 40,
                   borderRadius: 12,
-                  border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                   textAlign: "center",
                 }}
               >
-                <p style={{ color: "#9a8f70", fontSize: 16 }}>
+                <p style={{ color: isDarkMode ? "#a3a198" : "#9a8f70", fontSize: 16 }}>
                   {answerFilter === "pending"
                     ? "Немає робіт на перевірку."
                     : "Немає перевірених робіт."}
@@ -2116,10 +2132,10 @@ export default function TeacherDashboard() {
                     <div
                       key={ans.id}
                       style={{
-                        background: isDarkMode ? "#1a1a1a" : "#fff",
+                        background: isDarkMode ? "#2d2f2a" : "#fff",
                         padding: 24,
                         borderRadius: 12,
-                        border: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
+                        border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                       }}
                     >
@@ -2130,14 +2146,14 @@ export default function TeacherDashboard() {
                           alignItems: "flex-start",
                           marginBottom: 16,
                           paddingBottom: 16,
-                          borderBottom: isDarkMode ? "1px solid #333" : "1px solid #e0dcd0",
+                          borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                         }}
                       >
                         <div>
                           <p
                             style={{
                               fontSize: 12,
-                              color: "#9a8f70",
+                              color: isDarkMode ? "#a3a198" : "#9a8f70",
                               textTransform: "uppercase",
                               fontWeight: 600,
                               marginBottom: 4,
@@ -2149,7 +2165,7 @@ export default function TeacherDashboard() {
                             style={{
                               fontSize: 16,
                               fontWeight: 700,
-                              color: "#3a3528",
+                              color: isDarkMode ? "#e6e4dc" : "#3a3528",
                               margin: 0,
                             }}
                           >
@@ -2158,7 +2174,7 @@ export default function TeacherDashboard() {
                           <p
                             style={{
                               fontSize: 13,
-                              color: "#7a7568",
+                              color: isDarkMode ? "#a3a198" : "#7a7568",
                               margin: "4px 0 0",
                             }}
                           >
@@ -2169,7 +2185,7 @@ export default function TeacherDashboard() {
                           <p
                             style={{
                               fontSize: 12,
-                              color: "#9a8f70",
+                              color: isDarkMode ? "#a3a198" : "#9a8f70",
                               textTransform: "uppercase",
                               fontWeight: 600,
                               marginBottom: 4,
@@ -2180,7 +2196,7 @@ export default function TeacherDashboard() {
                           <p
                             style={{
                               fontSize: 13,
-                              color: "#5c574a",
+                              color: isDarkMode ? "#a3a198" : "#5c574a",
                               margin: 0,
                               fontWeight: 600,
                             }}
@@ -2190,7 +2206,7 @@ export default function TeacherDashboard() {
                           <p
                             style={{
                               fontSize: 13,
-                              color: "#7a7568",
+                              color: isDarkMode ? "#a3a198" : "#7a7568",
                               margin: "4px 0 0",
                             }}
                           >
@@ -2209,7 +2225,7 @@ export default function TeacherDashboard() {
                           <p
                             style={{
                               fontSize: 12,
-                              color: "#9a8f70",
+                              color: isDarkMode ? "#a3a198" : "#9a8f70",
                               textTransform: "uppercase",
                               fontWeight: 600,
                               marginBottom: 4,
@@ -2220,7 +2236,7 @@ export default function TeacherDashboard() {
                           <p
                             style={{
                               fontSize: 13,
-                              color: "#5c574a",
+                              color: isDarkMode ? "#a3a198" : "#5c574a",
                               margin: 0,
                             }}
                           >
@@ -2244,7 +2260,7 @@ export default function TeacherDashboard() {
                         <p
                           style={{
                             fontSize: 15,
-                            color: "#4a4a4a",
+                            color: isDarkMode ? "#e6e4dc" : "#4a4a4a",
                             lineHeight: 1.6,
                             margin: 0,
                           }}
@@ -2257,7 +2273,7 @@ export default function TeacherDashboard() {
                       {(ans.voiceRecorded || ans.attachments.length > 0) && (
                         <div
                           style={{
-                            background: "#faf9f6",
+                            background: isDarkMode ? "#2a2c27" : "#faf9f6",
                             padding: 16,
                             borderRadius: 8,
                             marginBottom: 16,
@@ -2269,7 +2285,7 @@ export default function TeacherDashboard() {
                                 style={{
                                   fontSize: 13,
                                   fontWeight: 600,
-                                  color: "#7a7568",
+                                  color: isDarkMode ? "#a3a198" : "#7a7568",
                                   marginBottom: 8,
                                   display: "flex",
                                   alignItems: "center",
@@ -2293,7 +2309,7 @@ export default function TeacherDashboard() {
                                 style={{
                                   fontSize: 13,
                                   fontWeight: 600,
-                                  color: "#7a7568",
+                                  color: isDarkMode ? "#a3a198" : "#7a7568",
                                   marginBottom: 8,
                                   display: "flex",
                                   alignItems: "center",
@@ -2319,9 +2335,9 @@ export default function TeacherDashboard() {
                                       alignItems: "center",
                                       gap: 8,
                                       padding: 8,
-                                      background: "#fff",
+                                      background: isDarkMode ? "#2d2f2a" : "#fff",
                                       borderRadius: 6,
-                                      border: "1px solid #e0dcd0",
+                                      border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                                     }}
                                   >
                                     <FileText size={16} />
@@ -2338,7 +2354,7 @@ export default function TeacherDashboard() {
                       {answerFilter === "pending" ? (
                         <div
                           style={{
-                            background: isDarkMode ? "#2a2a2a" : "#f0ede5",
+                            background: isDarkMode ? "#2a2c27" : "#f0ede5",
                             padding: 20,
                             borderRadius: 8,
                           }}
@@ -2356,7 +2372,7 @@ export default function TeacherDashboard() {
                                 style={{
                                   fontSize: 13,
                                   fontWeight: 600,
-                                  color: "#7a7568",
+                                  color: isDarkMode ? "#a3a198" : "#7a7568",
                                   marginBottom: 8,
                                   display: "block",
                                 }}
@@ -2391,7 +2407,7 @@ export default function TeacherDashboard() {
                               style={{
                                 fontSize: 13,
                                 fontWeight: 600,
-                                color: "#7a7568",
+                                color: isDarkMode ? "#a3a198" : "#7a7568",
                                 marginBottom: 8,
                                 display: "block",
                               }}
@@ -2448,7 +2464,7 @@ export default function TeacherDashboard() {
                       ) : (
                         <div
                           style={{
-                            background: isDarkMode ? "#2a2a2a" : "#f0ede5",
+                            background: isDarkMode ? "#2a2c27" : "#f0ede5",
                             padding: 20,
                             borderRadius: 8,
                           }}
@@ -2466,7 +2482,7 @@ export default function TeacherDashboard() {
                                 style={{
                                   fontSize: 13,
                                   fontWeight: 600,
-                                  color: "#7a7568",
+                                  color: isDarkMode ? "#a3a198" : "#7a7568",
                                   marginBottom: 8,
                                   display: "block",
                                 }}
@@ -2479,9 +2495,9 @@ export default function TeacherDashboard() {
                                   fontWeight: 700,
                                   color: "#8a8a45",
                                   padding: 10,
-                                  background: isDarkMode ? "#2a2a2a" : "#fff",
+                                  background: isDarkMode ? "#2d2f2a" : "#fff",
                                   borderRadius: 6,
-                                  border: isDarkMode ? "1px solid #333" : "1px solid #d8cdb4",
+                                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                                 }}
                               >
                                 {ans.score || 0}/100
@@ -2494,7 +2510,7 @@ export default function TeacherDashboard() {
                                 style={{
                                   fontSize: 13,
                                   fontWeight: 600,
-                                  color: "#7a7568",
+                                  color: isDarkMode ? "#a3a198" : "#7a7568",
                                   marginBottom: 8,
                                   display: "block",
                                 }}
@@ -2504,11 +2520,11 @@ export default function TeacherDashboard() {
                               <div
                                 style={{
                                   fontSize: 14,
-                                  color: isDarkMode ? "#fff" : "#4a4a4a",
+                                  color: isDarkMode ? "#e6e4dc" : "#4a4a4a",
                                   padding: 10,
-                                  background: isDarkMode ? "#2a2a2a" : "#fff",
+                                  background: isDarkMode ? "#2d2f2a" : "#fff",
                                   borderRadius: 6,
-                                  border: isDarkMode ? "1px solid #333" : "1px solid #d8cdb4",
+                                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                                   lineHeight: 1.6,
                                 }}
                               >
@@ -2533,7 +2549,7 @@ export default function TeacherDashboard() {
                 fontSize: 24,
                 fontWeight: 700,
                 marginBottom: 24,
-                color: "#3a3528",
+                color: isDarkMode ? "#e6e4dc" : "#3a3528",
               }}
             >
               <LifeBuoy size={24} style={{ display: "inline", marginRight: 8 }} />
@@ -2542,14 +2558,14 @@ export default function TeacherDashboard() {
             {supportTickets.length === 0 ? (
               <div
                 style={{
-                  background: "#fff",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
                   padding: 40,
                   borderRadius: 12,
-                  border: "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                   textAlign: "center",
                 }}
               >
-                <p style={{ color: "#9a8f70", fontSize: 16 }}>
+                <p style={{ color: isDarkMode ? "#a3a198" : "#9a8f70", fontSize: 16 }}>
                   Немає звернень до служби підтримки.
                 </p>
               </div>
@@ -2559,10 +2575,10 @@ export default function TeacherDashboard() {
                   <div
                     key={ticket.id}
                     style={{
-                      background: "#fff",
+                      background: isDarkMode ? "#2d2f2a" : "#fff",
                       padding: 24,
                       borderRadius: 12,
-                      border: "1px solid #e0dcd0",
+                      border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                       boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                     }}
                   >
@@ -2573,7 +2589,7 @@ export default function TeacherDashboard() {
                         alignItems: "flex-start",
                         marginBottom: 16,
                         paddingBottom: 16,
-                        borderBottom: "1px solid #e0dcd0",
+                        borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                       }}
                     >
                       <div>
@@ -2592,7 +2608,7 @@ export default function TeacherDashboard() {
                           style={{
                             fontSize: 16,
                             fontWeight: 700,
-                            color: "#3a3528",
+                            color: isDarkMode ? "#e6e4dc" : "#3a3528",
                             margin: 0,
                           }}
                         >
@@ -2683,7 +2699,7 @@ export default function TeacherDashboard() {
                           borderRadius: 12,
                           background:
                             ticket.status === "open" ? "#eef0df" : "#f0ede5",
-                          color: ticket.status === "open" ? "#8a8a45" : "#5c574a",
+                          color: ticket.status === "open" ? "#8a8a45" : isDarkMode ? "#a3a198" : "#5c574a",
                           fontSize: 12,
                           fontWeight: 600,
                         }}
@@ -2723,7 +2739,7 @@ export default function TeacherDashboard() {
                 fontSize: 24,
                 fontWeight: 700,
                 marginBottom: 24,
-                color: "#3a3528",
+                color: isDarkMode ? "#e6e4dc" : "#3a3528",
               }}
             >
               <Users size={24} style={{ display: "inline", marginRight: 8 }} />
@@ -2731,9 +2747,9 @@ export default function TeacherDashboard() {
             </h2>
             <div
               style={{
-                background: "#fff",
+                background: isDarkMode ? "#2d2f2a" : "#fff",
                 borderRadius: 12,
-                border: "1px solid #e0dcd0",
+                border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                 overflow: "hidden",
               }}
             >
@@ -2741,8 +2757,8 @@ export default function TeacherDashboard() {
                 <thead>
                   <tr
                     style={{
-                      background: "#f0ede5",
-                      borderBottom: "2px solid #e0dcd0",
+                      background: isDarkMode ? "#2a2c27" : "#f0ede5",
+                      borderBottom: isDarkMode ? "2px solid #3e403a" : "2px solid #e0dcd0",
                     }}
                   >
                     <th
@@ -2751,7 +2767,7 @@ export default function TeacherDashboard() {
                         textAlign: "left",
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#5c574a",
+                        color: isDarkMode ? "#e6e4dc" : "#5c574a",
                       }}
                     >
                       Ім'я
@@ -2762,7 +2778,7 @@ export default function TeacherDashboard() {
                         textAlign: "left",
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#5c574a",
+                        color: isDarkMode ? "#e6e4dc" : "#5c574a",
                       }}
                     >
                       Роль
@@ -2773,7 +2789,7 @@ export default function TeacherDashboard() {
                         textAlign: "left",
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#5c574a",
+                        color: isDarkMode ? "#e6e4dc" : "#5c574a",
                       }}
                     >
                       Статус
@@ -2784,7 +2800,7 @@ export default function TeacherDashboard() {
                         textAlign: "left",
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#5c574a",
+                        color: isDarkMode ? "#e6e4dc" : "#5c574a",
                       }}
                     >
                       Прогрес
@@ -2807,13 +2823,13 @@ export default function TeacherDashboard() {
                     <tr
                       key={u.id}
                       style={{
-                        borderBottom: "1px solid #e0dcd0",
+                        borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                       }}
                     >
-                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                      <td style={{ padding: 16, fontSize: 14, color: isDarkMode ? "#e6e4dc" : "#4a4a4a" }}>
                         {u.name}
                       </td>
-                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                      <td style={{ padding: 16, fontSize: 14, color: isDarkMode ? "#e6e4dc" : "#4a4a4a" }}>
                         <span
                           style={{
                             padding: "4px 8px",
@@ -2841,7 +2857,7 @@ export default function TeacherDashboard() {
                             : "Курсант"}
                         </span>
                       </td>
-                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                      <td style={{ padding: 16, fontSize: 14, color: isDarkMode ? "#e6e4dc" : "#4a4a4a" }}>
                         <span
                           style={{
                             padding: "4px 8px",
@@ -2861,7 +2877,7 @@ export default function TeacherDashboard() {
                           {u.status === "approved" ? "Активний" : "Очікує"}
                         </span>
                       </td>
-                      <td style={{ padding: 16, fontSize: 14, color: "#4a4a4a" }}>
+                      <td style={{ padding: 16, fontSize: 14, color: isDarkMode ? "#e6e4dc" : "#4a4a4a" }}>
                         {u.role === "student" ? (
                           (() => {
                             const userAnswers = answers.filter(
@@ -2912,7 +2928,7 @@ export default function TeacherDashboard() {
                             );
                           })()
                         ) : (
-                          <span style={{ color: "#9a8f70", fontSize: 13 }}>-</span>
+                          <span style={{ color: isDarkMode ? "#a3a198" : "#9a8f70", fontSize: 13 }}>-</span>
                         )}
                       </td>
                       <td style={{ padding: 16, textAlign: "right" }}>
@@ -2977,9 +2993,9 @@ export default function TeacherDashboard() {
                             style={{
                               marginTop: 12,
                               padding: 12,
-                              background: "#faf9f6",
+                              background: isDarkMode ? "#2a2c27" : "#faf9f6",
                               borderRadius: 6,
-                              border: "1px solid #d8cdb4",
+                              border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                             }}
                           >
                             <input
@@ -3071,7 +3087,7 @@ export default function TeacherDashboard() {
         >
           <div
             style={{
-              background: "#fff",
+              background: isDarkMode ? "#2d2f2a" : "#fff",
               borderRadius: 12,
               padding: 32,
               maxWidth: 500,
@@ -3085,7 +3101,7 @@ export default function TeacherDashboard() {
                 margin: "0 0 24px",
                 fontSize: 20,
                 fontWeight: 700,
-                color: "#3a3528",
+                color: isDarkMode ? "#e6e4dc" : "#3a3528",
               }}
             >
               {isAddingCourse ? "Створити новий курс" : "Редагувати курс"}
@@ -3095,7 +3111,7 @@ export default function TeacherDashboard() {
                 style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#3a3528",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   marginBottom: 8,
                   display: "block",
                 }}
@@ -3113,8 +3129,8 @@ export default function TeacherDashboard() {
                   borderRadius: 8,
                   border: "1px solid #d8cdb4",
                   fontSize: 14,
-                  background: "#fff",
-                  color: "#3a3528",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                 }}
               />
             </div>
@@ -3123,7 +3139,7 @@ export default function TeacherDashboard() {
                 style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#3a3528",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   marginBottom: 8,
                   display: "block",
                 }}
@@ -3141,8 +3157,8 @@ export default function TeacherDashboard() {
                   borderRadius: 8,
                   border: "1px solid #d8cdb4",
                   fontSize: 14,
-                  background: "#fff",
-                  color: "#3a3528",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                 }}
               />
             </div>
@@ -3151,7 +3167,7 @@ export default function TeacherDashboard() {
                 style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#3a3528",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   marginBottom: 8,
                   display: "block",
                 }}
@@ -3171,8 +3187,8 @@ export default function TeacherDashboard() {
                   fontSize: 14,
                   fontFamily: "inherit",
                   lineHeight: 1.6,
-                  background: "#fff",
-                  color: "#3a3528",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   resize: "vertical",
                 }}
               />
@@ -3185,8 +3201,8 @@ export default function TeacherDashboard() {
                   setCourseData({ title: "", subtitle: "", description: "" });
                 }}
                 style={{
-                  background: "#fff",
-                  color: "#5c574a",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#a3a198" : "#5c574a",
                   border: "1px solid #d8cdb4",
                   padding: "12px 24px",
                   borderRadius: 8,

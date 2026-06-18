@@ -71,13 +71,13 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
     <div
       className={`rounded-xl border p-6 ${
         isDarkMode
-          ? "bg-[#3a3326] border-[#4a4231]"
+          ? "bg-[#2d2f2a] border-[#3e403a]"
           : "bg-[#f6f1e4] border-[#d8cdb4]"
       }`}
     >
       <h3
         className={`mb-5 flex items-center gap-2 text-sm font-semibold ${
-          isDarkMode ? "text-white" : "text-[#3a3528]"
+          isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
         }`}
       >
         📈 Профіль SLP (STANAG 6001)
@@ -87,7 +87,7 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
           <div key={skill.label}>
             <div
               className={`mb-1.5 flex justify-between text-xs font-semibold ${
-                isDarkMode ? "text-[#d8cdb4]" : "text-[#5a5440]"
+                isDarkMode ? "text-[#a3a198]" : "text-[#5a5440]"
               }`}
             >
               <span>{skill.label}</span>

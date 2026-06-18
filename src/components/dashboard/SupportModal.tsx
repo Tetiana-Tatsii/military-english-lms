@@ -7,9 +7,10 @@ import { X, MessageSquare, CheckCircle } from "lucide-react";
 interface SupportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isDarkMode?: boolean;
 }
 
-export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
+export default function SupportModal({ isOpen, onClose, isDarkMode = false }: SupportModalProps) {
   const { user, addSupportTicket } = useAppContext();
   const [supportType, setSupportType] = useState<"bug" | "improvement">("bug");
   const [message, setMessage] = useState("");
@@ -62,7 +63,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
     >
       <div
         style={{
-          background: "#fff",
+          background: isDarkMode ? "#2d2f2a" : "#fff",
           borderRadius: 12,
           padding: 32,
           maxWidth: 500,
@@ -86,7 +87,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 margin: 0,
                 fontSize: 20,
                 fontWeight: 700,
-                color: "#3a3528",
+                color: isDarkMode ? "#e6e4dc" : "#3a3528",
               }}
             >
               Служба підтримки
@@ -101,7 +102,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               padding: 4,
             }}
           >
-            <X size={24} color="#5c574a" />
+            <X size={24} color={isDarkMode ? "#a3a198" : "#5c574a"} />
           </button>
         </div>
 
@@ -126,7 +127,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
             <p
               style={{
                 fontSize: 14,
-                color: "#5c574a",
+                color: isDarkMode ? "#a3a198" : "#5c574a",
                 marginBottom: 24,
                 lineHeight: 1.6,
               }}
@@ -154,7 +155,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
             <p
               style={{
                 fontSize: 14,
-                color: "#5c574a",
+                color: isDarkMode ? "#a3a198" : "#5c574a",
                 marginBottom: 24,
                 lineHeight: 1.6,
               }}
@@ -167,7 +168,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#3a3528",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   marginBottom: 8,
                   display: "block",
                 }}
@@ -183,8 +184,8 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                   borderRadius: 8,
                   border: "1px solid #d8cdb4",
                   fontSize: 14,
-                  background: "#fff",
-                  color: "#3a3528",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                 }}
               >
                 <option value="bug">Помилка (Bug)</option>
@@ -197,7 +198,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#3a3528",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   marginBottom: 8,
                   display: "block",
                 }}
@@ -217,8 +218,8 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                   fontSize: 14,
                   fontFamily: "inherit",
                   lineHeight: 1.6,
-                  background: "#fff",
-                  color: "#3a3528",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                   resize: "vertical",
                 }}
               />
@@ -228,8 +229,8 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               <button
                 onClick={handleClose}
                 style={{
-                  background: "#fff",
-                  color: "#5c574a",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#a3a198" : "#5c574a",
                   border: "1px solid #d8cdb4",
                   padding: "12px 24px",
                   borderRadius: 8,

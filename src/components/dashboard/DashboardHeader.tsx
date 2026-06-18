@@ -26,7 +26,7 @@ export default function DashboardHeader({
     <div
       className={`flex items-center justify-between border-b px-6 py-4 ${
         isDarkMode
-          ? "bg-[#3a3326] border-[#4a4231]"
+          ? "bg-[#2a2c27] border-[#3e403a]"
           : "bg-[#f6f1e4] border-[#d8cdb4]"
       }`}
     >
@@ -37,7 +37,7 @@ export default function DashboardHeader({
         <div>
           <p
             className={`text-base font-semibold ${
-              isDarkMode ? "text-white" : "text-[#3a3528]"
+              isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
             }`}
           >
             MILITARY LMS
@@ -53,7 +53,7 @@ export default function DashboardHeader({
           className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors ${
             isProfileOpen
               ? isDarkMode
-                ? "bg-[#4a4231]"
+                ? "bg-[#3e403a]"
                 : "bg-[#e9e1cd]"
               : "bg-transparent"
           }`}
@@ -61,7 +61,7 @@ export default function DashboardHeader({
           <div className="text-right">
             <span
               className={`block text-sm font-semibold ${
-                isDarkMode ? "text-white" : "text-[#3a3528]"
+                isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
               }`}
             >
               {userName}
@@ -82,7 +82,7 @@ export default function DashboardHeader({
           <div
             className={`absolute right-0 top-[110%] w-[220px] rounded-xl border p-2 shadow-lg ${
               isDarkMode
-                ? "bg-[#3a3326] border-[#4a4231]"
+                ? "bg-[#2d2f2a] border-[#3e403a]"
                 : "bg-white border-[#d8cdb4]"
             }`}
             style={{ zIndex: 100 }}
@@ -91,7 +91,7 @@ export default function DashboardHeader({
               onClick={onDarkModeToggle}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-black/5"
               style={{
-                color: isDarkMode ? "#d8cdb4" : "#5a5440",
+                color: isDarkMode ? "#a3a198" : "#5a5440",
               }}
             >
               {isDarkMode ? (
@@ -105,7 +105,7 @@ export default function DashboardHeader({
               onClick={() => setIsSupportModalOpen(true)}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-black/5"
               style={{
-                color: isDarkMode ? "#d8cdb4" : "#5a5440",
+                color: isDarkMode ? "#a3a198" : "#5a5440",
               }}
             >
               <LifeBuoy size={16} color="#8a8a45" />
@@ -113,15 +113,15 @@ export default function DashboardHeader({
             </button>
             <hr
               className={`my-1.5 border-none ${
-                isDarkMode ? "border-t border-[#4a4231]" : "border-t border-[#e9e1cd]"
+                isDarkMode ? "border-t border-[#3e403a]" : "border-t border-[#e9e1cd]"
               }`}
             />
             <button
               onClick={onLogout}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-black/5"
               style={{
-                background: isDarkMode ? "#4e2d2d" : "#fdeced",
-                color: "#c97a4a",
+                background: isDarkMode ? "#3a1a1a" : "#fdeced",
+                color: isDarkMode ? "#ff6b6b" : "#c97a4a",
               }}
             >
               <LogOut size={16} />
@@ -134,6 +134,7 @@ export default function DashboardHeader({
       <SupportModal
         isOpen={isSupportModalOpen}
         onClose={() => setIsSupportModalOpen(false)}
+        isDarkMode={isDarkMode}
       />
     </div>
   );

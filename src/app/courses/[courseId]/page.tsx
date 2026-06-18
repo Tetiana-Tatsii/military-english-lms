@@ -34,6 +34,18 @@ export default function CoursePage() {
 
   const [activeModuleId, setActiveModuleId] = useState<string>(initialModuleId);
   const [activeLessonId, setActiveLessonId] = useState<string>(initialLessonId);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("darkMode");
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Зберігаємо стан темної теми в localStorage
+  useEffect(() => {
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   const [flippedCards, setFlippedCards] = useState<{ [key: number]: boolean }>(
     {},
@@ -85,7 +97,7 @@ export default function CoursePage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#faf9f6",
+          background: isDarkMode ? "#1c1d1a" : "#faf9f6",
           color: "#8a8a45",
           fontWeight: 600,
         }}
@@ -250,8 +262,8 @@ export default function CoursePage() {
       style={{
         display: "flex",
         height: "100vh",
-        background: "#faf9f6",
-        color: "#4a4a4a",
+        background: isDarkMode ? "#1c1d1a" : "#faf9f6",
+        color: isDarkMode ? "#e6e4dc" : "#4a4a4a",
         fontFamily: "system-ui, sans-serif",
       }}
     >
@@ -268,13 +280,13 @@ export default function CoursePage() {
       <div
         style={{
           width: "320px",
-          background: "#f0ede5",
-          borderRight: "1px solid #e0dcd0",
+          background: isDarkMode ? "#20211f" : "#f0ede5",
+          borderRight: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <div style={{ padding: "24px", borderBottom: "1px solid #e0dcd0" }}>
+        <div style={{ padding: "24px", borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0" }}>
           <button
             onClick={() => router.push("/dashboard")}
             style={{
@@ -339,7 +351,7 @@ export default function CoursePage() {
                       style={{
                         padding: "12px 24px 12px 32px",
                         cursor: "pointer",
-                        background: isActive ? "#fff" : "transparent",
+                        background: isActive ? (isDarkMode ? "#2d2f2a" : "#fff") : "transparent",
                         borderLeft: isActive
                           ? "4px solid #8a8a45"
                           : "4px solid transparent",
@@ -395,7 +407,7 @@ export default function CoursePage() {
           flex: 1,
           overflowY: "auto",
           padding: "40px",
-          background: "#fff",
+          background: isDarkMode ? "#1c1d1a" : "#fff",
         }}
       >
         {activeLesson ? (
@@ -628,7 +640,7 @@ export default function CoursePage() {
                         alignItems: "center",
                         gap: 12,
                         padding: 16,
-                        background: "#fff",
+                        background: isDarkMode ? "#2d2f2a" : "#fff",
                         borderRadius: 8,
                         border: "1px solid #d8cdb4",
                         textDecoration: "none",
@@ -673,7 +685,7 @@ export default function CoursePage() {
                       onClick={() => toggleCard(index)}
                       style={{
                         height: "120px",
-                        background: flippedCards[index] ? "#e0dcd0" : "#fff",
+                        background: flippedCards[index] ? (isDarkMode ? "#2a2c27" : "#e0dcd0") : (isDarkMode ? "#2d2f2a" : "#fff"),
                         color: "#3a3528",
                         border: "1px solid #e0dcd0",
                         borderRadius: 12,
@@ -767,9 +779,9 @@ export default function CoursePage() {
                               alignItems: "center",
                               gap: 12,
                               padding: 12,
-                              background: "#fff",
+                              background: isDarkMode ? "#2d2f2a" : "#fff",
                               borderRadius: 8,
-                              border: "1px solid #d8cdb4",
+                              border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                               cursor: "pointer",
                               transition: "all 0.2s",
                             }}
@@ -905,22 +917,22 @@ export default function CoursePage() {
                   width: "100%",
                   padding: 16,
                   borderRadius: 8,
-                  border: "1px solid #d8cdb4",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                   marginBottom: 16,
                   fontFamily: "inherit",
                   fontSize: 15,
-                  background: "#fff",
-                  color: "#3a3528",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                 }}
               />
 
               {/* АУДІОЗАПИС */}
               <div
                 style={{
-                  background: "#fff",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
                   padding: 16,
                   borderRadius: 8,
-                  border: "1px solid #d8cdb4",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                   marginBottom: 16,
                 }}
               >
@@ -929,7 +941,7 @@ export default function CoursePage() {
                     margin: "0 0 12px",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#5c574a",
+                    color: isDarkMode ? "#e6e4dc" : "#5c574a",
                   }}
                 >
                   <Headphones size={16} style={{ display: "inline", marginRight: 6 }} />
@@ -1009,10 +1021,10 @@ export default function CoursePage() {
               {/* ПРИКРІПЛЕННЯ ФАЙЛІВ */}
               <div
                 style={{
-                  background: "#fff",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
                   padding: 16,
                   borderRadius: 8,
-                  border: "1px solid #d8cdb4",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                   marginBottom: 16,
                 }}
               >
@@ -1021,7 +1033,7 @@ export default function CoursePage() {
                     margin: "0 0 12px",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#5c574a",
+                    color: isDarkMode ? "#e6e4dc" : "#5c574a",
                   }}
                 >
                   <FileText size={16} style={{ display: "inline", marginRight: 6 }} />
@@ -1149,10 +1161,10 @@ export default function CoursePage() {
               {existingAnswer && (
                 <div
                   style={{
-                    background: "#fff",
+                    background: isDarkMode ? "#2d2f2a" : "#fff",
                     padding: 20,
                     borderRadius: 8,
-                    border: "1px solid #d8cdb4",
+                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                     marginTop: 24,
                   }}
                 >

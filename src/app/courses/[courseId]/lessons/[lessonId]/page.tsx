@@ -186,6 +186,18 @@ function AnswerPanel({
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("darkMode");
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Зберігаємо стан темної теми в localStorage
+  useEffect(() => {
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   // Стейт для диктофона
   const [isRecording, setIsRecording] = useState(false);
@@ -323,12 +335,13 @@ function AnswerPanel({
         style={{
           width: "100%",
           borderRadius: 8,
-          border: "0.5px solid #d8cdb4",
+          border: isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4",
           padding: 12,
           fontSize: 14,
-          color: "#3a3528",
+          color: isDarkMode ? "#e6e4dc" : "#3a3528",
           marginBottom: 16,
           resize: "vertical",
+          background: isDarkMode ? "#2d2f2a" : "#fff",
         }}
       />
 
@@ -380,10 +393,10 @@ function AnswerPanel({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                background: "#fff",
+                background: isDarkMode ? "#2d2f2a" : "#fff",
                 padding: "6px 12px",
                 borderRadius: 6,
-                border: "0.5px solid #d8cdb4",
+                border: isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4",
                 fontSize: 13,
               }}
             >
@@ -392,7 +405,7 @@ function AnswerPanel({
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  color: "#5a5440",
+                  color: isDarkMode ? "#e6e4dc" : "#5a5440",
                 }}
               >
                 <Paperclip size={14} /> {file.name}
@@ -420,9 +433,9 @@ function AnswerPanel({
             onClick={isRecording ? stopRecording : startRecording}
             style={{
               flex: 1,
-              background: isRecording ? "#fdeced" : "#fff",
-              color: isRecording ? "#c97a4a" : "#3a3528",
-              border: isRecording ? "1px solid #c97a4a" : "0.5px solid #d8cdb4",
+              background: isRecording ? "#fdeced" : (isDarkMode ? "#2d2f2a" : "#fff"),
+              color: isRecording ? "#c97a4a" : (isDarkMode ? "#e6e4dc" : "#3a3528"),
+              border: isRecording ? "1px solid #c97a4a" : (isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4"),
               borderRadius: 8,
               padding: "10px",
               fontSize: 13,
@@ -455,9 +468,9 @@ function AnswerPanel({
           onClick={() => fileInputRef.current?.click()}
           style={{
             flex: 1,
-            background: "#fff",
-            color: "#3a3528",
-            border: "0.5px solid #d8cdb4",
+            background: isDarkMode ? "#2d2f2a" : "#fff",
+            color: isDarkMode ? "#e6e4dc" : "#3a3528",
+            border: isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4",
             borderRadius: 8,
             padding: "10px",
             fontSize: 13,
@@ -515,6 +528,18 @@ export default function LessonPage() {
     content: "",
     quizlet: [] as QuizletCard[],
   });
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("darkMode");
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Зберігаємо стан темної теми в localStorage
+  useEffect(() => {
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (!user) router.push("/login");
@@ -779,10 +804,12 @@ export default function LessonPage() {
                 style={{
                   padding: 16,
                   borderRadius: 8,
-                  border: "1px solid #d8cdb4",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                   fontSize: 16,
                   lineHeight: 1.6,
                   resize: "vertical",
+                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
                 }}
               />
             </div>
@@ -912,10 +939,10 @@ export default function LessonPage() {
                   <div
                     key={idx}
                     style={{
-                      background: "#fff",
+                      background: isDarkMode ? "#2d2f2a" : "#fff",
                       padding: 12,
                       borderRadius: 8,
-                      border: "0.5px solid #d8cdb4",
+                      border: isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4",
                       position: "relative",
                     }}
                   >

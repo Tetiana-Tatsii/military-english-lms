@@ -12,7 +12,18 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("darkMode");
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Зберігаємо стан темної теми в localStorage
+  useEffect(() => {
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -63,7 +74,7 @@ export default function DashboardPage() {
   return (
     <div
       className={`min-h-screen font-sans transition-all ${
-        isDarkMode ? "bg-[#2b261d] text-[#f6f1e4]" : "bg-[#f0e9d8] text-[#3a3528]"
+        isDarkMode ? "bg-[#1c1d1a] text-[#e6e4dc]" : "bg-[#f0e9d8] text-[#3a3528]"
       }`}
     >
       <DashboardHeader
