@@ -227,29 +227,161 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // СИНХРОНІЗАЦІЯ КУРСІВ З SUPABASE
+  const fetchCoursesFromSupabase = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("lms_courses")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Помилка завантаження курсів з Supabase:", error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // Трансформуємо змійок snake_case з бази у camelCase
+        const formattedCourses: Course[] = data.map((c) => ({
+          id: c.id,
+          title: c.title,
+          subtitle: c.subtitle || "",
+          description: c.description || "",
+          status: c.status as "active" | "draft",
+          modules: c.modules || [],
+          finalTest: c.final_test || { title: "", questions: [] },
+        }));
+        setCourses(formattedCourses);
+        localStorage.setItem("lanp_courses", JSON.stringify(formattedCourses));
+      }
+    } catch (error) {
+      console.error("Помилка при завантаженні курсів:", error);
+    }
+  };
+
+  const saveCourseToSupabase = async (course: Course) => {
+    try {
+      const { error } = await supabase
+        .from("lms_courses")
+        .upsert({
+          id: course.id,
+          title: course.title,
+          subtitle: course.subtitle,
+          description: course.description,
+          status: course.status,
+          modules: course.modules,
+          final_test: course.finalTest,
+        });
+
+      if (error) {
+        console.error("Помилка збереження курсу в Supabase:", error);
+      }
+    } catch (error) {
+      console.error("Помилка при збереженні курсу:", error);
+    }
+  };
+
+  // СИНХРОНІЗАЦІЯ ВІДПОВІДЕЙ З SUPABASE
+  const fetchAnswersFromSupabase = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("student_answers")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Помилка завантаження відповідей з Supabase:", error);
+        return;
+      }
+
+      if (data) {
+        // Трансформуємо змійок snake_case з бази у camelCase
+        const formattedAnswers: Answer[] = data.map((a) => ({
+          id: a.id,
+          lessonId: a.lesson_id,
+          courseId: a.course_id,
+          studentName: a.student_name,
+          squadId: a.squad_id,
+          text: a.text_answer,
+          voiceRecorded: a.voice_recorded,
+          audioUrl: a.audio_url,
+          attachments: a.attachments || [],
+          submittedAt: a.created_at,
+          status: a.status as "pending" | "reviewed",
+          teacherFeedbackText: a.teacher_feedback,
+          teacherFeedbackAudio: a.teacher_feedback_audio,
+          score: a.score,
+        }));
+        setAnswers(formattedAnswers);
+        localStorage.setItem("lanp_answers", JSON.stringify(formattedAnswers));
+      }
+    } catch (error) {
+      console.error("Помилка при завантаженні відповідей:", error);
+    }
+  };
+
+  const saveAnswerToSupabase = async (answer: Answer) => {
+    try {
+      const { error } = await supabase
+        .from("student_answers")
+        .upsert({
+          id: answer.id,
+          lesson_id: answer.lessonId,
+          course_id: answer.courseId,
+          student_name: answer.studentName,
+          squad_id: answer.squadId,
+          text_answer: answer.text,
+          voice_recorded: answer.voiceRecorded,
+          audio_url: answer.audioUrl,
+          attachments: answer.attachments,
+          created_at: answer.submittedAt,
+          status: answer.status,
+          teacher_feedback: answer.teacherFeedbackText,
+          teacher_feedback_audio: answer.teacherFeedbackAudio,
+          score: answer.score,
+        });
+
+      if (error) {
+        console.error("Помилка збереження відповіді в Supabase:", error);
+      }
+    } catch (error) {
+      console.error("Помилка при збереженні відповіді:", error);
+    }
+  };
+
   // 1. ЗАВАНТАЖЕННЯ ДАНИХ ПРИ ЗАПУСКУ
   useEffect(() => {
     const loadSavedData = async () => {
       try {
-        const savedCourses = localStorage.getItem("lanp_courses");
-        const savedAnswers = localStorage.getItem("lanp_answers");
         const savedUserSession = sessionStorage.getItem("lanp_user");
-        const savedSupportTickets = localStorage.getItem("lanp_support_tickets");
 
-        if (savedCourses) {
+        // Спочатку завантажуємо курси з Supabase
+        await fetchCoursesFromSupabase();
+
+        // Потім завантажуємо відповіді з Supabase
+        await fetchAnswersFromSupabase();
+
+        // Якщо в Supabase немає курсів, завантажуємо з localStorage
+        const savedCourses = localStorage.getItem("lanp_courses");
+        if (savedCourses && courses.length === 0) {
           try {
             setCourses(JSON.parse(savedCourses));
           } catch (e) {
             console.error("Помилка парсингу курсів:", e);
           }
         }
-        if (savedAnswers) {
+
+        // Якщо в Supabase немає відповідей, завантажуємо з localStorage
+        const savedAnswers = localStorage.getItem("lanp_answers");
+        if (savedAnswers && answers.length === 0) {
           try {
             setAnswers(JSON.parse(savedAnswers));
           } catch (e) {
             console.error("Помилка парсингу відповідей:", e);
           }
         }
+
+        const savedSupportTickets = localStorage.getItem("lanp_support_tickets");
         if (savedSupportTickets) {
           try {
             setSupportTickets(JSON.parse(savedSupportTickets));
@@ -520,9 +652,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("lanp_answers", JSON.stringify(updated));
       return updated;
     });
+
+    // Зберігаємо відповідь в Supabase
+    await saveAnswerToSupabase(newAnswer);
   };
 
-  const provideFeedback = (
+  const provideFeedback = async (
     answerId: string,
     feedbackText: string,
     feedbackAudio: boolean,
@@ -541,31 +676,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : ans,
       ),
     );
+
+    // Зберігаємо оновлену відповідь в Supabase
+    const updatedAnswer = answers.find((ans) => ans.id === answerId);
+    if (updatedAnswer) {
+      await saveAnswerToSupabase({
+        ...updatedAnswer,
+        teacherFeedbackText: feedbackText,
+        teacherFeedbackAudio: feedbackAudio,
+        score,
+        status: "reviewed",
+      });
+    }
   };
 
-  const addCourse = (title: string, subtitle: string, description: string) => {
-    setCourses((prev) => [
-      ...prev,
-      {
-        id: `course-${Date.now()}`,
-        title,
-        subtitle,
-        description,
-        status: "draft",
-        modules: [],
-        finalTest: { title: `Підсумковий тест: ${title}`, questions: [] },
-      },
-    ]);
+  const addCourse = async (title: string, subtitle: string, description: string) => {
+    const newCourse: Course = {
+      id: `course-${Date.now()}`,
+      title,
+      subtitle,
+      description,
+      status: "draft",
+      modules: [],
+      finalTest: { title: `Підсумковий тест: ${title}`, questions: [] },
+    };
+    setCourses((prev) => [...prev, newCourse]);
+    await saveCourseToSupabase(newCourse);
   };
-  const updateCourse = (courseId: string, updatedData: Partial<Course>) => {
+
+  const updateCourse = async (courseId: string, updatedData: Partial<Course>) => {
     setCourses((prev) =>
       prev.map((c) => (c.id === courseId ? { ...c, ...updatedData } : c)),
     );
+    const updatedCourse = courses.find((c) => c.id === courseId);
+    if (updatedCourse) {
+      await saveCourseToSupabase({ ...updatedCourse, ...updatedData });
+    }
   };
-  const deleteCourse = (courseId: string) => {
+
+  const deleteCourse = async (courseId: string) => {
     setCourses((prev) => prev.filter((c) => c.id !== courseId));
+    try {
+      await supabase.from("lms_courses").delete().eq("id", courseId);
+    } catch (error) {
+      console.error("Помилка видалення курсу з Supabase:", error);
+    }
   };
-  const addModule = (courseId: string, title: string, icon: string) => {
+
+  const addModule = async (courseId: string, title: string, icon: string) => {
     setCourses((prev) =>
       prev.map((course) =>
         course.id === courseId
@@ -579,8 +737,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : course,
       ),
     );
+    const updatedCourse = courses.find((c) => c.id === courseId);
+    if (updatedCourse) {
+      await saveCourseToSupabase(updatedCourse);
+    }
   };
-  const updateModule = (
+
+  const updateModule = async (
     courseId: string,
     moduleId: string,
     updatedData: Partial<Module>,
@@ -597,8 +760,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : course,
       ),
     );
+    const updatedCourse = courses.find((c) => c.id === courseId);
+    if (updatedCourse) {
+      await saveCourseToSupabase(updatedCourse);
+    }
   };
-  const deleteModule = (courseId: string, moduleId: string) => {
+
+  const deleteModule = async (courseId: string, moduleId: string) => {
     setCourses((prev) =>
       prev.map((course) =>
         course.id === courseId
@@ -609,8 +777,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : course,
       ),
     );
+    const updatedCourse = courses.find((c) => c.id === courseId);
+    if (updatedCourse) {
+      await saveCourseToSupabase(updatedCourse);
+    }
   };
-  const addLesson = (
+
+  const addLesson = async (
     courseId: string,
     moduleId: string,
     lessonData: Omit<Lesson, "id">,
@@ -635,8 +808,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : course,
       ),
     );
+    const updatedCourse = courses.find((c) => c.id === courseId);
+    if (updatedCourse) {
+      await saveCourseToSupabase(updatedCourse);
+    }
   };
-  const updateLesson = (
+
+  const updateLesson = async (
     courseId: string,
     moduleId: string,
     lessonId: string,
@@ -661,8 +839,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : course,
       ),
     );
+    const updatedCourse = courses.find((c) => c.id === courseId);
+    if (updatedCourse) {
+      await saveCourseToSupabase(updatedCourse);
+    }
   };
-  const deleteLesson = (
+
+  const deleteLesson = async (
     courseId: string,
     moduleId: string,
     lessonId: string,
@@ -684,6 +867,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : course,
       ),
     );
+    const updatedCourse = courses.find((c) => c.id === courseId);
+    if (updatedCourse) {
+      await saveCourseToSupabase(updatedCourse);
+    }
   };
 
   const addSupportTicket = async (type: "bug" | "improvement", message: string) => {

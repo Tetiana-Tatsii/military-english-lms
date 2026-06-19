@@ -97,7 +97,7 @@ export default function CoursePage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: isDarkMode ? "#1c1d1a" : "#faf9f6",
+          background: isDarkMode ? "#2d2f2a" : "#faf9f6",
           color: "#8a8a45",
           fontWeight: 600,
         }}
@@ -263,7 +263,7 @@ export default function CoursePage() {
         display: "flex",
         height: "100vh",
         background: isDarkMode ? "#1c1d1a" : "#faf9f6",
-        color: isDarkMode ? "#e6e4dc" : "#4a4a4a",
+        color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
         fontFamily: "system-ui, sans-serif",
       }}
     >
@@ -280,7 +280,7 @@ export default function CoursePage() {
       <div
         style={{
           width: "320px",
-          background: isDarkMode ? "#20211f" : "#f0ede5",
+          background: isDarkMode ? "#2d2f2a" : "#f0ede5",
           borderRight: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
           display: "flex",
           flexDirection: "column",
@@ -407,7 +407,7 @@ export default function CoursePage() {
           flex: 1,
           overflowY: "auto",
           padding: "40px",
-          background: isDarkMode ? "#1c1d1a" : "#fff",
+          background: isDarkMode ? "#2d2f2a" : "#fff",
         }}
       >
         {activeLesson ? (
@@ -848,7 +848,7 @@ export default function CoursePage() {
               </div>
             )}
 
-            {/* 10. ІНСТРУКЦІЯ ДО ДОМАШНЬОГО ЗАВДАННЯ */}
+          {/* 10. ІНСТРУКЦІЯ ДО ДОМАШНЬОГО ЗАВДАННЯ */}
             {activeLesson.homeworkInstruction && (
               <div
                 style={{
@@ -886,279 +886,41 @@ export default function CoursePage() {
             )}
 
             {/* 11. БЛОК ВІДПРАВКИ ЗАВДАННЯ */}
-            <div
-              style={{
-                background: "#f0ede5",
-                padding: 32,
-                borderRadius: 12,
-                border: "1px solid #e0dcd0",
-                marginBottom: 60,
-              }}
-            >
-              <h3
-                style={{
-                  margin: "0 0 20px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  color: "#3a3528",
-                  fontSize: 20,
-                }}
-              >
-                <Send size={22} color="#8a8a45" /> Практичне завдання
-              </h3>
-
-              <textarea
-                value={homeworkText}
-                onChange={(e) => setHomeworkText(e.target.value)}
-                placeholder="Введіть вашу відповідь, есе або коментар до файлів тут..."
-                rows={5}
-                style={{
-                  width: "100%",
-                  padding: 16,
-                  borderRadius: 8,
-                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
-                  marginBottom: 16,
-                  fontFamily: "inherit",
-                  fontSize: 15,
-                  background: isDarkMode ? "#2d2f2a" : "#fff",
-                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
-                }}
-              />
-
-              {/* АУДІОЗАПИС */}
-              <div
-                style={{
-                  background: isDarkMode ? "#2d2f2a" : "#fff",
-                  padding: 16,
-                  borderRadius: 8,
-                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
-                  marginBottom: 16,
-                }}
-              >
-                <p
+            {existingAnswer ? (
+              <div style={{ marginBottom: 60 }}>
+                <div
                   style={{
-                    margin: "0 0 12px",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: isDarkMode ? "#e6e4dc" : "#5c574a",
+                    background: isDarkMode ? "#2d2f2a" : "#f0ede5",
+                    padding: 32,
+                    borderRadius: 12,
+                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+                    textAlign: "center",
                   }}
                 >
-                  <Headphones size={16} style={{ display: "inline", marginRight: 6 }} />
-                  Голосова відповідь
-                </p>
-                {!audioUrl ? (
-                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    {!isRecording ? (
-                      <button
-                        onClick={startRecording}
-                        style={{
-                          background: "#8a8a45",
-                          color: "#fff",
-                          border: "none",
-                          padding: "10px 20px",
-                          borderRadius: 6,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <Volume2 size={16} /> Почати запис
-                      </button>
-                    ) : (
-                      <button
-                        onClick={stopRecording}
-                        style={{
-                          background: "#c97a4a",
-                          color: "#fff",
-                          border: "none",
-                          padding: "10px 20px",
-                          borderRadius: 6,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <StopCircle size={16} /> Зупинити запис ({formatTime(recordingTime)})
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <audio
-                      controls
-                      style={{ width: "100%", height: "40px" }}
-                      src={audioUrl}
-                    >
-                      Ваш браузер не підтримує аудіо елемент.
-                    </audio>
-                    <button
-                      onClick={handleRerecord}
-                      style={{
-                        background: "#f0ede5",
-                        color: "#8a8a45",
-                        border: "1px solid #8a8a45",
-                        padding: "8px 16px",
-                        borderRadius: 6,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        alignSelf: "flex-start",
-                      }}
-                    >
-                      <Volume2 size={14} /> Перезаписати
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <CheckCircle size={48} color="#8a8a45" style={{ marginBottom: 16 }} />
+                  <h3
+                    style={{
+                      margin: "0 0 12px",
+                      color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
+                      fontSize: 20,
+                    }}
+                  >
+                    ДЗ здано
+                  </h3>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: isDarkMode ? "#9a8f70" : "#5c574a",
+                      fontSize: 15,
+                    }}
+                  >
+                    {existingAnswer.status === "reviewed"
+                      ? `Перевірено. Оцінка: ${existingAnswer.score || 0}/100`
+                      : "Очікуйте на перевірку або перегляньте фідбек нижче"}
+                  </p>
+                </div>
 
-              {/* ПРИКРІПЛЕННЯ ФАЙЛІВ */}
-              <div
-                style={{
-                  background: isDarkMode ? "#2d2f2a" : "#fff",
-                  padding: 16,
-                  borderRadius: 8,
-                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
-                  marginBottom: 16,
-                }}
-              >
-                <p
-                  style={{
-                    margin: "0 0 12px",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: isDarkMode ? "#e6e4dc" : "#5c574a",
-                  }}
-                >
-                  <FileText size={16} style={{ display: "inline", marginRight: 6 }} />
-                  Прикріпити файли (PDF, Word, фото)
-                </p>
-                <input
-                  type="file"
-                  id="file-input"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={handleFileChange}
-                  style={{ display: "none" }}
-                />
-                <label
-                  htmlFor="file-input"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "10px 20px",
-                    background: "#8a8a45",
-                    color: "#fff",
-                    borderRadius: 8,
-                    fontWeight: 600,
-                    fontSize: 14,
-                    cursor: "pointer",
-                    transition: "background 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#7a7a3d";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#8a8a45";
-                  }}
-                >
-                  <Paperclip size={16} />
-                  📎 Обрати файли
-                </label>
-                {attachedFiles.length > 0 && (
-                  <div style={{ marginTop: 12 }}>
-                    <p style={{ fontSize: 13, color: "#8a8a45", marginBottom: 8 }}>
-                      Обрано файлів: {attachedFiles.length}
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      {attachedFiles.map((file, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            fontSize: 12,
-                            color: "#5c574a",
-                            padding: "4px 8px",
-                            background: "#f0ede5",
-                            borderRadius: 4,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 6,
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <FileText size={12} />
-                            {file.name}
-                          </div>
-                          <button
-                            onClick={() => handleRemoveFile(idx)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              color: "#c97a4a",
-                              padding: 2,
-                              display: "flex",
-                              alignItems: "center",
-                            }}
-                            title="Видалити файл"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 12,
-                    color: "#9a8f70",
-                  }}
-                >
-                  *Ви можете прикріпити файли та/або записати голосову відповідь
-                </p>
-
-                <button
-                  onClick={handleSendHomework}
-                  disabled={isSubmitted || isSubmitting}
-                  style={{
-                    background: isSubmitted ? "#8a8a45" : isSubmitting ? "#c97a4a" : "#3a3528",
-                    color: "#fff",
-                    border: "none",
-                    padding: "12px 24px",
-                    borderRadius: 8,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    transition: "background 0.3s",
-                  }}
-                >
-                  {isSubmitting ? "⏳ Відправлення..." : isSubmitted ? "Відправлено!" : "Надіслати на перевірку"}
-                </button>
-              </div>
-
-              {/* ІСТОРІЯ ВІДПОВІДЕЙ */}
-              {existingAnswer && (
+                {/* ІСТОРІЯ ВІДПОВІДЕЙ */}
                 <div
                   style={{
                     background: isDarkMode ? "#2d2f2a" : "#fff",
@@ -1171,10 +933,7 @@ export default function CoursePage() {
                   <p
                     style={{
                       margin: "0 0 12px",
-                      color:
-                        existingAnswer.status === "reviewed"
-                          ? "#8a8a45"
-                          : "#c97a4a",
+                      color: existingAnswer.status === "reviewed" ? "#8a8a45" : "#c97a4a",
                       fontWeight: 700,
                       display: "flex",
                       alignItems: "center",
@@ -1249,8 +1008,279 @@ export default function CoursePage() {
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: isDarkMode ? "#2d2f2a" : "#f0ede5",
+                  padding: 32,
+                  borderRadius: 12,
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+                  marginBottom: 60,
+                }}
+              >
+                <h3
+                  style={{
+                    margin: "0 0 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
+                    fontSize: 20,
+                  }}
+                >
+                  <Send size={22} color="#8a8a45" /> Практичне завдання
+                </h3>
+
+                <textarea
+                  value={homeworkText}
+                  onChange={(e) => setHomeworkText(e.target.value)}
+                  placeholder="Введіть вашу відповідь, есе або коментар до файлів тут..."
+                  rows={5}
+                  style={{
+                    width: "100%",
+                    padding: 16,
+                    borderRadius: 8,
+                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
+                    marginBottom: 16,
+                    fontFamily: "inherit",
+                    fontSize: 15,
+                    background: isDarkMode ? "#2d2f2a" : "#fff",
+                    color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
+                  }}
+                />
+
+                {/* АУДІОЗАПИС */}
+                <div
+                  style={{
+                    background: isDarkMode ? "#2d2f2a" : "#fff",
+                    padding: 16,
+                    borderRadius: 8,
+                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
+                    marginBottom: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0 0 12px",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: isDarkMode ? "rgb(250, 249, 246)" : "#5c574a",
+                    }}
+                  >
+                    <Headphones size={16} style={{ display: "inline", marginRight: 6 }} />
+                    Голосова відповідь
+                  </p>
+                  {!audioUrl ? (
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      {!isRecording ? (
+                        <button
+                          onClick={startRecording}
+                          style={{
+                            background: "#8a8a45",
+                            color: "#fff",
+                            border: "none",
+                            padding: "10px 20px",
+                            borderRadius: 6,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <Volume2 size={16} /> Почати запис
+                        </button>
+                      ) : (
+                        <button
+                          onClick={stopRecording}
+                          style={{
+                            background: "#c97a4a",
+                            color: "#fff",
+                            border: "none",
+                            padding: "10px 20px",
+                            borderRadius: 6,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <StopCircle size={16} /> Зупинити запис ({formatTime(recordingTime)})
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <audio
+                        controls
+                        style={{ width: "100%", height: "40px" }}
+                        src={audioUrl}
+                      >
+                        Ваш браузер не підтримує аудіо елемент.
+                      </audio>
+                      <button
+                        onClick={handleRerecord}
+                        style={{
+                          background: "#f0ede5",
+                          color: "#8a8a45",
+                          border: "1px solid #8a8a45",
+                          padding: "8px 16px",
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          alignSelf: "flex-start",
+                        }}
+                      >
+                        <Volume2 size={14} /> Перезаписати
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ПРИКРІПЛЕННЯ ФАЙЛІВ */}
+                <div
+                  style={{
+                    background: isDarkMode ? "#2d2f2a" : "#fff",
+                    padding: 16,
+                    borderRadius: 8,
+                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
+                    marginBottom: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0 0 12px",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: isDarkMode ? "rgb(250, 249, 246)" : "#5c574a",
+                    }}
+                  >
+                    <FileText size={16} style={{ display: "inline", marginRight: 6 }} />
+                    Прикріпити файли (PDF, Word, фото)
+                  </p>
+                  <input
+                    type="file"
+                    id="file-input"
+                    multiple
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    style={{ display: "none" }}
+                  />
+                  <label
+                    htmlFor="file-input"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 20px",
+                      background: "#8a8a45",
+                      color: "#fff",
+                      borderRadius: 8,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#7a7a3d";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "#8a8a45";
+                    }}
+                  >
+                    <Paperclip size={16} />
+                    📎 Обрати файли
+                  </label>
+                  {attachedFiles.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <p style={{ fontSize: 13, color: "#8a8a45", marginBottom: 8 }}>
+                        Обрано файлів: {attachedFiles.length}
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {attachedFiles.map((file, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              fontSize: 12,
+                              color: "#5c574a",
+                              padding: "4px 8px",
+                              background: "#f0ede5",
+                              borderRadius: 4,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 6,
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <FileText size={12} />
+                              {file.name}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveFile(idx)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#c97a4a",
+                                padding: 2,
+                                display: "flex",
+                                alignItems: "center",
+                              }}
+                              title="Видалити файл"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      color: "#9a8f70",
+                    }}
+                  >
+                    *Ви можете прикріпити файли та/або записати голосову відповідь
+                  </p>
+                  <button
+                    onClick={handleSendHomework}
+                    disabled={isSubmitted || isSubmitting}
+                    style={{
+                      background: isSubmitted ? "#8a8a45" : isSubmitting ? "#c97a4a" : "#3a3528",
+                      color: "#fff",
+                      border: "none",
+                      padding: "12px 24px",
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      transition: "background 0.3s",
+                    }}
+                  >
+                    {isSubmitting ? "⏳ Відправлення..." : isSubmitted ? "Відправлено!" : "Надіслати на перевірку"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div

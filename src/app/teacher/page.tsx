@@ -368,6 +368,14 @@ export default function TeacherDashboard() {
     }
   };
 
+  const handleRemoveAudio = () => {
+    if (!editingLesson) return;
+    setEditingLesson({
+      ...editingLesson,
+      lesson: { ...editingLesson.lesson, audioUrl: undefined } as any,
+    });
+  };
+
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editingLesson) return;
@@ -1403,9 +1411,26 @@ export default function TeacherDashboard() {
                     </p>
                   )}
                   {(editingLesson.lesson as any).audioUrl && (
-                    <p style={{ fontSize: 12, color: "#8a8a45", marginTop: 6 }}>
-                      ✓ Аудіофайл успішно прикріплено
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                      <p style={{ fontSize: 12, color: "#8a8a45", margin: 0 }}>
+                        ✓ Аудіофайл успішно прикріплено
+                      </p>
+                      <button
+                        onClick={handleRemoveAudio}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#c97a4a",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: 2,
+                        }}
+                        title="Видалити аудіофайл"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
