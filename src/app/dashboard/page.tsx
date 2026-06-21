@@ -90,7 +90,7 @@ export default function DashboardPage() {
       />
 
       {/* ОСНОВНИЙ КОНТЕНТ */}
-      <div className="mx-auto grid max-w-[1100px] grid-cols-[1fr_320px] gap-8 px-6 py-8 items-start">
+      <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-8 px-4 py-8 items-start xl:grid-cols-[1fr_320px] md:px-6">
         <div>
           <CourseList
             courses={courses}

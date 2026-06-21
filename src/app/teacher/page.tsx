@@ -518,7 +518,7 @@ export default function TeacherDashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "16px 24px",
+          padding: "12px 16px",
           borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
           background: isDarkMode ? "#2a2c27" : "#f0ede5",
         }}
@@ -526,8 +526,8 @@ export default function TeacherDashboard() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div
             style={{
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               borderRadius: 8,
               background: "#8a8a45",
               display: "flex",
@@ -535,13 +535,13 @@ export default function TeacherDashboard() {
               justifyContent: "center",
             }}
           >
-            <Shield size={20} color="#fff" />
+            <Shield size={18} color="#fff" />
           </div>
           <div>
-            <p style={{ fontSize: 16, fontWeight: 700, margin: 0, color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
+            <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
               MILITARY LMS
             </p>
-            <p style={{ fontSize: 12, margin: 0, color: isDarkMode ? "#a3a198" : "#8a8a45" }}>
+            <p style={{ fontSize: 11, margin: 0, color: isDarkMode ? "#a3a198" : "#8a8a45" }}>
               {user.role === "admin"
                 ? "Панель Адміністратора"
                 : "Панель Викладача"}
@@ -549,7 +549,7 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 24 }}>
+        <div style={{ display: "flex", gap: 16 }}>
           <button
             onClick={() => {
               setTab("answers");
@@ -558,7 +558,7 @@ export default function TeacherDashboard() {
             style={{
               background: "transparent",
               border: "none",
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: tab === "answers" ? 700 : 500,
               color: tab === "answers" ? "#8a8a45" : isDarkMode ? "#a3a198" : "#7a7568",
               cursor: "pointer",
@@ -580,8 +580,9 @@ export default function TeacherDashboard() {
               }
             }}
           >
-            <Inbox size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
-            Роботи на перевірку
+            <Inbox size={14} style={{ display: "inline", marginRight: 4 }} />{" "}
+            <span className="hidden sm:inline">Роботи на перевірку</span>
+            <span className="sm:hidden">Роботи</span>
           </button>
           {user.role === "admin" && (
             <button
@@ -592,7 +593,7 @@ export default function TeacherDashboard() {
               style={{
                 background: "transparent",
                 border: "none",
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: tab === "support" ? 700 : 500,
                 color: tab === "support" ? "#8a8a45" : "#7a7568",
                 cursor: "pointer",
@@ -612,8 +613,9 @@ export default function TeacherDashboard() {
                 }
               }}
             >
-              <LifeBuoy size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
-              Служба підтримки
+              <LifeBuoy size={14} style={{ display: "inline", marginRight: 4 }} />{" "}
+              <span className="hidden sm:inline">Служба підтримки</span>
+              <span className="sm:hidden">Тікети</span>
             </button>
           )}
           <button
@@ -624,9 +626,9 @@ export default function TeacherDashboard() {
             style={{
               background: "transparent",
               border: "none",
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: tab === "users" ? 700 : 500,
-              color: tab === "users" ? "#8a8a45" : "#7a7568",
+              color: tab === "users" ? "#8a8a45" : isDarkMode ? "#a3a198" : "#7a7568",
               cursor: "pointer",
               borderBottom:
                 tab === "users" ? "2px solid #8a8a45" : "2px solid transparent",
@@ -644,8 +646,9 @@ export default function TeacherDashboard() {
               }
             }}
           >
-            <Users size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
-            Керування доступом
+            <Users size={14} style={{ display: "inline", marginRight: 4 }} />{" "}
+            <span className="hidden sm:inline">Керування доступом</span>
+            <span className="sm:hidden">Користувачі</span>
           </button>
           <button
             onClick={() => {
@@ -655,9 +658,9 @@ export default function TeacherDashboard() {
             style={{
               background: "transparent",
               border: "none",
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: tab === "editor" ? 700 : 500,
-              color: tab === "editor" ? "#8a8a45" : "#7a7568",
+              color: tab === "editor" ? "#8a8a45" : isDarkMode ? "#a3a198" : "#7a7568",
               cursor: "pointer",
               borderBottom:
                 tab === "editor"
@@ -677,8 +680,9 @@ export default function TeacherDashboard() {
               }
             }}
           >
-            <Edit3 size={16} style={{ display: "inline", marginRight: 6 }} />{" "}
-            Редактор курсів
+            <Edit3 size={14} style={{ display: "inline", marginRight: 4 }} />{" "}
+            <span className="hidden sm:inline">Редактор курсів</span>
+            <span className="sm:hidden">Редактор</span>
           </button>
         </div>
 
@@ -2803,7 +2807,8 @@ export default function TeacherDashboard() {
                 overflow: "hidden",
               }}
             >
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="overflow-x-auto">
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                 <thead>
                   <tr
                     style={{
@@ -3109,6 +3114,7 @@ export default function TeacherDashboard() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}

@@ -55,7 +55,7 @@ export default function LoginPage() {
       {/* ЛІВА ЧАСТИНА: Інформаційна панель (зникає на малих екранах) */}
       <div className="hidden flex-col items-center justify-center bg-[#4a4a35] p-10 text-center text-[#f0e9d8] md:flex">
         <img
-          src="/logo.jpg"
+          src="/logo.png"
           alt="Емблема кафедри"
           className="mb-6 h-auto w-40 rounded-lg"
         />
@@ -63,8 +63,7 @@ export default function LoginPage() {
           MILITARY LMS
         </h1>
         <p className="mb-8 max-w-[400px] text-[18px] leading-relaxed text-[#d8cdb4]">
-          Комплексна платформа для підготовки військовослужбовців до складання
-          іспиту STANAG 6001.
+          Глобальна взаємосумісність починається тут. <br /> Сучасна платформа для вивчення англійської мови: <br /> для військової кар'єри, міжнародних місій та життя.
         </p>
 
         {/* Місце під шеврони або додаткові логотипи */}
@@ -84,6 +83,18 @@ export default function LoginPage() {
       {/* ПРАВА ЧАСТИНА: Форма входу */}
       <div className="flex flex-1 items-center justify-center p-5">
         <div className="w-full max-w-[400px] rounded-2xl border border-[#d8cdb4] bg-[#f6f1e4] p-10 shadow-[0_12px_32px_rgba(0,0,0,0.1)]">
+          {/* Mobile logo - visible only on smartphones */}
+          <div className="md:hidden flex flex-col items-center justify-center mb-8 w-full">
+            <img 
+              src="/logo.png" 
+              alt="Military LMS Logo" 
+              className="w-24 h-24 object-contain drop-shadow-xl mb-3"
+            />
+            <h1 className="text-2xl font-extrabold text-[#3a3528] tracking-wide">
+              MILITARY LMS
+            </h1>
+          </div>
+
           <div className="mb-8 text-center">
             <h2 className="mb-2 text-[24px] font-bold text-[#3a3528]">
               {isRegister ? "Створення акаунту" : "Вхід у систему"}

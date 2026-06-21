@@ -50,16 +50,16 @@ export default function CourseList({
           return (
             <div
               key={course.id}
-              className={`rounded-xl border p-6 ${
+              className={`rounded-xl border p-4 md:p-6 ${
                 isDarkMode
                   ? "bg-[#2d2f2a] border-[#3e403a]"
                   : "bg-[#f6f1e4] border-[#d8cdb4]"
               }`}
             >
-              <div className="mb-4 flex items-start justify-between">
+              <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex-1">
                   <h3
-                    className={`mb-1 text-lg font-bold ${
+                    className={`mb-1 text-base md:text-lg font-bold ${
                       isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
                     }`}
                   >
@@ -69,11 +69,11 @@ export default function CourseList({
                     {course.subtitle}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 sm:gap-3">
                   {course.status === "active" ? (
                     <button
                       onClick={() => onCourseClick(course.id)}
-                      className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200"
+                      className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200 text-sm md:text-base"
                     >
                       Продовжити
                     </button>
@@ -90,7 +90,7 @@ export default function CourseList({
                       </span>
                       <button
                         onClick={() => onCourseClick(course.id)}
-                        className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200"
+                        className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200 text-sm md:text-base"
                       >
                         Продовжити
                       </button>
@@ -134,13 +134,13 @@ export default function CourseList({
                       {[...courseAnswers].reverse().map((ans) => (
                         <div
                           key={ans.id}
-                          className={`rounded-lg border p-4 ${
+                          className={`rounded-lg border p-3 md:p-4 ${
                             isDarkMode
                               ? "bg-[#2a2c27] border-[#3e403a]"
                               : "bg-[#e9e1cd] border-[#d8cdb4]"
                           }`}
                         >
-                          <div className="mb-2 flex items-start justify-between">
+                          <div className="mb-2 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                             <div>
                               <p className="mb-1 text-xs font-semibold uppercase text-[#9a8f70]">
                                 Відповідь на урок

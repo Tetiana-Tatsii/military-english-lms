@@ -17,6 +17,7 @@ import {
   StopCircle,
   Paperclip,
   X,
+  Menu,
 } from "lucide-react";
 
 export default function CoursePage() {
@@ -62,6 +63,7 @@ export default function CoursePage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (isInitialized) {
@@ -288,6 +290,7 @@ export default function CoursePage() {
 
   return (
     <div
+      className="flex flex-col xl:flex-row"
       style={{
         display: "flex",
         height: "100vh",
@@ -302,49 +305,131 @@ export default function CoursePage() {
         .rich-text-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0; }
         .rich-text-content ul, .rich-text-content ol { padding-left: 20px; }
         .rich-text-content { break-words; whitespace-pre-wrap; word-wrap: break-word; overflow-wrap: break-word; }
+        @media (min-width: 1280px) {
+          .sidebar-desktop { position: static !important; transform: none !important; z-index: auto !important; }
+        }
+        @media (max-width: 1279px) {
+          .main-content { margin-left: 0 !important; width: 100% !important; }
+        }
       `,
         }}
       />
 
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            zIndex: 40,
+          }}
+          className="xl:hidden"
+        />
+      )}
+
+      {/* Mobile header */}
+      <div
+        className="flex justify-between items-center w-full px-4 py-2 bg-[#f0e9d8] xl:hidden"
+        style={{
+          borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+          background: isDarkMode ? "#2a2c27" : "#f0ede5",
+        }}
+      >
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: isDarkMode ? "#d8cdb4" : "#8a8a45",
+            cursor: "pointer",
+            padding: 4,
+          }}
+        >
+          <Menu size={24} />
+        </button>
+        <button
+          onClick={() => router.push("/dashboard")}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: isDarkMode ? "#d8cdb4" : "#8a8a45",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: 0,
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          <ArrowLeft size={16} /> Кабінет
+        </button>
+      </div>
+
       {/* ЛІВА ПАНЕЛЬ: НАВІГАЦІЯ */}
       <div
+        className="sidebar-desktop xl:static xl:transform-none xl:z-auto"
         style={{
           width: "320px",
           background: isDarkMode ? "#2d2f2a" : "#f0ede5",
           borderRight: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
           display: "flex",
           flexDirection: "column",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          height: "100vh",
+          zIndex: 50,
+          transform: isSidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.3s ease-in-out",
         }}
       >
-        <div style={{ padding: "24px", borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0" }}>
-          <button
-            onClick={() => router.push("/dashboard")}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: isDarkMode ? "#d8cdb4" : "#8a8a45",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: 0,
-              marginBottom: 16,
-              fontWeight: 700,
-              fontSize: 14,
-            }}
-          >
-            <ArrowLeft size={18} /> Назад до кабінету
-          </button>
+        {/* Desktop back button */}
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="hidden xl:flex items-center gap-2 px-4 py-2 mb-6 pb-4 border-b border-[#d8cdb4]"
+          style={{
+            background: isDarkMode ? "#2d2f2a" : "#f0ede5",
+            border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+            color: isDarkMode ? "#d8cdb4" : "#8a8a45",
+            cursor: "pointer",
+            fontWeight: 600,
+            fontSize: 14,
+            width: "100%",
+          }}
+        >
+          <ArrowLeft size={18} /> Повернутись до кабінету
+        </button>
+
+        <div style={{ padding: "16px 24px", borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2
             style={{
               margin: 0,
-              fontSize: 18,
+              fontSize: 16,
               lineHeight: 1.4,
               color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
             }}
           >
             {course.title}
           </h2>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: isDarkMode ? "#d8cdb4" : "#8a8a45",
+              cursor: "pointer",
+              padding: 4,
+            }}
+            className="xl:hidden"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 0" }}>
@@ -377,6 +462,7 @@ export default function CoursePage() {
                         setActiveModuleId(mod.id);
                         setActiveLessonId(les.id);
                         setFlippedCards({});
+                        setIsSidebarOpen(false);
                       }}
                       style={{
                         padding: "12px 24px 12px 32px",
@@ -433,11 +519,13 @@ export default function CoursePage() {
 
       {/* ПРАВА ПАНЕЛЬ: КОНТЕНТ УРОКУ */}
       <div
+        className="main-content flex-1 w-full"
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "40px",
+          padding: "20px 16px",
           background: isDarkMode ? "#2d2f2a" : "#fff",
+          width: "100%",
         }}
       >
         {activeLesson ? (
@@ -453,24 +541,26 @@ export default function CoursePage() {
               style={{
                 background: "#f0ede5",
                 color: "#8a8a45",
-                padding: "6px 12px",
+                padding: "4px 8px",
                 borderRadius: 6,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: 700,
                 textTransform: "uppercase",
-                marginBottom: 16,
+                marginBottom: 12,
                 display: "inline-block",
               }}
+              className="md:padding-[6px_12px] md:fontSize-[12px] md:marginBottom-[16px]"
             >
               Skill: {activeLesson.skill}
             </span>
             <h1
               style={{
-                fontSize: 32,
-                margin: "0 0 32px",
+                fontSize: 24,
+                margin: "0 0 20px",
                 color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
                 fontWeight: 800,
               }}
+              className="md:fontSize-[32px] md:margin-[0_0_32px]"
             >
               {activeLesson.title}
             </h1>
@@ -480,29 +570,31 @@ export default function CoursePage() {
               <div
                 style={{
                   background: "#faf9f6",
-                  padding: 32,
+                  padding: 20,
                   borderRadius: 12,
                   border: "1px solid #e0dcd0",
-                  marginBottom: 40,
+                  marginBottom: 24,
                 }}
+                className="md:padding-[32px] md:marginBottom-[40px]"
               >
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    marginBottom: 20,
+                    marginBottom: 16,
                     color: "#8a8a45",
                     fontWeight: 700,
-                    fontSize: 18,
+                    fontSize: 16,
                   }}
+                  className="md:marginBottom-[20px] md:fontSize-[18px]"
                 >
-                  <FileText size={22} /> Теоретичний матеріал
+                  <FileText size={20} className="md:size-[22px]" /> Теоретичний матеріал
                 </div>
                 <div
-                  className="rich-text-content"
+                  className="rich-text-content md:fontSize-[16px] md:lineHeight-[1.8]"
                   dangerouslySetInnerHTML={{ __html: activeLesson.content }}
-                  style={{ fontSize: 16, lineHeight: 1.8, color: "#4a4a4a" }}
+                  style={{ fontSize: 14, lineHeight: 1.6, color: "#4a4a4a" }}
                 />
               </div>
             )}
@@ -513,7 +605,7 @@ export default function CoursePage() {
                 <div
                   style={{
                     background: "#fdf8f5",
-                    padding: 32,
+                    padding: 20,
                     borderRadius: 12,
                     border: "1px solid #facbce",
                     marginBottom: 40,

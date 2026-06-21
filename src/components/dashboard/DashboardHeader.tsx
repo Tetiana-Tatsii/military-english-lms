@@ -24,19 +24,19 @@ export default function DashboardHeader({
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   return (
     <div
-      className={`flex items-center justify-between border-b px-6 py-4 ${
+      className={`flex items-center justify-between border-b px-4 py-3 md:px-6 md:py-4 ${
         isDarkMode
           ? "bg-[#2a2c27] border-[#3e403a]"
           : "bg-[#f6f1e4] border-[#d8cdb4]"
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#8a8a45]">
-          <Shield size={20} color="#f6f1e4" />
+        <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-lg bg-[#8a8a45]">
+          <Shield size={18} color="#f6f1e4" />
         </div>
         <div>
           <p
-            className={`text-base font-semibold ${
+            className={`text-sm md:text-base font-semibold ${
               isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
             }`}
           >
@@ -50,7 +50,7 @@ export default function DashboardHeader({
       <div className="relative">
         <div
           onClick={onProfileToggle}
-          className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors ${
+          className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 md:px-3 md:py-1.5 transition-colors ${
             isProfileOpen
               ? isDarkMode
                 ? "bg-[#3e403a]"
@@ -60,7 +60,7 @@ export default function DashboardHeader({
         >
           <div className="text-right">
             <span
-              className={`block text-sm font-semibold ${
+              className={`block text-xs md:text-sm font-semibold ${
                 isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
               }`}
             >
@@ -68,7 +68,7 @@ export default function DashboardHeader({
             </span>
           </div>
           <ChevronDown
-            size={16}
+            size={14}
             color="#8a8a45"
             style={{
               transform: isProfileOpen ? "rotate(180deg)" : "none",
@@ -80,7 +80,7 @@ export default function DashboardHeader({
         {/* ВИПАДАЮЧЕ МЕНЮ */}
         {isProfileOpen && (
           <div
-            className={`absolute right-0 top-[110%] w-[220px] rounded-xl border p-2 shadow-lg ${
+            className={`absolute right-0 top-[110%] w-[200px] md:w-[220px] rounded-xl border p-2 shadow-lg ${
               isDarkMode
                 ? "bg-[#2d2f2a] border-[#3e403a]"
                 : "bg-white border-[#d8cdb4]"
@@ -89,26 +89,26 @@ export default function DashboardHeader({
           >
             <button
               onClick={onDarkModeToggle}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-black/5"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs md:text-sm font-medium transition-colors hover:bg-black/5"
               style={{
                 color: isDarkMode ? "#a3a198" : "#5a5440",
               }}
             >
               {isDarkMode ? (
-                <Sun size={16} color="#c79a3e" />
+                <Sun size={14} color="#c79a3e" />
               ) : (
-                <Moon size={16} color="#8a8a45" />
+                <Moon size={14} color="#8a8a45" />
               )}
               <span>{isDarkMode ? "Світла тема" : "Темна тема"}</span>
             </button>
             <button
               onClick={() => setIsSupportModalOpen(true)}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-black/5"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs md:text-sm font-medium transition-colors hover:bg-black/5"
               style={{
                 color: isDarkMode ? "#a3a198" : "#5a5440",
               }}
             >
-              <LifeBuoy size={16} color="#8a8a45" />
+              <LifeBuoy size={14} color="#8a8a45" />
               <span>Підтримка</span>
             </button>
             <hr
@@ -118,13 +118,13 @@ export default function DashboardHeader({
             />
             <button
               onClick={onLogout}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-black/5"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs md:text-sm font-semibold transition-colors hover:bg-black/5"
               style={{
                 background: isDarkMode ? "#3a1a1a" : "#fdeced",
                 color: isDarkMode ? "#ff6b6b" : "#c97a4a",
               }}
             >
-              <LogOut size={16} />
+              <LogOut size={14} />
               <span>Вихід</span>
             </button>
           </div>
