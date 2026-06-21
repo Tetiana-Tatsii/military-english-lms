@@ -338,7 +338,7 @@ function AnswerPanel({
           border: isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4",
           padding: 12,
           fontSize: 14,
-          color: isDarkMode ? "#e6e4dc" : "#3a3528",
+          color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
           marginBottom: 16,
           resize: "vertical",
           background: isDarkMode ? "#2d2f2a" : "#fff",
@@ -405,7 +405,7 @@ function AnswerPanel({
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  color: isDarkMode ? "#e6e4dc" : "#5a5440",
+                  color: isDarkMode ? "rgb(250, 249, 246)" : "#5a5440",
                 }}
               >
                 <Paperclip size={14} /> {file.name}
@@ -434,7 +434,7 @@ function AnswerPanel({
             style={{
               flex: 1,
               background: isRecording ? "#fdeced" : (isDarkMode ? "#2d2f2a" : "#fff"),
-              color: isRecording ? "#c97a4a" : (isDarkMode ? "#e6e4dc" : "#3a3528"),
+              color: isRecording ? "#c97a4a" : (isDarkMode ? "rgb(250, 249, 246)" : "#3a3528"),
               border: isRecording ? "1px solid #c97a4a" : (isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4"),
               borderRadius: 8,
               padding: "10px",
@@ -469,7 +469,7 @@ function AnswerPanel({
           style={{
             flex: 1,
             background: isDarkMode ? "#2d2f2a" : "#fff",
-            color: isDarkMode ? "#e6e4dc" : "#3a3528",
+            color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
             border: isDarkMode ? "1px solid #3e403a" : "0.5px solid #d8cdb4",
             borderRadius: 8,
             padding: "10px",
@@ -809,7 +809,7 @@ export default function LessonPage() {
                   lineHeight: 1.6,
                   resize: "vertical",
                   background: isDarkMode ? "#2d2f2a" : "#fff",
-                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
+                  color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
                 }}
               />
             </div>

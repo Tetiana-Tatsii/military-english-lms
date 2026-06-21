@@ -262,7 +262,7 @@ export default function CoursePage() {
       style={{
         display: "flex",
         height: "100vh",
-        background: isDarkMode ? "#1c1d1a" : "#faf9f6",
+        background: isDarkMode ? "#2d2f2a" : "#faf9f6",
         color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
         fontFamily: "system-ui, sans-serif",
       }}

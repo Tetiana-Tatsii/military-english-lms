@@ -261,23 +261,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const saveCourseToSupabase = async (course: Course) => {
     try {
-      const { error } = await supabase
-        .from("lms_courses")
-        .upsert({
-          id: course.id,
-          title: course.title,
-          subtitle: course.subtitle,
-          description: course.description,
-          status: course.status,
-          modules: course.modules,
-          final_test: course.finalTest,
-        });
+      const courseToSave = {
+        id: course.id,
+        title: course.title || "",
+        subtitle: course.subtitle || "",
+        description: course.description || "",
+        modules: course.modules || []
+      };
+
+      const { data, error } = await supabase
+        .from('lms_courses')
+        .upsert(courseToSave)
+        .select();
 
       if (error) {
-        console.error("Помилка збереження курсу в Supabase:", error);
+        console.error("Помилка Supabase при збереженні курсу:", error);
+        throw error;
       }
     } catch (error) {
       console.error("Помилка при збереженні курсу:", error);
+      throw error;
     }
   };
 
@@ -654,7 +657,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     // Зберігаємо відповідь в Supabase
-    await saveAnswerToSupabase(newAnswer);
+    const { data, error } = await supabase
+      .from('student_answers')
+      .insert([{
+        student_name: user?.name || "Курсант",
+        course_id: answerData.courseId,
+        lesson_id: answerData.lessonId,
+        text_answer: answerData.text || "",
+        audio_url: audioUrl || null,
+        attachments: [...(answerData.attachments || []), ...(fileUrls || [])],
+        status: 'pending'
+      }])
+      .select();
+
+    if (error) {
+      console.error("Помилка Supabase при збереженні:", error);
+      throw error;
+    }
   };
 
   const provideFeedback = async (
@@ -677,16 +696,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ),
     );
 
-    // Зберігаємо оновлену відповідь в Supabase
-    const updatedAnswer = answers.find((ans) => ans.id === answerId);
-    if (updatedAnswer) {
-      await saveAnswerToSupabase({
-        ...updatedAnswer,
-        teacherFeedbackText: feedbackText,
-        teacherFeedbackAudio: feedbackAudio,
-        score,
-        status: "reviewed",
-      });
+    // Зберігаємо оновлену відповідь в Supabase з правильними колонками
+    const { error } = await supabase
+      .from('student_answers')
+      .update({
+        score: score,
+        teacher_feedback: feedbackText,
+        status: 'reviewed'
+      })
+      .eq('id', answerId);
+
+    if (error) {
+      console.error("Помилка Supabase при збереженні фідбеку:", error);
+      throw error;
     }
   };
 
