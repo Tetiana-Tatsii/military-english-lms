@@ -477,6 +477,41 @@ export default function TeacherDashboard() {
         color: isDarkMode ? "#e6e4dc" : "#4a4a4a",
       }}
     >
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        /* Темна тема для ReactQuill */
+        .dark-quill .ql-toolbar.ql-snow {
+          background: #252622;
+          border-color: #3e403a;
+        }
+        .dark-quill .ql-container.ql-snow {
+          background: #2d2f2a;
+          border-color: #3e403a;
+        }
+        .dark-quill .ql-editor {
+          color: rgb(250, 249, 246);
+        }
+        .dark-quill .ql-editor::before {
+          color: #9a8f70;
+        }
+        .dark-quill .ql-snow .ql-stroke {
+          stroke: #d8cdb4;
+        }
+        .dark-quill .ql-snow .ql-fill,
+        .dark-quill .ql-snow .ql-stroke.ql-fill {
+          fill: #d8cdb4;
+        }
+        .dark-quill .ql-snow .ql-picker {
+          color: #d8cdb4;
+        }
+        .dark-quill .ql-snow .ql-picker-options {
+          background-color: #2d2f2a;
+          border-color: #3e403a;
+        }
+      `,
+        }}
+      />
       {/* ВЕРХНЯ ПАНЕЛЬ */}
       <div
         style={{
@@ -1552,20 +1587,14 @@ export default function TeacherDashboard() {
                     fontWeight: 700,
                     color: "#8a8a45",
                     marginBottom: 8,
-                    display: "block",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
                   }}
                 >
                   <FileText size={18} /> Основний текст / Reading
                 </label>
-                <div
-                  style={{
-                    background: isDarkMode ? "#2d2f2a" : "#fff",
-                    borderRadius: 8,
-                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
-                    overflow: "hidden",
-                  }}
-                >
-                  <ReactQuill
+                <ReactQuill
                     theme="snow"
                     modules={quillModules}
                     value={editingLesson.lesson.content}
@@ -1576,8 +1605,8 @@ export default function TeacherDashboard() {
                       })
                     }
                     style={{ height: "220px" }}
+                    className={isDarkMode ? "dark-quill" : ""}
                   />
-                </div>
               </div>
 
               {/* ГРАМАТИКА */}
@@ -1588,35 +1617,29 @@ export default function TeacherDashboard() {
                     fontWeight: 700,
                     color: "#c97a4a",
                     marginBottom: 8,
-                    display: "block",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
                   }}
                 >
                   <BookOpen size={18} /> Граматичний довідник
                 </label>
-                <div
-                  style={{
-                    background: "#fdf8f5",
-                    borderRadius: 8,
-                    border: "1px solid #facbce",
-                    overflow: "hidden",
-                  }}
-                >
-                  <ReactQuill
-                    theme="snow"
-                    modules={quillModules}
-                    value={(editingLesson.lesson as any).grammarContent || ""}
-                    onChange={(val: string) =>
-                      setEditingLesson({
-                        ...editingLesson,
-                        lesson: {
-                          ...editingLesson.lesson,
-                          grammarContent: val,
-                        } as any,
-                      })
-                    }
-                    style={{ height: "160px" }}
-                  />
-                </div>
+                <ReactQuill
+                  theme="snow"
+                  modules={quillModules}
+                  value={(editingLesson.lesson as any).grammarContent || ""}
+                  onChange={(val: string) =>
+                    setEditingLesson({
+                      ...editingLesson,
+                      lesson: {
+                        ...editingLesson.lesson,
+                        grammarContent: val,
+                      } as any,
+                    })
+                  }
+                  style={{ height: "160px" }}
+                  className={isDarkMode ? "dark-quill" : ""}
+                />
               </div>
 
               {/* ІНСТРУКЦІЯ ДО ДОМАШНЬОГО ЗАВДАННЯ */}
@@ -1659,12 +1682,12 @@ export default function TeacherDashboard() {
                     minHeight: 120,
                     padding: 12,
                     borderRadius: 8,
-                    border: "1px solid #d8cdb4",
+                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
                     fontSize: 14,
                     lineHeight: 1.6,
                     resize: "vertical",
                     background: isDarkMode ? "#2d2f2a" : "#fff",
-                    color: isDarkMode ? "#e6e4dc" : "#3a3528",
+                    color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
                   }}
                 />
               </div>
@@ -2456,6 +2479,8 @@ export default function TeacherDashboard() {
                                 fontSize: 14,
                                 minHeight: 80,
                                 resize: "vertical",
+                                background: isDarkMode ? "#2d2f2a" : "#fff",
+                                color: "#3a3528",
                               }}
                             />
                           </div>
@@ -3213,7 +3238,7 @@ export default function TeacherDashboard() {
                   fontFamily: "inherit",
                   lineHeight: 1.6,
                   background: isDarkMode ? "#2d2f2a" : "#fff",
-                  color: isDarkMode ? "#e6e4dc" : "#3a3528",
+                  color: "#3a3528",
                   resize: "vertical",
                 }}
               />

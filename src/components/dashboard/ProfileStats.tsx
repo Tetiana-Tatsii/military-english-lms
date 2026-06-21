@@ -15,17 +15,10 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
     const myAnswers = answers.filter((a) => a.studentName === user?.name && a.status === "reviewed");
     
     const skillScores = {
-      listening: 0,
-      speaking: 0,
-      reading: 0,
-      writing: 0,
-    };
-    
-    const skillCounts = {
-      listening: 0,
-      speaking: 0,
-      reading: 0,
-      writing: 0,
+      listening: [] as number[],
+      speaking: [] as number[],
+      reading: [] as number[],
+      writing: [] as number[],
     };
 
     myAnswers.forEach((answer) => {
@@ -34,35 +27,89 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
 
       for (const mod of course.modules) {
         const lesson = mod.lessons.find((l) => l.id === answer.lessonId);
-        if (lesson && lesson.skill && lesson.skill !== "mixed") {
+        if (lesson) {
           const score = answer.score || 0;
-          skillScores[lesson.skill] += score;
-          skillCounts[lesson.skill]++;
+          const skill = lesson.skill?.toLowerCase() || "";
+          
+          // Додаємо оцінку за ДЗ
+          addScoreToSkills(skillScores, skill, score);
         }
       }
     });
 
+    // Додаємо оцінки за практичні тести з localStorage
+    courses.forEach((course) => {
+      course.modules.forEach((mod) => {
+        mod.lessons.forEach((lesson) => {
+          const quizResultKey = `quiz_${user?.name}_${lesson.id}`;
+          const savedResult = localStorage.getItem(quizResultKey);
+          if (savedResult) {
+            try {
+              const parsed = JSON.parse(savedResult);
+              if (parsed.submitted && parsed.score !== undefined) {
+                const skill = lesson.skill?.toLowerCase() || "";
+                // Додаємо оцінку за тест
+                addScoreToSkills(skillScores, skill, parsed.score);
+              }
+            } catch (error) {
+              console.error("Помилка при завантаженні результату тесту:", error);
+            }
+          }
+        });
+      });
+    });
+
     // Обчислюємо середні бали для кожного навику
+    const calculateAverage = (scores: number[]) => {
+      if (scores.length === 0) return 0;
+      return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+    };
+
     const skills = [
       {
         label: "Listening",
-        val: skillCounts.listening > 0 ? Math.round(skillScores.listening / skillCounts.listening) : 0,
+        val: calculateAverage(skillScores.listening),
       },
       {
         label: "Speaking",
-        val: skillCounts.speaking > 0 ? Math.round(skillScores.speaking / skillCounts.speaking) : 0,
+        val: calculateAverage(skillScores.speaking),
       },
       {
         label: "Reading",
-        val: skillCounts.reading > 0 ? Math.round(skillScores.reading / skillCounts.reading) : 0,
+        val: calculateAverage(skillScores.reading),
       },
       {
         label: "Writing",
-        val: skillCounts.writing > 0 ? Math.round(skillScores.writing / skillCounts.writing) : 0,
+        val: calculateAverage(skillScores.writing),
       },
     ];
 
     return skills;
+  };
+
+  // Допоміжна функція для додавання оцінки до відповідних навичок
+  const addScoreToSkills = (skillScores: any, skill: string, score: number) => {
+    // Якщо skill порожній або "mixed", додаємо до всіх категорій
+    if (!skill || skill === "mixed") {
+      skillScores.listening.push(score);
+      skillScores.speaking.push(score);
+      skillScores.reading.push(score);
+      skillScores.writing.push(score);
+    } else {
+      // Перевіряємо чи містить skill назву навички
+      if (skill.includes("listening")) {
+        skillScores.listening.push(score);
+      }
+      if (skill.includes("speaking")) {
+        skillScores.speaking.push(score);
+      }
+      if (skill.includes("reading")) {
+        skillScores.reading.push(score);
+      }
+      if (skill.includes("writing")) {
+        skillScores.writing.push(score);
+      }
+    }
   };
 
   const skills = calculateSkillScores();

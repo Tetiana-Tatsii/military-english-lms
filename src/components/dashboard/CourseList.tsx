@@ -57,7 +57,7 @@ export default function CourseList({
               }`}
             >
               <div className="mb-4 flex items-start justify-between">
-                <div>
+                <div className="flex-1">
                   <h3
                     className={`mb-1 text-lg font-bold ${
                       isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
@@ -69,24 +69,34 @@ export default function CourseList({
                     {course.subtitle}
                   </p>
                 </div>
-                {course.status === "active" ? (
-                  <button
-                    onClick={() => onCourseClick(course.id)}
-                    className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200"
-                  >
-                    Продовжити
-                  </button>
-                ) : (
-                  <span
-                    className={`rounded px-3 py-1.5 text-xs font-semibold ${
-                      isDarkMode
-                        ? "bg-[#3e403a] text-[#a3a198]"
-                        : "bg-[#e9e1cd] text-[#9a8f70]"
-                    }`}
-                  >
-                    У РОЗРОБЦІ
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  {course.status === "active" ? (
+                    <button
+                      onClick={() => onCourseClick(course.id)}
+                      className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200"
+                    >
+                      Продовжити
+                    </button>
+                  ) : (
+                    <>
+                      <span
+                        className={`rounded px-3 py-1.5 text-xs font-semibold ${
+                          isDarkMode
+                            ? "bg-[#3e403a] text-[#a3a198]"
+                            : "bg-[#e9e1cd] text-[#9a8f70]"
+                        }`}
+                      >
+                        У РОЗРОБЦІ
+                      </span>
+                      <button
+                        onClick={() => onCourseClick(course.id)}
+                        className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200"
+                      >
+                        Продовжити
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {course.status === "active" && (

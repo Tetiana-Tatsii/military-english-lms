@@ -112,6 +112,26 @@ export default function CoursePage() {
     (l) => l.id === activeLessonId,
   );
 
+  // Перевірка чи тест вже був зданий при завантаженні уроку
+  useEffect(() => {
+    if (user && activeLesson) {
+      const quizResultKey = `quiz_${user.name}_${activeLesson.id}`;
+      const savedResult = localStorage.getItem(quizResultKey);
+      if (savedResult) {
+        try {
+          const parsed = JSON.parse(savedResult);
+          if (parsed.submitted) {
+            setQuizSubmitted(true);
+            setQuizScore(parsed.score);
+            setQuizAnswers(parsed.answers);
+          }
+        } catch (error) {
+          console.error("Помилка при завантаженні результату тесту:", error);
+        }
+      }
+    }
+  }, [user, activeLesson]);
+
   const existingAnswer = answers.find(
     (a) => a.lessonId === activeLessonId && a.studentName === user.name,
   );
@@ -137,7 +157,7 @@ export default function CoursePage() {
   };
 
   const handleQuizSubmit = () => {
-    if (!activeLesson?.quiz) return;
+    if (!activeLesson?.quiz || !user) return;
     
     let correctCount = 0;
     activeLesson.quiz.forEach((question) => {
@@ -149,6 +169,15 @@ export default function CoursePage() {
     const score = Math.round((correctCount / activeLesson.quiz.length) * 100);
     setQuizScore(score);
     setQuizSubmitted(true);
+    
+    // Зберігаємо результат тесту в localStorage
+    const quizResultKey = `quiz_${user.name}_${activeLesson.id}`;
+    localStorage.setItem(quizResultKey, JSON.stringify({
+      submitted: true,
+      score: score,
+      answers: quizAnswers,
+      timestamp: new Date().toISOString()
+    }));
   };
 
   const startRecording = async () => {
@@ -272,6 +301,7 @@ export default function CoursePage() {
           __html: `
         .rich-text-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0; }
         .rich-text-content ul, .rich-text-content ol { padding-left: 20px; }
+        .rich-text-content { break-words; whitespace-pre-wrap; word-wrap: break-word; overflow-wrap: break-word; }
       `,
         }}
       />
@@ -292,7 +322,7 @@ export default function CoursePage() {
             style={{
               background: "transparent",
               border: "none",
-              color: "#8a8a45",
+              color: isDarkMode ? "#d8cdb4" : "#8a8a45",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -310,7 +340,7 @@ export default function CoursePage() {
               margin: 0,
               fontSize: 18,
               lineHeight: 1.4,
-              color: "#3a3528",
+              color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
             }}
           >
             {course.title}
@@ -384,7 +414,7 @@ export default function CoursePage() {
                         style={{
                           fontSize: 14,
                           fontWeight: isActive ? 700 : 500,
-                          color: isActive ? "#3a3528" : "#5c574a",
+                          color: isActive ? (isDarkMode ? "rgb(250, 249, 246)" : "#3a3528") : (isDarkMode ? "#d8cdb4" : "#5c574a"),
                         }}
                       >
                         <span style={{ opacity: 0.6, marginRight: 4 }}>
@@ -438,7 +468,7 @@ export default function CoursePage() {
               style={{
                 fontSize: 32,
                 margin: "0 0 32px",
-                color: "#3a3528",
+                color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
                 fontWeight: 800,
               }}
             >
@@ -514,20 +544,11 @@ export default function CoursePage() {
 
             {/* 4. ФОТО УРОКУ */}
             {activeLesson.imageUrl && (
-              <div
-                style={{
-                  marginBottom: 40,
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  border: "1px solid #e0dcd0",
-                }}
-              >
-                <img
-                  src={activeLesson.imageUrl}
-                  alt="Матеріал до уроку"
-                  style={{ width: "100%", height: "auto", display: "block" }}
-                />
-              </div>
+              <img
+                src={activeLesson.imageUrl}
+                alt="Матеріал до уроку"
+                className="w-full max-w-2xl h-auto rounded-lg mb-6"
+              />
             )}
 
             {/* 5. АУДІО ПЛЕЄР */}
@@ -664,7 +685,7 @@ export default function CoursePage() {
                 <h3
                   style={{
                     fontSize: 20,
-                    color: "#3a3528",
+                    color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
                     marginBottom: 20,
                     fontWeight: 700,
                   }}
@@ -686,8 +707,8 @@ export default function CoursePage() {
                       style={{
                         height: "120px",
                         background: flippedCards[index] ? (isDarkMode ? "#2a2c27" : "#e0dcd0") : (isDarkMode ? "#2d2f2a" : "#fff"),
-                        color: "#3a3528",
-                        border: "1px solid #e0dcd0",
+                        color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
+                        border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                         borderRadius: 12,
                         display: "flex",
                         alignItems: "center",
@@ -737,17 +758,17 @@ export default function CoursePage() {
             {activeLesson.quiz && activeLesson.quiz.length > 0 && (
               <div
                 style={{
-                  background: "#faf9f6",
+                  background: isDarkMode ? "#2d2f2a" : "#faf9f6",
                   padding: 32,
                   borderRadius: 12,
-                  border: "1px solid #e0dcd0",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
                   marginBottom: 40,
                 }}
               >
                 <h3
                   style={{
                     fontSize: 20,
-                    color: "#3a3528",
+                    color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
                     marginBottom: 20,
                     fontWeight: 700,
                     display: "flex",
@@ -758,23 +779,29 @@ export default function CoursePage() {
                   <CheckCircle size={22} color="#8a8a45" /> Практичний тест
                 </h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                  {activeLesson.quiz.map((question, index) => (
-                    <div key={question.id}>
-                      <p
-                        style={{
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: "#3a3528",
-                          marginBottom: 12,
-                        }}
-                      >
-                        {index + 1}. {question.text}
-                      </p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {question.options.map((option, optIndex) => (
-                          <label
-                            key={optIndex}
-                            style={{
+                  {activeLesson.quiz.map((question, index) => {
+                    const userAnswer = quizAnswers[question.id];
+                    const isCorrect = userAnswer === question.correctAnswer;
+                    const showFeedback = quizSubmitted;
+                    
+                    return (
+                      <div key={question.id}>
+                        <p
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 600,
+                            color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
+                            marginBottom: 12,
+                          }}
+                        >
+                          {index + 1}. {question.text}
+                        </p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {question.options.map((option, optIndex) => {
+                            const isSelected = userAnswer === option;
+                            const isOptionCorrect = option === question.correctAnswer;
+                            
+                            let optionStyle = {
                               display: "flex",
                               alignItems: "center",
                               gap: 12,
@@ -782,27 +809,66 @@ export default function CoursePage() {
                               background: isDarkMode ? "#2d2f2a" : "#fff",
                               borderRadius: 8,
                               border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
-                              cursor: "pointer",
+                              cursor: quizSubmitted ? "default" : "pointer",
                               transition: "all 0.2s",
-                            }}
-                          >
-                            <input
-                              type="radio"
-                              name={`question-${question.id}`}
-                              value={option}
-                              checked={quizAnswers[question.id] === option}
-                              onChange={(e) => handleQuizAnswerChange(question.id, e.target.value)}
-                              disabled={quizSubmitted}
-                              style={{ width: 18, height: 18, accentColor: "#8a8a45" }}
-                            />
-                            <span style={{ fontSize: 15, color: "#4a4a4a" }}>
-                              {option}
-                            </span>
-                          </label>
-                        ))}
+                            };
+                            
+                            let icon = null;
+                            let textColor = isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a";
+                            
+                            if (showFeedback) {
+                              if (isSelected && isCorrect) {
+                                optionStyle = {
+                                  ...optionStyle,
+                                  background: isDarkMode ? "rgba(34, 197, 94, 0.15)" : "#dcfce7",
+                                  border: "2px solid #22c55e",
+                                };
+                                icon = <span style={{ color: "#22c55e", fontSize: 18 }}>✅</span>;
+                                textColor = isDarkMode ? "#dcfce7" : "#14532d";
+                              } else if (isSelected && !isCorrect) {
+                                optionStyle = {
+                                  ...optionStyle,
+                                  background: isDarkMode ? "rgba(239, 68, 68, 0.15)" : "#fee2e2",
+                                  border: "2px solid #ef4444",
+                                };
+                                icon = <span style={{ color: "#ef4444", fontSize: 18 }}>❌</span>;
+                                textColor = isDarkMode ? "#fee2e2" : "#7f1d1d";
+                              } else if (isOptionCorrect) {
+                                optionStyle = {
+                                  ...optionStyle,
+                                  background: isDarkMode ? "rgba(34, 197, 94, 0.15)" : "#dcfce7",
+                                  border: "2px solid #22c55e",
+                                };
+                                icon = <span style={{ color: "#22c55e", fontSize: 18 }}>✅</span>;
+                                textColor = isDarkMode ? "#dcfce7" : "#14532d";
+                              }
+                            }
+                            
+                            return (
+                              <label
+                                key={optIndex}
+                                style={optionStyle}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`question-${question.id}`}
+                                  value={option}
+                                  checked={quizAnswers[question.id] === option}
+                                  onChange={(e) => handleQuizAnswerChange(question.id, e.target.value)}
+                                  disabled={quizSubmitted}
+                                  style={{ width: 18, height: 18, accentColor: "#8a8a45" }}
+                                />
+                                <span style={{ fontSize: 15, color: textColor, flex: 1 }}>
+                                  {option}
+                                </span>
+                                {icon}
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {!quizSubmitted ? (
                   <button
@@ -841,7 +907,16 @@ export default function CoursePage() {
                         color: "#8a8a45",
                       }}
                     >
-                      Ваш результат: {quizScore}%
+                      Практичний тест пройдено
+                    </p>
+                    <p
+                      style={{
+                        margin: "8px 0 0",
+                        fontSize: 15,
+                        color: "#6b6b3a",
+                      }}
+                    >
+                      {quizScore}% ({Math.round(((quizScore || 0) / 100) * activeLesson.quiz.length)}/{activeLesson.quiz.length} правильних відповідей)
                     </p>
                   </div>
                 )}
@@ -852,17 +927,17 @@ export default function CoursePage() {
             {activeLesson.homeworkInstruction && (
               <div
                 style={{
-                  background: "#fdf8f5",
+                  background: isDarkMode ? "#2d2f2a" : "#fdf8f5",
                   padding: 32,
                   borderRadius: 12,
-                  border: "1px solid #facbce",
+                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #facbce",
                   marginBottom: 40,
                 }}
               >
                 <h3
                   style={{
                     fontSize: 20,
-                    color: "#c97a4a",
+                    color: isDarkMode ? "#dcfce7" : "#c97a4a",
                     marginBottom: 20,
                     fontWeight: 700,
                     display: "flex",
@@ -876,7 +951,7 @@ export default function CoursePage() {
                   style={{
                     fontSize: 16,
                     lineHeight: 1.8,
-                    color: "#4a4a4a",
+                    color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
                     whiteSpace: "pre-wrap",
                   }}
                 >
