@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
+import { supabase } from "../../lib/supabase";
 
 interface ProfileStatsProps {
   isDarkMode: boolean;
@@ -9,110 +10,56 @@ interface ProfileStatsProps {
 
 export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
   const { user, answers, courses } = useAppContext();
+  const [slpMetrics, setSlpMetrics] = useState({
+    listening: 0,
+    speaking: 0,
+    reading: 0,
+    writing: 0,
+  });
 
-  // Обчислюємо бали для кожного навику на основі оцінок за пройдені уроки
-  const calculateSkillScores = () => {
-    const myAnswers = answers.filter((a) => a.studentName === user?.name && a.status === "reviewed");
-    
-    const skillScores = {
-      listening: [] as number[],
-      speaking: [] as number[],
-      reading: [] as number[],
-      writing: [] as number[],
-    };
+  // Load SLP metrics from Supabase (always fetch fresh data on mount)
+  useEffect(() => {
+    if (user?.id) {
+      const loadSlpMetrics = async () => {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("slp_listening, slp_speaking, slp_reading, slp_writing")
+          .eq("id", user.id)
+          .single();
 
-    myAnswers.forEach((answer) => {
-      const course = courses.find((c) => c.id === answer.courseId);
-      if (!course) return;
-
-      for (const mod of course.modules) {
-        const lesson = mod.lessons.find((l) => l.id === answer.lessonId);
-        if (lesson) {
-          const score = answer.score || 0;
-          const skill = lesson.skill?.toLowerCase() || "";
-          
-          // Додаємо оцінку за ДЗ
-          addScoreToSkills(skillScores, skill, score);
+        if (!error && data) {
+          setSlpMetrics({
+            listening: data.slp_listening || 0,
+            speaking: data.slp_speaking || 0,
+            reading: data.slp_reading || 0,
+            writing: data.slp_writing || 0,
+          });
+        } else if (error) {
+          console.error("Error loading SLP metrics:", error);
         }
-      }
-    });
-
-    // Додаємо оцінки за практичні тести з localStorage
-    courses.forEach((course) => {
-      course.modules.forEach((mod) => {
-        mod.lessons.forEach((lesson) => {
-          const quizResultKey = `quiz_${user?.name}_${lesson.id}`;
-          const savedResult = localStorage.getItem(quizResultKey);
-          if (savedResult) {
-            try {
-              const parsed = JSON.parse(savedResult);
-              if (parsed.submitted && parsed.score !== undefined) {
-                const skill = lesson.skill?.toLowerCase() || "";
-                // Додаємо оцінку за тест
-                addScoreToSkills(skillScores, skill, parsed.score);
-              }
-            } catch (error) {
-              console.error("Помилка при завантаженні результату тесту:", error);
-            }
-          }
-        });
-      });
-    });
-
-    // Обчислюємо середні бали для кожного навику
-    const calculateAverage = (scores: number[]) => {
-      if (scores.length === 0) return 0;
-      return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
-    };
-
-    const skills = [
-      {
-        label: "Listening",
-        val: calculateAverage(skillScores.listening),
-      },
-      {
-        label: "Speaking",
-        val: calculateAverage(skillScores.speaking),
-      },
-      {
-        label: "Reading",
-        val: calculateAverage(skillScores.reading),
-      },
-      {
-        label: "Writing",
-        val: calculateAverage(skillScores.writing),
-      },
-    ];
-
-    return skills;
-  };
-
-  // Допоміжна функція для додавання оцінки до відповідних навичок
-  const addScoreToSkills = (skillScores: any, skill: string, score: number) => {
-    // Якщо skill порожній або "mixed", додаємо до всіх категорій
-    if (!skill || skill === "mixed") {
-      skillScores.listening.push(score);
-      skillScores.speaking.push(score);
-      skillScores.reading.push(score);
-      skillScores.writing.push(score);
-    } else {
-      // Перевіряємо чи містить skill назву навички
-      if (skill.includes("listening")) {
-        skillScores.listening.push(score);
-      }
-      if (skill.includes("speaking")) {
-        skillScores.speaking.push(score);
-      }
-      if (skill.includes("reading")) {
-        skillScores.reading.push(score);
-      }
-      if (skill.includes("writing")) {
-        skillScores.writing.push(score);
-      }
+      };
+      loadSlpMetrics();
     }
-  };
+  }, [user?.id]);
 
-  const skills = calculateSkillScores();
+  const skills = [
+    {
+      label: "Listening",
+      val: slpMetrics.listening,
+    },
+    {
+      label: "Speaking",
+      val: slpMetrics.speaking,
+    },
+    {
+      label: "Reading",
+      val: slpMetrics.reading,
+    },
+    {
+      label: "Writing",
+      val: slpMetrics.writing,
+    },
+  ];
 
   return (
     <div

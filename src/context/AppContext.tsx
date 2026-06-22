@@ -90,6 +90,7 @@ export interface Answer {
   teacherFeedbackText?: string;
   teacherFeedbackAudio?: boolean;
   score?: number;
+  locked_by_teacher_id?: string | null;
 }
 
 export interface SupportTicket {
@@ -126,7 +127,7 @@ export interface UserAccount {
 }
 
 interface AppState {
-  user: { name: string; role: UserRole; squadId?: string } | null;
+  user: { id: string; name: string; role: UserRole; squadId?: string } | null;
   courses: Course[];
   answers: Answer[];
   grammarBase: GrammarRule[];
@@ -288,7 +289,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchAnswersFromSupabase = async () => {
     try {
       const { data, error } = await supabase
-        .from("student_answers")
+        .from("answers")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -305,8 +306,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           courseId: a.course_id,
           studentName: a.student_name,
           squadId: a.squad_id,
-          text: a.text_answer,
-          voiceRecorded: a.voice_recorded,
+          text: a.text,
+          voiceRecorded: !!a.audio_url,
           audioUrl: a.audio_url,
           attachments: a.attachments || [],
           submittedAt: a.created_at,
@@ -314,9 +315,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           teacherFeedbackText: a.teacher_feedback,
           teacherFeedbackAudio: a.teacher_feedback_audio,
           score: a.score,
+          locked_by_teacher_id: a.locked_by_teacher_id,
         }));
         setAnswers(formattedAnswers);
-        localStorage.setItem("lanp_answers", JSON.stringify(formattedAnswers));
       }
     } catch (error) {
       console.error("Помилка при завантаженні відповідей:", error);
@@ -326,15 +327,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveAnswerToSupabase = async (answer: Answer) => {
     try {
       const { error } = await supabase
-        .from("student_answers")
+        .from("answers")
         .upsert({
           id: answer.id,
           lesson_id: answer.lessonId,
           course_id: answer.courseId,
           student_name: answer.studentName,
           squad_id: answer.squadId,
-          text_answer: answer.text,
-          voice_recorded: answer.voiceRecorded,
+          text: answer.text,
           audio_url: answer.audioUrl,
           attachments: answer.attachments,
           created_at: answer.submittedAt,
@@ -342,6 +342,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           teacher_feedback: answer.teacherFeedbackText,
           teacher_feedback_audio: answer.teacherFeedbackAudio,
           score: answer.score,
+          locked_by_teacher_id: answer.locked_by_teacher_id,
         });
 
       if (error) {
@@ -356,6 +357,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadSavedData = async () => {
       try {
+        // Спочатку відновлюємо сесію Supabase Auth
+        const { data: { session } } = await supabase.auth.getSession();
+        
         const savedUserSession = sessionStorage.getItem("lanp_user");
 
         // Спочатку завантажуємо курси з Supabase
@@ -374,16 +378,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Якщо в Supabase немає відповідей, завантажуємо з localStorage
-        const savedAnswers = localStorage.getItem("lanp_answers");
-        if (savedAnswers && answers.length === 0) {
-          try {
-            setAnswers(JSON.parse(savedAnswers));
-          } catch (e) {
-            console.error("Помилка парсингу відповідей:", e);
-          }
-        }
-
         const savedSupportTickets = localStorage.getItem("lanp_support_tickets");
         if (savedSupportTickets) {
           try {
@@ -392,7 +386,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
             console.error("Помилка парсингу тікетів підтримки:", e);
           }
         }
-        if (savedUserSession) {
+        
+        // Якщо є активна сесія Supabase Auth, використовуємо її
+        if (session?.user) {
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          if (!profileError && profileData) {
+            const sessionData = {
+              id: profileData.id,
+              name: profileData.name,
+              role: profileData.role as UserRole,
+              squadId: profileData.squad_id,
+            };
+            setUser(sessionData);
+            sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
+          }
+        } else if (savedUserSession) {
+          // Fallback на старий метод
           try {
             setUser(JSON.parse(savedUserSession));
           } catch (e) {
@@ -408,6 +422,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setIsInitialized(true);
       }
     };
+
     loadSavedData();
   }, []);
 
@@ -433,15 +448,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [courses, isInitialized]);
-  useEffect(() => {
-    if (isInitialized) {
-      try {
-        localStorage.setItem("lanp_answers", JSON.stringify(answers));
-      } catch (e) {
-        console.error("Помилка збереження відповідей:", e);
-      }
-    }
-  }, [answers, isInitialized]);
 
   // --- СЕРВЕРНА ЛОГІКА АВТОРИЗАЦІЇ (SUPABASE) ---
 
@@ -462,20 +468,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Хешуємо пароль перед збереженням
     const hashedPassword = await hashPassword(password);
 
-    const uid = `usr-${Date.now()}`;
-    const { error } = await supabase.from("profiles").insert([
-      {
-        id: uid,
-        name,
-        password: hashedPassword,
-        role,
-        status: "pending", // Всі за замовчуванням чекають перевірки
-        squad_id: role === "student" ? "Alpha Squad" : null,
-      },
-    ]);
+    // Створюємо користувача в Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: `${name}@lanp.local`, // Використовуємо ім'я як email (для локальної системи)
+      password: password,
+      options: {
+        data: {
+          name: name,
+          role: role,
+        }
+      }
+    });
 
-    if (error) return "Помилка реєстрації на сервері.";
-    await fetchUsersFromSupabase();
+    if (authError) {
+      console.error("Supabase Auth error:", authError);
+      // Якщо Supabase Auth не працює, fallback на старий метод
+      const uid = `usr-${Date.now()}`;
+      const { error } = await supabase.from("profiles").insert([
+        {
+          id: uid,
+          name,
+          password: hashedPassword,
+          role,
+          status: "pending",
+          squad_id: role === "student" ? "Alpha Squad" : null,
+        },
+      ]);
+
+      if (error) return "Помилка реєстрації на сервері.";
+      await fetchUsersFromSupabase();
+      return null;
+    }
+
+    // Якщо Supabase Auth успішний, створюємо профіль
+    if (authData.user) {
+      const { error } = await supabase.from("profiles").insert([
+        {
+          id: authData.user.id,
+          name,
+          password: hashedPassword,
+          role,
+          status: "pending",
+          squad_id: role === "student" ? "Alpha Squad" : null,
+        },
+      ]);
+
+      if (error) return "Помилка створення профілю.";
+      await fetchUsersFromSupabase();
+    }
+
     return null;
   };
 
@@ -483,52 +524,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
     name: string,
     password: string,
   ): Promise<string | null> => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .ilike("name", name)
-      .maybeSingle();
+    // Спробуємо авторизуватися через Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: `${name}@lanp.local`,
+      password: password,
+    });
 
-    if (error || !data) return "Користувача не знайдено.";
-    
-    // Перевіряємо, чи пароль вже хешований (bcrypt хеш починається з $2b$ або $2a$)
-    const isHashed = data.password.startsWith("$2b$") || data.password.startsWith("$2a$");
-    
-    let isPasswordValid: boolean;
-    
-    if (isHashed) {
-      // Якщо пароль вже хешований - перевіряємо з bcrypt
-      isPasswordValid = await verifyPassword(password, data.password);
-    } else {
-      // Якщо пароль не хешований (старі дані) - порівнюємо як plain text
-      isPasswordValid = password === data.password;
+    if (authError) {
+      console.error("Supabase Auth error:", authError);
+      // Fallback на старий метод
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .ilike("name", name)
+        .maybeSingle();
+
+      if (error || !data) return "Користувача не знайдено.";
       
-      // Якщо пароль вірний - хешуємо його і оновлюємо в базі
-      if (isPasswordValid) {
-        const hashedPassword = await hashPassword(password);
-        await supabase
-          .from("profiles")
-          .update({ password: hashedPassword })
-          .eq("id", data.id);
+      const isHashed = data.password.startsWith("$2b$") || data.password.startsWith("$2a$");
+      let isPasswordValid: boolean;
+      
+      if (isHashed) {
+        isPasswordValid = await verifyPassword(password, data.password);
+      } else {
+        isPasswordValid = password === data.password;
+        if (isPasswordValid) {
+          const hashedPassword = await hashPassword(password);
+          await supabase
+            .from("profiles")
+            .update({ password: hashedPassword })
+            .eq("id", data.id);
+        }
       }
-    }
-    
-    if (!isPasswordValid) return "Невірний пароль.";
-    
-    if (data.status === "pending")
-      return "Ваш акаунт ще не активовано адміністрацією.";
+      
+      if (!isPasswordValid) return "Невірний пароль.";
+      
+      if (data.status === "pending")
+        return "Ваш акаунт ще не активовано адміністрацією.";
 
-    const sessionData = {
-      name: data.name,
-      role: data.role as UserRole,
-      squadId: data.squad_id,
-    };
-    setUser(sessionData);
-    sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-    return null;
+      const sessionData = {
+        id: data.id,
+        name: data.name,
+        role: data.role as UserRole,
+        squadId: data.squad_id,
+      };
+      setUser(sessionData);
+      sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
+      return null;
+    }
+
+    // Якщо Supabase Auth успішний, отримуємо дані профілю
+    if (authData.user) {
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError || !profileData) {
+        return "Профіль не знайдено.";
+      }
+
+      if (profileData.status === "pending")
+        return "Ваш акаунт ще не активовано адміністрацією.";
+
+      const sessionData = {
+        id: profileData.id,
+        name: profileData.name,
+        role: profileData.role as UserRole,
+        squadId: profileData.squad_id,
+      };
+      setUser(sessionData);
+      sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
+      return null;
+    }
+
+    return "Помилка авторизації.";
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Вихід з Supabase Auth
+    await supabase.auth.signOut();
     setUser(null);
     sessionStorage.removeItem("lanp_user");
   };
@@ -648,31 +724,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     console.log("Нова відповідь для додавання:", newAnswer);
 
-    // КРИТИЧНО: Зберігаємо відповідь в локальному стані в будь-якому випадку
-    setAnswers((prev) => {
-      const updated = [...prev, newAnswer];
-      console.log("Оновлений список відповідей:", updated);
-      localStorage.setItem("lanp_answers", JSON.stringify(updated));
-      return updated;
-    });
-
-    // Зберігаємо відповідь в Supabase
+    // Зберігаємо відповідь в Supabase (answers table)
     const { data, error } = await supabase
-      .from('student_answers')
+      .from('answers')
       .insert([{
-        student_name: user?.name || "Курсант",
+        user_id: user?.id,
         course_id: answerData.courseId,
         lesson_id: answerData.lessonId,
-        text_answer: answerData.text || "",
+        text: answerData.text || "",
         audio_url: audioUrl || null,
         attachments: [...(answerData.attachments || []), ...(fileUrls || [])],
-        status: 'pending'
+        status: 'pending',
+        student_name: user?.name || "Курсант",
+        squad_id: user?.squadId || "General"
       }])
-      .select();
+      .select()
+      .single();
 
     if (error) {
       console.error("Помилка Supabase при збереженні:", error);
       throw error;
+    }
+
+    // Оновлюємо локальний стан з даними з Supabase
+    if (data) {
+      const answerFromDb: Answer = {
+        id: data.id,
+        lessonId: data.lesson_id,
+        courseId: data.course_id,
+        text: data.text,
+        studentName: data.student_name,
+        squadId: data.squad_id,
+        submittedAt: data.created_at,
+        status: data.status,
+        voiceRecorded: !!data.audio_url,
+        audioUrl: data.audio_url,
+        attachments: data.attachments || [],
+        teacherFeedbackText: data.teacher_feedback,
+        teacherFeedbackAudio: data.teacher_feedback_audio,
+        score: data.score,
+        locked_by_teacher_id: data.locked_by_teacher_id
+      };
+      
+      setAnswers((prev) => {
+        const updated = [...prev, answerFromDb];
+        console.log("Оновлений список відповідей:", updated);
+        return updated;
+      });
     }
   };
 
@@ -698,10 +796,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Зберігаємо оновлену відповідь в Supabase з правильними колонками
     const { error } = await supabase
-      .from('student_answers')
+      .from('answers')
       .update({
         score: score,
         teacher_feedback: feedbackText,
+        teacher_feedback_audio: feedbackAudio,
         status: 'reviewed'
       })
       .eq('id', answerId);

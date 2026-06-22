@@ -36,6 +36,7 @@ import {
   Target,
   ArrowLeft,
   Layers,
+  Lock,
 } from "lucide-react";
 
 // Динамічний імпорт текстового редактора
@@ -122,6 +123,142 @@ export default function TeacherDashboard() {
   );
   const [newPasswordValue, setNewPasswordValue] = useState("");
   const [answerFilter, setAnswerFilter] = useState<"pending" | "reviewed">("pending");
+  const [lockedAnswers, setLockedAnswers] = useState<{ [key: string]: string | null }>({});
+  const [isLocking, setIsLocking] = useState<{ [key: string]: boolean }>({});
+
+  // Load locked answers from Supabase
+  useEffect(() => {
+    if (answers.length > 0) {
+      const loadLockedAnswers = async () => {
+        const { data, error } = await supabase
+          .from("answers")
+          .select("id, locked_by_teacher_id")
+          .in("id", answers.map(a => a.id));
+
+        if (!error && data) {
+          const lockedMap: { [key: string]: string | null } = {};
+          data.forEach(item => {
+            lockedMap[item.id] = item.locked_by_teacher_id;
+          });
+          setLockedAnswers(lockedMap);
+        }
+      };
+      loadLockedAnswers();
+    }
+  }, [answers]);
+
+  // Supabase Realtime subscription for answers table
+  useEffect(() => {
+    const channel = supabase
+      .channel('answers-locked-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'answers',
+          filter: 'locked_by_teacher_id=not.is.null'
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const newLockedAnswers = { ...lockedAnswers };
+            if (payload.new) {
+              newLockedAnswers[payload.new.id] = payload.new.locked_by_teacher_id;
+            }
+            setLockedAnswers(newLockedAnswers);
+          } else if (payload.eventType === 'DELETE') {
+            const newLockedAnswers = { ...lockedAnswers };
+            if (payload.old) {
+              newLockedAnswers[payload.old.id] = null;
+            }
+            setLockedAnswers(newLockedAnswers);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [lockedAnswers]);
+
+  // Lock answer for review
+  const lockAnswer = async (answerId: string) => {
+    if (!user?.id) return;
+    setIsLocking({ ...isLocking, [answerId]: true });
+    
+    // Backend check: verify current locked_by_teacher_id before updating
+    const { data: currentAnswer, error: fetchError } = await supabase
+      .from("answers")
+      .select("locked_by_teacher_id")
+      .eq("id", answerId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("Помилка при перевірці статусу блокування:", fetchError);
+      alert("Сталася помилка при перевірці статусу блокування");
+      setIsLocking({ ...isLocking, [answerId]: false });
+      return;
+    }
+
+    if (!currentAnswer) {
+      console.warn("Відповідь не знайдено в базі");
+      setIsLocking({ ...isLocking, [answerId]: false });
+      return;
+    }
+
+    // If already locked by another teacher, stop and alert
+    if (currentAnswer?.locked_by_teacher_id && currentAnswer.locked_by_teacher_id !== user.id) {
+      alert("Цю роботу щойно взяв інший викладач");
+      // Refresh the locked answers to show the current state
+      const { data, error } = await supabase
+        .from("answers")
+        .select("id, locked_by_teacher_id")
+        .in("id", answers.map(a => a.id));
+      
+      if (!error && data) {
+        const lockedMap: { [key: string]: string | null } = {};
+        data.forEach(item => {
+          lockedMap[item.id] = item.locked_by_teacher_id;
+        });
+        setLockedAnswers(lockedMap);
+      }
+      setIsLocking({ ...isLocking, [answerId]: false });
+      return;
+    }
+
+    // Proceed with locking
+    const { error } = await supabase
+      .from("answers")
+      .update({ locked_by_teacher_id: user.id })
+      .eq("id", answerId);
+
+    if (!error) {
+      setLockedAnswers({ ...lockedAnswers, [answerId]: user.id });
+    } else {
+      console.error("Помилка при блокуванні відповіді:", error);
+      alert("Сталася помилка при блокуванні відповіді");
+    }
+    setIsLocking({ ...isLocking, [answerId]: false });
+  };
+
+  // Unlock answer
+  const unlockAnswer = async (answerId: string) => {
+    setIsLocking({ ...isLocking, [answerId]: true });
+    
+    const { error } = await supabase
+      .from("answers")
+      .update({ locked_by_teacher_id: null })
+      .eq("id", answerId);
+
+    if (!error) {
+      setLockedAnswers({ ...lockedAnswers, [answerId]: null });
+    } else {
+      console.error("Помилка при розблокуванні відповіді:", error);
+      alert("Сталася помилка при розблокуванні відповіді");
+    }
+    setIsLocking({ ...isLocking, [answerId]: false });
+  };
 
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [editingModuleName, setEditingModuleName] = useState("");
@@ -464,6 +601,7 @@ export default function TeacherDashboard() {
       ["bold", "italic", "underline", "strike"],
       [{ color: [] }, { background: [] }],
       [{ list: "ordered" }, { list: "bullet" }],
+      ["link"],
       ["clean"],
     ],
   };
@@ -2411,6 +2549,82 @@ export default function TeacherDashboard() {
                             borderRadius: 8,
                           }}
                         >
+                          {/* Lock status and actions */}
+                          {lockedAnswers[ans.id] ? (
+                            lockedAnswers[ans.id] === user?.id ? (
+                              <div
+                                style={{
+                                  marginBottom: 16,
+                                  padding: 12,
+                                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                                  borderRadius: 6,
+                                  border: "1px solid #8a8a45",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                }}
+                              >
+                                <span style={{ fontSize: 13, color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
+                                  🔒 Ви перевіряєте цю роботу
+                                </span>
+                                <button
+                                  onClick={() => unlockAnswer(ans.id)}
+                                  disabled={isLocking[ans.id]}
+                                  style={{
+                                    padding: "6px 12px",
+                                    background: "#c97a4a",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 4,
+                                    cursor: isLocking[ans.id] ? "not-allowed" : "pointer",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {isLocking[ans.id] ? "..." : "Скасувати"}
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                style={{
+                                  marginBottom: 16,
+                                  padding: 12,
+                                  background: isDarkMode ? "#2d2f2a" : "#fff",
+                                  borderRadius: 6,
+                                  border: "1px solid #c97a4a",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                }}
+                              >
+                                <span style={{ fontSize: 13, color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
+                                  🔒 Перевіряється іншим викладачем
+                                </span>
+                              </div>
+                            )
+                          ) : (
+                            <button
+                              onClick={() => lockAnswer(ans.id)}
+                              disabled={isLocking[ans.id] || (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id)}
+                              style={{
+                                marginBottom: 16,
+                                padding: "10px 16px",
+                                background: (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id) ? "#ccc" : "#8a8a45",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: 6,
+                                cursor: (isLocking[ans.id] || (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id)) ? "not-allowed" : "pointer",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                              }}
+                            >
+                              {isLocking[ans.id] ? "..." : <Lock size={14} />} Взяти на перевірку
+                            </button>
+                          )}
+
                           <div
                             style={{
                               display: "grid",
@@ -2499,20 +2713,21 @@ export default function TeacherDashboard() {
                               setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
                               setScores({ ...scores, [ans.id]: 0 });
                             }}
+                            disabled={!!(lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id)}
                             style={{
-                              background: "#8a8a45",
+                              background: (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id) ? "#ccc" : "#8a8a45",
                               color: "#fff",
                               border: "none",
                               padding: "12px 24px",
                               borderRadius: 6,
-                              cursor: "pointer",
+                              cursor: (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id) ? "not-allowed" : "pointer",
                               fontWeight: 600,
                               display: "flex",
                               alignItems: "center",
                               gap: 8,
                             }}
                           >
-                            <CheckCircle size={18} /> Зберегти оцінку
+                            <CheckCircle size={18} /> {lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id ? "🔒 Заблоковано" : "Зберегти оцінку"}
                           </button>
                         </div>
                       ) : (

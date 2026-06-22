@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppContext } from "../../../context/AppContext";
+import { supabase } from "../../../lib/supabase";
 import {
   ArrowLeft,
   PlayCircle,
@@ -117,20 +118,21 @@ export default function CoursePage() {
   // Перевірка чи тест вже був зданий при завантаженні уроку
   useEffect(() => {
     if (user && activeLesson) {
-      const quizResultKey = `quiz_${user.name}_${activeLesson.id}`;
-      const savedResult = localStorage.getItem(quizResultKey);
-      if (savedResult) {
-        try {
-          const parsed = JSON.parse(savedResult);
-          if (parsed.submitted) {
-            setQuizSubmitted(true);
-            setQuizScore(parsed.score);
-            setQuizAnswers(parsed.answers);
-          }
-        } catch (error) {
-          console.error("Помилка при завантаженні результату тесту:", error);
+      const loadQuizResult = async () => {
+        const { data, error } = await supabase
+          .from("quiz_results")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("lesson_id", activeLesson.id)
+          .single();
+
+        if (!error && data) {
+          setQuizSubmitted(true);
+          setQuizScore(data.score);
+          setQuizAnswers(data.answers);
         }
-      }
+      };
+      loadQuizResult();
     }
   }, [user, activeLesson]);
 
@@ -158,7 +160,7 @@ export default function CoursePage() {
     setQuizAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleQuizSubmit = () => {
+  const handleQuizSubmit = async () => {
     if (!activeLesson?.quiz || !user) return;
     
     let correctCount = 0;
@@ -172,14 +174,43 @@ export default function CoursePage() {
     setQuizScore(score);
     setQuizSubmitted(true);
     
-    // Зберігаємо результат тесту в localStorage
-    const quizResultKey = `quiz_${user.name}_${activeLesson.id}`;
-    localStorage.setItem(quizResultKey, JSON.stringify({
-      submitted: true,
-      score: score,
-      answers: quizAnswers,
-      timestamp: new Date().toISOString()
-    }));
+    // Зберігаємо результат тесту в Supabase
+    const { error } = await supabase
+      .from("quiz_results")
+      .insert({
+        user_id: user.id,
+        lesson_id: activeLesson.id,
+        score: score,
+        answers: quizAnswers,
+      });
+
+    if (error) {
+      console.error("Помилка при збереженні результату тесту:", error);
+      alert("Сталася помилка при збереженні результату тесту");
+    }
+
+    // Update SLP metrics in profiles table based on lesson skill type
+    const skillUpdate: { [key: string]: number } = {};
+    if (activeLesson.skill === "listening") {
+      skillUpdate.slp_listening = score;
+    } else if (activeLesson.skill === "speaking") {
+      skillUpdate.slp_speaking = score;
+    } else if (activeLesson.skill === "reading") {
+      skillUpdate.slp_reading = score;
+    } else if (activeLesson.skill === "writing") {
+      skillUpdate.slp_writing = score;
+    }
+
+    if (Object.keys(skillUpdate).length > 0) {
+      const { error: slpError } = await supabase
+        .from("profiles")
+        .update(skillUpdate)
+        .eq("id", user.id);
+
+      if (slpError) {
+        console.error("Помилка при оновленні SLP метрик:", slpError);
+      }
+    }
   };
 
   const startRecording = async () => {
