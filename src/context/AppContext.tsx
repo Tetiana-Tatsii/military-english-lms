@@ -91,6 +91,7 @@ export interface Answer {
   teacherFeedbackAudio?: boolean;
   score?: number;
   locked_by_teacher_id?: string | null;
+  user_id?: string;
 }
 
 export interface SupportTicket {
@@ -316,6 +317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           teacherFeedbackAudio: a.teacher_feedback_audio,
           score: a.score,
           locked_by_teacher_id: a.locked_by_teacher_id,
+          user_id: a.user_id,
         }));
         setAnswers(formattedAnswers);
       }
@@ -530,9 +532,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       password: password,
     });
 
+    // Якщо Supabase Auth не спрацював, використовуємо fallback без помилок
     if (authError) {
-      console.error("Supabase Auth error:", authError);
-      // Fallback на старий метод
+      // Fallback на старий метод (без викидання помилок)
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -574,7 +576,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     // Якщо Supabase Auth успішний, отримуємо дані профілю
-    if (authData.user) {
+    if (authData?.user) {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
@@ -780,6 +782,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     feedbackAudio: boolean,
     score?: number,
   ) => {
+    // 1. Знаходимо відповідь
+    const answer = answers.find((a) => a.id === answerId);
+    
+    // 2. Оновлюємо локальний стейт
     setAnswers((prev) =>
       prev.map((ans) =>
         ans.id === answerId
@@ -794,7 +800,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ),
     );
 
-    // Зберігаємо оновлену відповідь в Supabase з правильними колонками
+    // 3. Зберігаємо фідбек в таблицю answers
     const { error } = await supabase
       .from('answers')
       .update({
@@ -808,6 +814,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.error("Помилка Supabase при збереженні фідбеку:", error);
       throw error;
+    }
+
+    // 4. Оновлюємо SLP профіль (Виправлена логіка)
+    if (answer && score !== undefined) {
+      // Надійно шукаємо ID курсанта
+      const studentId = answer.user_id || usersDb.find(u => u.name === answer.studentName)?.id;
+      
+      if (studentId) {
+        // Визначаємо навичку. За замовчуванням ставимо 'writing' для ДЗ
+        let lessonSkill = "writing"; 
+        for (const course of courses) {
+          for (const module of course.modules) {
+            const lesson = module.lessons.find((l) => l.id === answer.lessonId);
+            if (lesson && lesson.skill) {
+              lessonSkill = lesson.skill;
+            }
+          }
+        }
+
+        const skillColumn = `slp_${lessonSkill}`; // Збираємо назву колонки (напр. slp_writing)
+        
+        const { error: slpError } = await supabase
+          .from("profiles")
+          .update({ [skillColumn]: score })
+          .eq("id", studentId);
+
+        if (slpError) {
+          console.error("Помилка при оновленні SLP метрик:", slpError);
+        } else {
+          console.log(`SLP (${skillColumn}) успішно оновлено на ${score}%`);
+        }
+      }
     }
   };
 

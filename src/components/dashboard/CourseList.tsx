@@ -45,7 +45,6 @@ export default function CourseList({
       <div className="mb-10 flex flex-col gap-4">
         {courses.map((course) => {
           const progress = getCourseProgress(course.id);
-          const courseAnswers = answers.filter((a) => a.courseId === course.id);
           const isExpanded = expandedCourses.has(course.id);
           return (
             <div
@@ -118,7 +117,10 @@ export default function CourseList({
                 </div>
               )}
 
-              {courseAnswers.length > 0 && (
+              {[...answers]
+                .filter((ans) => ans.courseId === course.id)
+                .sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || ""))
+                .length > 0 && (
                 <div className="mt-4">
                   <button
                     onClick={() => toggleCourse(course.id)}
@@ -127,11 +129,14 @@ export default function CourseList({
                     }`}
                   >
                     {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    Результати по уроках ({courseAnswers.length})
+                    Результати по уроках ({[...answers].filter((ans) => ans.courseId === course.id).length})
                   </button>
                   {isExpanded && (
                     <div className="mt-3 flex flex-col gap-3">
-                      {[...courseAnswers].reverse().map((ans) => (
+                      {[...answers]
+                        .filter((ans) => ans.courseId === course.id)
+                        .sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || ""))
+                        .map((ans) => (
                         <div
                           key={ans.id}
                           className={`rounded-lg border p-3 md:p-4 ${
