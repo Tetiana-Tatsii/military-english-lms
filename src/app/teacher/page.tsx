@@ -1522,7 +1522,7 @@ export default function TeacherDashboard() {
                         type="file"
                         accept="image/*"
                         onChange={handlePhotoUpload}
-                        disabled={isUploadingPhoto}
+                        disabled={!!isUploadingPhoto}
                         style={{ display: "none" }}
                       />
                     </div>
@@ -1569,7 +1569,7 @@ export default function TeacherDashboard() {
                     type="file"
                     accept="audio/mp3"
                     onChange={handleAudioUpload}
-                    disabled={isUploadingAudio}
+                    disabled={!!isUploadingAudio}
                     style={{ display: "none" }}
                   />
                   {isUploadingAudio && (
@@ -1645,7 +1645,7 @@ export default function TeacherDashboard() {
                   type="file"
                   accept=".pdf,.doc,.docx"
                   onChange={handleDocumentUpload}
-                  disabled={isUploadingDocument}
+                  disabled={!!isUploadingDocument}
                   style={{ display: "none" }}
                 />
                 {isUploadingDocument && (
@@ -2569,7 +2569,7 @@ export default function TeacherDashboard() {
                                 </span>
                                 <button
                                   onClick={() => unlockAnswer(ans.id)}
-                                  disabled={isLocking[ans.id]}
+                                  disabled={!!isLocking[ans.id]}
                                   style={{
                                     padding: "6px 12px",
                                     background: "#c97a4a",
@@ -2605,7 +2605,7 @@ export default function TeacherDashboard() {
                           ) : (
                             <button
                               onClick={() => lockAnswer(ans.id)}
-                              disabled={isLocking[ans.id] || (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id)}
+                              disabled={!!(isLocking[ans.id] || (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== user?.id))}
                               style={{
                                 marginBottom: 16,
                                 padding: "10px 16px",
