@@ -31,9 +31,7 @@ export default function DashboardHeader({
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-lg bg-[#8a8a45]">
-          <Shield size={18} color="#f6f1e4" />
-        </div>
+        <img src="/logo-tc.png" alt="Logo" className="w-8 h-8 object-contain" />
         <div>
           <p
             className={`text-sm md:text-base font-semibold ${

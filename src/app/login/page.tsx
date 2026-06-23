@@ -51,7 +51,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#e9e1cd] font-sans">
+    <div className="grid min-h-screen bg-[#e9e1cd] font-sans md:grid-cols-[45%_55%]">
       {/* ЛІВА ЧАСТИНА: Інформаційна панель (зникає на малих екранах) */}
       <div className="hidden flex-col items-center justify-center bg-[#4a4a35] p-10 text-center text-[#f0e9d8] md:flex">
         <img
@@ -60,29 +60,29 @@ export default function LoginPage() {
           className="mb-6 h-auto w-40 rounded-lg"
         />
         <h1 className="mb-4 text-[36px] font-extrabold tracking-wide">
-          MILITARY LMS
+          Military Learning Management System
         </h1>
-        <p className="mb-8 max-w-[400px] text-[18px] leading-relaxed text-[#d8cdb4]">
+        <p className="mb-8 max-w-2xl text-xl leading-relaxed text-[#d8cdb4]">
           Глобальна взаємосумісність починається тут. <br /> Сучасна платформа для вивчення англійської мови: <br /> для військової кар'єри, міжнародних місій та життя.
         </p>
 
         {/* Місце під шеврони або додаткові логотипи */}
-        <div className="mt-auto flex justify-center gap-6">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[12px]">
-            NGU
+        <div className="mt-auto flex justify-center gap-8">
+          <div className="flex h-28 w-28 items-center justify-center rounded-full border border-white/20 bg-white/10">
+            <img src="/logo-ngu.png" alt="НГУ" className="w-full h-full object-contain p-2" />
           </div>
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[12px]">
-            Training
+          <div className="flex h-28 w-28 items-center justify-center rounded-full border border-white/20 bg-white/10">
+            <img src="/logo-tc.png" alt="Навчальний центр" className="w-full h-full object-contain p-2" />
           </div>
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[12px]">
-            Language
+          <div className="flex h-28 w-28 items-center justify-center rounded-full border border-white/20 bg-white/10">
+            <img src="/logo-stanag.png" alt="STANAG" className="w-full h-full object-contain p-2" />
           </div>
         </div>
       </div>
 
       {/* ПРАВА ЧАСТИНА: Форма входу */}
       <div className="flex flex-1 items-center justify-center p-5">
-        <div className="w-full max-w-[400px] rounded-2xl border border-[#d8cdb4] bg-[#f6f1e4] p-10 shadow-[0_12px_32px_rgba(0,0,0,0.1)]">
+        <div className="w-full max-w-md rounded-2xl border border-[#d8cdb4] bg-[#f6f1e4] p-10 shadow-[0_12px_32px_rgba(0,0,0,0.1)]">
           {/* Mobile logo - visible only on smartphones */}
           <div className="md:hidden flex flex-col items-center justify-center mb-8 w-full">
             <img 
