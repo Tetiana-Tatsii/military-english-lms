@@ -8,15 +8,11 @@ import React, {
   useEffect,
 } from "react";
 import { initialCourses } from "../data/courses";
-import { supabase } from "../lib/supabase"; // Підключаємо наш міст до хмари
+import { supabase } from "../lib/supabase";
 import { hashPassword, verifyPassword } from "../lib/password";
+import { mapDbRowToAnswer } from "../lib/mappers";
 
-export type SkillType =
-  | "listening"
-  | "reading"
-  | "speaking"
-  | "writing"
-  | "mixed";
+export type SkillType = "listening" | "reading" | "speaking" | "writing" | "mixed";
 export type UserRole = "student" | "teacher" | "admin";
 export type AccountStatus = "pending" | "approved";
 
@@ -47,9 +43,8 @@ export type Lesson = {
   videoLabel?: string;
   duration: string;
   quizlet?: { term: string; translation: string }[];
-  skill?: "listening" | "reading" | "speaking" | "writing" | "mixed";
+  skill?: SkillType;
 
-  // ДОДАЄМО НАШІ НОВІ ПОЛЯ:
   audioUrl?: string;
   grammarContent?: string;
   imageUrl?: string;
@@ -189,6 +184,16 @@ interface AppState {
   isInitialized: boolean;
 }
 
+const GRAMMAR_BASE: GrammarRule[] = [
+  {
+    id: "g-to-be",
+    title: 'Дієслово "to be" як linking verb',
+    category: "Граматика А1-А2",
+    content:
+      "Дієслово \"to be\" зв'язує підмет зі станом, якістю або професією (наприклад: He is a Lieutenant / They are ready).",
+  },
+];
+
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -198,29 +203,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [usersDb, setUsersDb] = useState<UserAccount[]>([]);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [grammarBase] = useState<GrammarRule[]>([
-    {
-      id: "g-to-be",
-      title: 'Дієслово "to be" як linking verb',
-      category: "Граматика А1-А2",
-      content:
-        'Дієслово "to be" зв’язує підмет зі станом, якістю або професією (наприклад: He is a Lieutenant / They are ready).',
-    },
-  ]);
 
   // СИНХРОНІЗАЦІЯ КОРИСТУВАЧІВ З SUPABASE
   const fetchUsersFromSupabase = async () => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, name, role, status, squad_id")
       .order("created_at", { ascending: true });
 
     if (!error && data) {
-      // Трансформуємо змійок snake_case з бази у camelCase для нашого React-коду
       const formattedUsers: UserAccount[] = data.map((u) => ({
         id: u.id,
         name: u.name,
-        password: u.password,
+        password: "",
         role: u.role as UserRole,
         status: u.status as AccountStatus,
         squadId: u.squad_id,
@@ -271,10 +266,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         modules: course.modules || []
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('lms_courses')
-        .upsert(courseToSave)
-        .select();
+        .upsert(courseToSave);
 
       if (error) {
         console.error("Помилка Supabase при збереженні курсу:", error);
@@ -300,26 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       if (data) {
-        // Трансформуємо змійок snake_case з бази у camelCase
-        const formattedAnswers: Answer[] = data.map((a) => ({
-          id: a.id,
-          lessonId: a.lesson_id,
-          courseId: a.course_id,
-          studentName: a.student_name,
-          squadId: a.squad_id,
-          text: a.text,
-          voiceRecorded: !!a.audio_url,
-          audioUrl: a.audio_url,
-          attachments: a.attachments || [],
-          submittedAt: a.created_at,
-          status: a.status as "pending" | "reviewed",
-          teacherFeedbackText: a.teacher_feedback,
-          teacherFeedbackAudio: a.teacher_feedback_audio,
-          score: a.score,
-          locked_by_teacher_id: a.locked_by_teacher_id,
-          user_id: a.user_id,
-        }));
-        setAnswers(formattedAnswers);
+        setAnswers(data.map(mapDbRowToAnswer));
       }
     } catch (error) {
       console.error("Помилка при завантаженні відповідей:", error);
@@ -393,7 +368,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           const { data: profileData, error: profileError } = await supabase
             .from("profiles")
-            .select("*")
+            .select("id, name, role, status, squad_id")
             .eq("id", session.user.id)
             .single();
 
@@ -537,7 +512,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Fallback на старий метод (без викидання помилок)
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, name, password, role, status, squad_id")
         .ilike("name", name)
         .maybeSingle();
 
@@ -579,7 +554,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (authData?.user) {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, name, role, status, squad_id")
         .eq("id", authData.user.id)
         .single();
 
@@ -632,9 +607,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const changeUserPassword = async (userId: string, newPassword: string) => {
+    const hashedPassword = await hashPassword(newPassword);
     const { error } = await supabase
       .from("profiles")
-      .update({ password: newPassword })
+      .update({ password: hashedPassword })
       .eq("id", userId);
     if (!error) await fetchUsersFromSupabase();
   };
@@ -646,7 +622,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       "id" | "submittedAt" | "status" | "studentName" | "squadId"
     > & { audioBlob?: Blob | null; files?: File[] },
   ) => {
-    console.log("submitAnswer викликано:", answerData);
     if (!user) {
       console.error("Користувач не авторизований для відправки відповіді");
       return;
@@ -709,23 +684,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error("Помилка при обробці відповіді:", error);
     }
 
-    // КРИТИЧНО: Формуємо об'єкт нової відповіді
-    const newAnswer: Answer = {
-      id: `ans-${Date.now()}`,
-      lessonId: answerData.lessonId,
-      courseId: answerData.courseId,
-      text: answerData.text,
-      studentName: user.name,
-      squadId: user.squadId || "General",
-      submittedAt: new Date().toISOString(),
-      status: "pending",
-      voiceRecorded: !!audioUrl,
-      audioUrl: audioUrl,
-      attachments: [...(answerData.attachments || []), ...(fileUrls || [])],
-    };
-
-    console.log("Нова відповідь для додавання:", newAnswer);
-
     // Зберігаємо відповідь в Supabase (answers table)
     const { data, error } = await supabase
       .from('answers')
@@ -748,31 +706,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
-    // Оновлюємо локальний стан з даними з Supabase
     if (data) {
-      const answerFromDb: Answer = {
-        id: data.id,
-        lessonId: data.lesson_id,
-        courseId: data.course_id,
-        text: data.text,
-        studentName: data.student_name,
-        squadId: data.squad_id,
-        submittedAt: data.created_at,
-        status: data.status,
-        voiceRecorded: !!data.audio_url,
-        audioUrl: data.audio_url,
-        attachments: data.attachments || [],
-        teacherFeedbackText: data.teacher_feedback,
-        teacherFeedbackAudio: data.teacher_feedback_audio,
-        score: data.score,
-        locked_by_teacher_id: data.locked_by_teacher_id
-      };
-      
-      setAnswers((prev) => {
-        const updated = [...prev, answerFromDb];
-        console.log("Оновлений список відповідей:", updated);
-        return updated;
-      });
+      setAnswers((prev) => [...prev, mapDbRowToAnswer(data)]);
     }
   };
 
@@ -843,7 +778,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (slpError) {
           console.error("Помилка при оновленні SLP метрик:", slpError);
         } else {
-          console.log(`SLP (${skillColumn}) успішно оновлено на ${score}%`);
         }
       }
     }
@@ -864,13 +798,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCourse = async (courseId: string, updatedData: Partial<Course>) => {
-    setCourses((prev) =>
-      prev.map((c) => (c.id === courseId ? { ...c, ...updatedData } : c)),
+    const newCourses = courses.map((c) =>
+      c.id === courseId ? { ...c, ...updatedData } : c,
     );
-    const updatedCourse = courses.find((c) => c.id === courseId);
-    if (updatedCourse) {
-      await saveCourseToSupabase({ ...updatedCourse, ...updatedData });
-    }
+    setCourses(newCourses);
+    const updatedCourse = newCourses.find((c) => c.id === courseId);
+    if (updatedCourse) await saveCourseToSupabase(updatedCourse);
   };
 
   const deleteCourse = async (courseId: string) => {
@@ -883,23 +816,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addModule = async (courseId: string, title: string, icon: string) => {
-    setCourses((prev) =>
-      prev.map((course) =>
-        course.id === courseId
-          ? {
-              ...course,
-              modules: [
-                ...course.modules,
-                { id: `mod-${Date.now()}`, title, icon, lessons: [] },
-              ],
-            }
-          : course,
-      ),
+    const newCourses = courses.map((course) =>
+      course.id === courseId
+        ? {
+            ...course,
+            modules: [
+              ...course.modules,
+              { id: `mod-${Date.now()}`, title, icon, lessons: [] },
+            ],
+          }
+        : course,
     );
-    const updatedCourse = courses.find((c) => c.id === courseId);
-    if (updatedCourse) {
-      await saveCourseToSupabase(updatedCourse);
-    }
+    setCourses(newCourses);
+    const updatedCourse = newCourses.find((c) => c.id === courseId);
+    if (updatedCourse) await saveCourseToSupabase(updatedCourse);
   };
 
   const updateModule = async (
@@ -907,39 +837,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     moduleId: string,
     updatedData: Partial<Module>,
   ) => {
-    setCourses((prev) =>
-      prev.map((course) =>
-        course.id === courseId
-          ? {
-              ...course,
-              modules: course.modules.map((mod) =>
-                mod.id === moduleId ? { ...mod, ...updatedData } : mod,
-              ),
-            }
-          : course,
-      ),
+    const newCourses = courses.map((course) =>
+      course.id === courseId
+        ? {
+            ...course,
+            modules: course.modules.map((mod) =>
+              mod.id === moduleId ? { ...mod, ...updatedData } : mod,
+            ),
+          }
+        : course,
     );
-    const updatedCourse = courses.find((c) => c.id === courseId);
-    if (updatedCourse) {
-      await saveCourseToSupabase(updatedCourse);
-    }
+    setCourses(newCourses);
+    const updatedCourse = newCourses.find((c) => c.id === courseId);
+    if (updatedCourse) await saveCourseToSupabase(updatedCourse);
   };
 
   const deleteModule = async (courseId: string, moduleId: string) => {
-    setCourses((prev) =>
-      prev.map((course) =>
-        course.id === courseId
-          ? {
-              ...course,
-              modules: course.modules.filter((m) => m.id !== moduleId),
-            }
-          : course,
-      ),
+    const newCourses = courses.map((course) =>
+      course.id === courseId
+        ? { ...course, modules: course.modules.filter((m) => m.id !== moduleId) }
+        : course,
     );
-    const updatedCourse = courses.find((c) => c.id === courseId);
-    if (updatedCourse) {
-      await saveCourseToSupabase(updatedCourse);
-    }
+    setCourses(newCourses);
+    const updatedCourse = newCourses.find((c) => c.id === courseId);
+    if (updatedCourse) await saveCourseToSupabase(updatedCourse);
   };
 
   const addLesson = async (
@@ -947,30 +868,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     moduleId: string,
     lessonData: Omit<Lesson, "id">,
   ) => {
-    setCourses((prev) =>
-      prev.map((course) =>
-        course.id === courseId
-          ? {
-              ...course,
-              modules: course.modules.map((mod) =>
-                mod.id === moduleId
-                  ? {
-                      ...mod,
-                      lessons: [
-                        ...mod.lessons,
-                        { ...lessonData, id: `lesson-${Date.now()}` },
-                      ],
-                    }
-                  : mod,
-              ),
-            }
-          : course,
-      ),
+    const newCourses = courses.map((course) =>
+      course.id === courseId
+        ? {
+            ...course,
+            modules: course.modules.map((mod) =>
+              mod.id === moduleId
+                ? {
+                    ...mod,
+                    lessons: [
+                      ...mod.lessons,
+                      { ...lessonData, id: `lesson-${Date.now()}` },
+                    ],
+                  }
+                : mod,
+            ),
+          }
+        : course,
     );
-    const updatedCourse = courses.find((c) => c.id === courseId);
-    if (updatedCourse) {
-      await saveCourseToSupabase(updatedCourse);
-    }
+    setCourses(newCourses);
+    const updatedCourse = newCourses.find((c) => c.id === courseId);
+    if (updatedCourse) await saveCourseToSupabase(updatedCourse);
   };
 
   const updateLesson = async (
@@ -979,29 +897,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     lessonId: string,
     updatedData: Partial<Lesson>,
   ) => {
-    setCourses((prev) =>
-      prev.map((course) =>
-        course.id === courseId
-          ? {
-              ...course,
-              modules: course.modules.map((mod) =>
-                mod.id === moduleId
-                  ? {
-                      ...mod,
-                      lessons: mod.lessons.map((l) =>
-                        l.id === lessonId ? { ...l, ...updatedData } : l,
-                      ),
-                    }
-                  : mod,
-              ),
-            }
-          : course,
-      ),
+    const newCourses = courses.map((course) =>
+      course.id === courseId
+        ? {
+            ...course,
+            modules: course.modules.map((mod) =>
+              mod.id === moduleId
+                ? {
+                    ...mod,
+                    lessons: mod.lessons.map((l) =>
+                      l.id === lessonId ? { ...l, ...updatedData } : l,
+                    ),
+                  }
+                : mod,
+            ),
+          }
+        : course,
     );
-    const updatedCourse = courses.find((c) => c.id === courseId);
-    if (updatedCourse) {
-      await saveCourseToSupabase(updatedCourse);
-    }
+    setCourses(newCourses);
+    const updatedCourse = newCourses.find((c) => c.id === courseId);
+    if (updatedCourse) await saveCourseToSupabase(updatedCourse);
   };
 
   const deleteLesson = async (
@@ -1009,36 +924,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     moduleId: string,
     lessonId: string,
   ) => {
-    setCourses((prev) =>
-      prev.map((course) =>
-        course.id === courseId
-          ? {
-              ...course,
-              modules: course.modules.map((mod) =>
-                mod.id === moduleId
-                  ? {
-                      ...mod,
-                      lessons: mod.lessons.filter((l) => l.id !== lessonId),
-                    }
-                  : mod,
-              ),
-            }
-          : course,
-      ),
+    const newCourses = courses.map((course) =>
+      course.id === courseId
+        ? {
+            ...course,
+            modules: course.modules.map((mod) =>
+              mod.id === moduleId
+                ? { ...mod, lessons: mod.lessons.filter((l) => l.id !== lessonId) }
+                : mod,
+            ),
+          }
+        : course,
     );
-    const updatedCourse = courses.find((c) => c.id === courseId);
-    if (updatedCourse) {
-      await saveCourseToSupabase(updatedCourse);
-    }
+    setCourses(newCourses);
+    const updatedCourse = newCourses.find((c) => c.id === courseId);
+    if (updatedCourse) await saveCourseToSupabase(updatedCourse);
   };
 
   const addSupportTicket = async (type: "bug" | "improvement", message: string) => {
-    console.log("Додавання тікета підтримки:", { type, message, user });
-    if (!user) {
-      console.error("Користувач не авторизований для додавання тікета");
-      alert("Ви повинні бути авторизовані для відправки тікета підтримки.");
-      return;
-    }
+    if (!user) return;
     try {
       const { data, error } = await supabase
         .from("support_tickets")
@@ -1052,13 +956,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error("Помилка при додаванні тікета в Supabase:", error);
-        alert("Сталася помилка при відправці тікета. Спробуйте ще раз.");
         return;
       }
 
-      console.log("Тікет успішно додано в Supabase:", data);
-      
-      // Оновлюємо локальний стан
       const newTicket: SupportTicket = {
         id: data[0].id,
         userName: user.name,
@@ -1070,13 +970,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       setSupportTickets((prev) => {
         const updated = [...prev, newTicket];
-        console.log("Оновлений список тікетів:", updated);
         localStorage.setItem("lanp_support_tickets", JSON.stringify(updated));
         return updated;
       });
     } catch (error) {
       console.error("Помилка при додаванні тікета:", error);
-      alert("Сталася помилка при відправці тікета. Спробуйте ще раз.");
     }
   };
 
@@ -1089,7 +987,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error("Помилка при оновленні статусу тікета в Supabase:", error);
-        alert("Сталася помилка при оновленні статусу тікета. Спробуйте ще раз.");
         return;
       }
 
@@ -1103,7 +1000,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       console.error("Помилка при оновленні статусу тікета:", error);
-      alert("Сталася помилка при оновленні статусу тікета. Спробуйте ще раз.");
     }
   };
 
@@ -1130,7 +1026,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       setSupportTickets(tickets);
       localStorage.setItem("lanp_support_tickets", JSON.stringify(tickets));
-      console.log("Тікети успішно завантажено з Supabase:", tickets);
     } catch (error) {
       console.error("Помилка при завантаженні тікетів:", error);
     }
@@ -1142,7 +1037,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user,
         courses,
         answers,
-        grammarBase,
+        grammarBase: GRAMMAR_BASE,
         usersDb,
         supportTickets,
         isInitialized,

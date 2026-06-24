@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppContext } from "../../../context/AppContext";
 import { supabase } from "../../../lib/supabase";
+import { useDarkMode } from "../../../hooks/useDarkMode";
 import DashboardHeader from "../../../components/dashboard/DashboardHeader";
 import {
   ArrowLeft,
@@ -37,19 +38,8 @@ export default function CoursePage() {
 
   const [activeModuleId, setActiveModuleId] = useState<string>(initialModuleId);
   const [activeLessonId, setActiveLessonId] = useState<string>(initialLessonId);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("darkMode");
-      return saved ? JSON.parse(saved) : false;
-    }
-    return false;
-  });
+  const [isDarkMode, setIsDarkMode] = useDarkMode();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  // Зберігаємо стан темної теми в localStorage
-  useEffect(() => {
-    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
 
   const [flippedCards, setFlippedCards] = useState<{ [key: number]: boolean }>(
     {},
@@ -119,24 +109,29 @@ export default function CoursePage() {
 
   // Перевірка чи тест вже був зданий при завантаженні уроку
   useEffect(() => {
-    if (user && activeLesson) {
-      const loadQuizResult = async () => {
-        const { data, error } = await supabase
-          .from("quiz_results")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("lesson_id", activeLesson.id)
-          .single();
+    // Скидаємо стан тесту при кожній зміні уроку
+    setQuizSubmitted(false);
+    setQuizScore(null);
+    setQuizAnswers({});
 
-        if (!error && data) {
-          setQuizSubmitted(true);
-          setQuizScore(data.score);
-          setQuizAnswers(data.answers);
-        }
-      };
-      loadQuizResult();
-    }
-  }, [user, activeLesson]);
+    if (!user || !activeLesson?.quiz?.length) return;
+
+    const loadQuizResult = async () => {
+      const { data, error } = await supabase
+        .from("quiz_results")
+        .select("id, score, answers")
+        .eq("user_id", user.id)
+        .eq("lesson_id", activeLesson.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        setQuizSubmitted(true);
+        setQuizScore(data.score);
+        setQuizAnswers(data.answers ?? {});
+      }
+    };
+    loadQuizResult();
+  }, [user, activeLesson?.id]);
 
   const existingAnswer = answers.find(
     (a) => a.lessonId === activeLessonId && a.studentName === user.name,
@@ -163,50 +158,49 @@ export default function CoursePage() {
   };
 
   const handleQuizSubmit = async () => {
-    if (!activeLesson?.quiz || !user) return;
-    
-    let correctCount = 0;
-    activeLesson.quiz.forEach((question) => {
-      if (quizAnswers[question.id] === question.correctAnswer) {
-        correctCount++;
-      }
-    });
-    
+    if (!activeLesson?.quiz?.length || !user) return;
+
+    const correctCount = activeLesson.quiz.filter(
+      (q) => quizAnswers[q.id] === q.correctAnswer,
+    ).length;
     const score = Math.round((correctCount / activeLesson.quiz.length) * 100);
-    setQuizScore(score);
-    setQuizSubmitted(true);
-    
-    // Зберігаємо результат тесту в Supabase
+
+    // Зберігаємо результат в Supabase ПЕРЕД тим як оновити UI.
+    // upsert замість insert — безпечно при повторній здачі або помилці мережі.
     const { error } = await supabase
       .from("quiz_results")
-      .insert({
-        user_id: user.id,
-        lesson_id: activeLesson.id,
-        score: score,
-        answers: quizAnswers,
-      });
+      .upsert(
+        {
+          user_id: user.id,
+          lesson_id: activeLesson.id,
+          score,
+          answers: quizAnswers,
+        },
+        { onConflict: "user_id,lesson_id" },
+      );
 
     if (error) {
+      // RLS або мережева помилка — показуємо стан без збереження
       console.error("Помилка при збереженні результату тесту:", error);
-      alert("Сталася помилка при збереженні результату тесту");
     }
 
-    // Update SLP metrics in profiles table based on lesson skill type
-    const skillUpdate: { [key: string]: number } = {};
-    if (activeLesson.skill === "listening") {
-      skillUpdate.slp_listening = score;
-    } else if (activeLesson.skill === "speaking") {
-      skillUpdate.slp_speaking = score;
-    } else if (activeLesson.skill === "reading") {
-      skillUpdate.slp_reading = score;
-    } else if (activeLesson.skill === "writing") {
-      skillUpdate.slp_writing = score;
-    }
+    // Оновлюємо UI лише після спроби збереження
+    setQuizScore(score);
+    setQuizSubmitted(true);
 
-    if (Object.keys(skillUpdate).length > 0) {
+    // Оновлюємо SLP метрики в профілі
+    const SKILL_TO_COLUMN: Partial<Record<string, string>> = {
+      listening: "slp_listening",
+      speaking: "slp_speaking",
+      reading: "slp_reading",
+      writing: "slp_writing",
+    };
+    const slpColumn = activeLesson.skill ? SKILL_TO_COLUMN[activeLesson.skill] : null;
+
+    if (slpColumn) {
       const { error: slpError } = await supabase
         .from("profiles")
-        .update(skillUpdate)
+        .update({ [slpColumn]: score })
         .eq("id", user.id);
 
       if (slpError) {
@@ -265,26 +259,9 @@ export default function CoursePage() {
   };
 
   const handleSendHomework = async () => {
-    console.log("handleSendHomework викликано:", {
-      homeworkText,
-      homeworkTextTrimmed: homeworkText.trim(),
-      activeLesson,
-      activeLessonId: activeLesson?.id,
-      audioBlob: !!audioBlob,
-      files: attachedFiles.length,
-    });
-    
-    // Валідація: потрібен або текст, або аудіо, або файли
     const hasContent = homeworkText.trim() || audioBlob || attachedFiles.length > 0;
-    
+
     if (!hasContent || !activeLesson) {
-      console.error("Валідація не пройдена:", {
-        hasContent,
-        hasText: !!homeworkText.trim(),
-        hasAudio: !!audioBlob,
-        hasFiles: attachedFiles.length > 0,
-        hasLesson: !!activeLesson,
-      });
       alert("Будь ласка, додайте текст, аудіо або файли перед відправкою.");
       return;
     }
@@ -338,43 +315,9 @@ export default function CoursePage() {
         onDarkModeToggle={() => setIsDarkMode(!isDarkMode)}
         onLogout={logout}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .rich-text-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0; }
-        .rich-text-content ul, .rich-text-content ol { padding-left: 20px; }
-        .rich-text-content { break-words; whitespace-pre-wrap; word-wrap: break-word; overflow-wrap: break-word; }
-        @media (min-width: 1280px) {
-          .sidebar-desktop { position: static !important; transform: none !important; z-index: auto !important; }
-        }
-        @media (max-width: 1279px) {
-          .main-content { margin-left: 0 !important; width: 100% !important; }
-        }
-      `,
-        }}
-      />
-
-      {/* Mobile overlay */}
-      {isSidebarOpen && (
-        <div
-          onClick={() => setIsSidebarOpen(false)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.5)",
-            zIndex: 40,
-          }}
-          className="xl:hidden"
-        />
-      )}
-
-      {/* Mobile header */}
+      {/* ── МОБІЛЬНИЙ ХЕДЕР (вище flex-row щоб не стискувати контент) ── */}
       <div
-        className="flex justify-between items-center w-full px-4 py-2 bg-[#f0e9d8] xl:hidden"
+        className="flex shrink-0 items-center justify-between px-4 py-2 xl:hidden"
         style={{
           borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
           background: isDarkMode ? "#2a2c27" : "#f0ede5",
@@ -410,6 +353,50 @@ export default function CoursePage() {
           <ArrowLeft size={16} /> Кабінет
         </button>
       </div>
+
+      {/* ── ОСНОВНА ОБЛАСТЬ: sidebar + контент ── */}
+      <div className="flex flex-1 overflow-hidden">
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          /* Desktop: sidebar статичний і займає 100% висоти flex-рядка */
+          @media (min-width: 1280px) {
+            .sidebar-desktop {
+              position: static !important;
+              transform: none !important;
+              z-index: auto !important;
+              height: 100% !important;
+            }
+          }
+          /* Вимикаємо авто-перенос по складах (lang="uk" вмикає його на рівні браузера) */
+          .rich-text-content,
+          .rich-text-content * {
+            hyphens: none !important;
+            -webkit-hyphens: none !important;
+            -ms-hyphens: none !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+        `,
+          }}
+        />
+
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            zIndex: 40,
+          }}
+          className="xl:hidden"
+        />
+      )}
 
       {/* ЛІВА ПАНЕЛЬ: НАВІГАЦІЯ */}
       <div
@@ -559,13 +546,10 @@ export default function CoursePage() {
 
       {/* ПРАВА ПАНЕЛЬ: КОНТЕНТ УРОКУ */}
       <div
-        className="main-content flex-1 w-full"
+        className="flex-1 min-w-0 overflow-y-auto"
         style={{
-          flex: 1,
-          overflowY: "auto",
           padding: "20px 16px",
           background: isDarkMode ? "#2d2f2a" : "#fff",
-          width: "100%",
         }}
       >
         {activeLesson ? (
@@ -632,9 +616,17 @@ export default function CoursePage() {
                   <FileText size={20} className="md:size-[22px]" /> Теоретичний матеріал
                 </div>
                 <div
-                  className="rich-text-content md:fontSize-[16px] md:lineHeight-[1.8]"
+                  className="rich-text-content"
                   dangerouslySetInnerHTML={{ __html: activeLesson.content }}
-                  style={{ fontSize: 14, lineHeight: 1.6, color: "#4a4a4a" }}
+                  style={{
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    color: "#4a4a4a",
+                    hyphens: "none",
+                    WebkitHyphens: "none",
+                    overflowWrap: "break-word",
+                    wordBreak: "normal",
+                  }}
                 />
               </div>
             )}
@@ -669,7 +661,15 @@ export default function CoursePage() {
                     dangerouslySetInnerHTML={{
                       __html: activeLesson.grammarContent,
                     }}
-                    style={{ fontSize: 16, lineHeight: 1.8, color: "#4a4a4a" }}
+                    style={{
+                      fontSize: 16,
+                      lineHeight: 1.8,
+                      color: "#4a4a4a",
+                      hyphens: "none",
+                      WebkitHyphens: "none",
+                      overflowWrap: "break-word",
+                      wordBreak: "normal",
+                    }}
                   />
                 </div>
               )}
