@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppContext } from "../../../context/AppContext";
 import { supabase } from "../../../lib/supabase";
+import DashboardHeader from "../../../components/dashboard/DashboardHeader";
 import {
   ArrowLeft,
   PlayCircle,
@@ -24,7 +25,7 @@ import {
 export default function CoursePage() {
   const params = useParams();
   const router = useRouter();
-  const { courses, user, submitAnswer, answers, isInitialized } =
+  const { courses, user, submitAnswer, answers, isInitialized, logout } =
     useAppContext();
 
   const courseId = params.courseId as string;
@@ -43,6 +44,7 @@ export default function CoursePage() {
     }
     return false;
   });
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Зберігаємо стан темної теми в localStorage
   useEffect(() => {
@@ -321,16 +323,23 @@ export default function CoursePage() {
 
   return (
     <div
-      className="flex flex-col xl:flex-row"
+      className="flex min-h-screen flex-col"
       style={{
-        display: "flex",
-        height: "100vh",
         background: isDarkMode ? "#2d2f2a" : "#faf9f6",
         color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
         fontFamily: "system-ui, sans-serif",
       }}
     >
-      <style
+      <DashboardHeader
+        userName={user.name}
+        isProfileOpen={isProfileOpen}
+        isDarkMode={isDarkMode}
+        onProfileToggle={() => setIsProfileOpen(!isProfileOpen)}
+        onDarkModeToggle={() => setIsDarkMode(!isDarkMode)}
+        onLogout={logout}
+      />
+      <div className="flex flex-1 overflow-hidden">
+        <style
         dangerouslySetInnerHTML={{
           __html: `
         .rich-text-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0; }
@@ -1492,6 +1501,7 @@ export default function CoursePage() {
             Оберіть урок з меню зліва.
           </div>
         )}
+      </div>
       </div>
     </div>
   );
