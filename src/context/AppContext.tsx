@@ -12,6 +12,19 @@ import { supabase } from "../lib/supabase";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { mapDbRowToAnswer } from "../lib/mappers";
 
+/**
+ * Перетворює будь-яке ім'я (кирилиця, пробіли, спецсимволи) на
+ * валідну синтетичну email-адресу для Supabase Auth.
+ * Детермінована: одне і те ж ім'я → завжди той самий email.
+ */
+function nameToEmail(name: string): string {
+  const bytes = new TextEncoder().encode(name.trim().toLowerCase());
+  const hex = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `u${hex}@lanp.local`;
+}
+
 export type SkillType = "listening" | "reading" | "speaking" | "writing" | "mixed";
 export type UserRole = "student" | "teacher" | "admin";
 export type AccountStatus = "pending" | "approved";
@@ -403,16 +416,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadSavedData();
   }, []);
 
-  // Періодично оновлюємо список користувачів, якщо викладач або адмін у системі
+  // Realtime-підписка на зміни profiles (замість polling)
   useEffect(() => {
-    if (
-      isInitialized &&
-      user &&
-      (user.role === "teacher" || user.role === "admin")
-    ) {
-      const interval = setInterval(fetchUsersFromSupabase, 5000); // кожні 5 секунд
-      return () => clearInterval(interval);
-    }
+    if (!isInitialized || !user) return;
+    if (user.role !== "teacher" && user.role !== "admin") return;
+
+    const channel = supabase
+      .channel("profiles-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => {
+          // При будь-якій зміні в profiles — перезавантажуємо список
+          fetchUsersFromSupabase();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [isInitialized, user]);
 
   // 2. ЗБЕРЕЖЕННЯ КУРСІВ ТА ВІДПОВІДЕЙ (Поки що в LocalStorage, наступним кроком перенесемо теж в хмару)
@@ -447,7 +470,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Створюємо користувача в Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: `${name}@lanp.local`, // Використовуємо ім'я як email (для локальної системи)
+      email: nameToEmail(name),
       password: password,
       options: {
         data: {
@@ -503,7 +526,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ): Promise<string | null> => {
     // Спробуємо авторизуватися через Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: `${name}@lanp.local`,
+      email: nameToEmail(name),
       password: password,
     });
 

@@ -4,11 +4,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "../../context/AppContext";
 
+const MIN_PASSWORD_LENGTH = 6;
+const MIN_NAME_LENGTH = 2;
+
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { login, registerUser, user } = useAppContext();
   const router = useRouter();
 
@@ -22,23 +27,39 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
+  const validate = (): string | null => {
+    if (name.trim().length < MIN_NAME_LENGTH)
+      return `Ім'я має містити щонайменше ${MIN_NAME_LENGTH} символи.`;
+    if (password.length < MIN_PASSWORD_LENGTH)
+      return `Пароль має містити щонайменше ${MIN_PASSWORD_LENGTH} символів.`;
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
 
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setIsLoading(true);
     try {
       if (isRegister) {
-        const err = await registerUser(name, password, "student");
+        const err = await registerUser(name.trim(), password, "student");
         if (err) {
           setError(err);
         } else {
-          alert("Заявку на реєстрацію надіслано. Очікуйте активації.");
+          setSuccessMessage("Заявку надіслано. Очікуйте активації адміністратором.");
           setIsRegister(false);
           setName("");
           setPassword("");
         }
       } else {
-        const err = await login(name, password);
+        const err = await login(name.trim(), password);
         if (err) {
           setError(err);
         }
@@ -47,6 +68,8 @@ export default function LoginPage() {
       const err = error as Error;
       setError("Критична помилка: " + err.message);
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -110,16 +133,25 @@ export default function LoginPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border border-[#d8cdb4] bg-white px-4 py-3.5 text-[15px] text-[#3a3528]"
+              minLength={MIN_NAME_LENGTH}
               required
             />
-            <input
-              type="password"
-              placeholder="Пароль"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-[#d8cdb4] bg-white px-4 py-3.5 text-[15px] text-[#3a3528]"
-              required
-            />
+            <div>
+              <input
+                type="password"
+                placeholder="Пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-[#d8cdb4] bg-white px-4 py-3.5 text-[15px] text-[#3a3528]"
+                minLength={MIN_PASSWORD_LENGTH}
+                required
+              />
+              {isRegister && (
+                <p className="mt-1 text-[12px] text-[#9a8f70]">
+                  Мінімум {MIN_PASSWORD_LENGTH} символів
+                </p>
+              )}
+            </div>
 
             {error && (
               <div className="rounded-md border-l-4 border-[#c97a4a] bg-[#fdeced] p-2.5">
@@ -127,11 +159,20 @@ export default function LoginPage() {
               </div>
             )}
 
+            {successMessage && (
+              <div className="rounded-md border-l-4 border-[#8a8a45] bg-[#eef0df] p-2.5">
+                <p className="text-[13px] font-medium text-[#5c6b1a]">{successMessage}</p>
+              </div>
+            )}
+
             <button
               type="submit"
-              className="mt-2 w-full rounded-lg bg-[#8a8a45] px-4 py-3.5 text-[15px] font-semibold text-[#f6f1e4] transition-colors hover:bg-[#7a7a3d]"
+              disabled={isLoading}
+              className="mt-2 w-full rounded-lg bg-[#8a8a45] px-4 py-3.5 text-[15px] font-semibold text-[#f6f1e4] transition-colors hover:bg-[#7a7a3d] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isRegister ? "Зареєструватися" : "Увійти"}
+              {isLoading
+                ? "Зачекайте..."
+                : isRegister ? "Зареєструватися" : "Увійти"}
             </button>
           </form>
 
