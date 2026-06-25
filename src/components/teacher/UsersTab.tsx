@@ -413,12 +413,12 @@ export default function UsersTab({
                   borderBottom: dm ? "2px solid #3e403a" : "2px solid #e0dcd0",
                 }}
               >
-                {["Ім'я", "Роль", "Статус", "Прогрес", "Дії"].map((h, i) => (
+                {["Ім'я", "Роль", "Статус", "Прогрес", "Дії"].map((h) => (
                   <th
                     key={h}
                     style={{
                       padding: 16,
-                      textAlign: i === 4 ? "right" : "left",
+                      textAlign: "left",
                       fontSize: 13,
                       fontWeight: 700,
                       color: dm ? "#e6e4dc" : "#5c574a",
@@ -460,7 +460,7 @@ export default function UsersTab({
                   <td style={{ padding: 16, fontSize: 14 }}>
                     <ProgressBar u={u} />
                   </td>
-                  <td style={{ padding: 16, textAlign: "right" }}>
+                  <td style={{ padding: 16 }}>
                     {renderActionButtons(u)}
                     {renderPasswordForm(u)}
                   </td>

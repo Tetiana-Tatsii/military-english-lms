@@ -21,6 +21,7 @@ interface AnswersTabProps {
     feedback: string,
     isAudio: boolean,
     score?: number,
+    coinsToAward?: number,
   ) => void;
 }
 
@@ -33,6 +34,7 @@ export default function AnswersTab({
 }: AnswersTabProps) {
   const [feedbackTexts, setFeedbackTexts] = useState<{ [key: string]: string }>({});
   const [scores, setScores] = useState<{ [key: string]: number }>({});
+  const [coinsMap, setCoinsMap] = useState<{ [key: string]: number }>({});
   const [answerFilter, setAnswerFilter] = useState<"pending" | "reviewed">("pending");
   const [lockedAnswers, setLockedAnswers] = useState<{ [key: string]: string | null }>({});
   const [isLocking, setIsLocking] = useState<{ [key: string]: boolean }>({});
@@ -510,7 +512,7 @@ export default function AnswersTab({
                             display: "block",
                           }}
                         >
-                          Оцінка (0-100)
+                          Оцінка (0–100)
                         </label>
                         <input
                           type="number"
@@ -519,17 +521,48 @@ export default function AnswersTab({
                           value={scores[ans.id] || ""}
                           onChange={(e) => {
                             const value = parseInt(e.target.value) || 0;
-                            const clampedValue = Math.min(100, Math.max(0, value));
-                            setScores({
-                              ...scores,
-                              [ans.id]: clampedValue,
-                            });
+                            setScores({ ...scores, [ans.id]: Math.min(100, Math.max(0, value)) });
                           }}
                           className="w-full rounded-md border border-[#d8cdb4] p-2 text-sm"
                           style={{
                             background: isDarkMode ? "#2d2f2a" : "#fff",
                             color: isDarkMode ? "#e6e4dc" : "#3a3528",
                           }}
+                        />
+                      </div>
+                      <div className="w-full">
+                        <label
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: isDarkMode ? "#a3a198" : "#7a7568",
+                            marginBottom: 8,
+                            display: "block",
+                          }}
+                        >
+                          {ans.coins_awarded
+                            ? "☕ Коїни вже нараховані"
+                            : "☕ Кава-коїни (0–20)"}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="20"
+                          disabled={!!ans.coins_awarded}
+                          value={coinsMap[ans.id] ?? ""}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 0;
+                            setCoinsMap({ ...coinsMap, [ans.id]: Math.min(20, Math.max(0, value)) });
+                          }}
+                          className="w-full rounded-md border border-[#d8cdb4] p-2 text-sm"
+                          style={{
+                            background: ans.coins_awarded
+                              ? (isDarkMode ? "#1e2019" : "#f0ede5")
+                              : (isDarkMode ? "#2d2f2a" : "#fff"),
+                            color: isDarkMode ? "#e6e4dc" : "#3a3528",
+                            opacity: ans.coins_awarded ? 0.6 : 1,
+                          }}
+                          placeholder={ans.coins_awarded ? "—" : "0"}
                         />
                       </div>
                     </div>
@@ -568,9 +601,11 @@ export default function AnswersTab({
                           feedbackTexts[ans.id] || "",
                           false,
                           scores[ans.id],
+                          coinsMap[ans.id] ?? 0,
                         );
                         setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
                         setScores({ ...scores, [ans.id]: 0 });
+                        setCoinsMap({ ...coinsMap, [ans.id]: 0 });
                       }}
                       disabled={!!(lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId)}
                       className="flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-opacity sm:w-auto sm:justify-start"

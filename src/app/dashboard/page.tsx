@@ -6,9 +6,12 @@ import { useAppContext } from "../../context/AppContext";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import CourseList from "../../components/dashboard/CourseList";
 import ProfileStats from "../../components/dashboard/ProfileStats";
+import InstructorCard from "../../components/dashboard/InstructorCard";
+import Voentorg from "../../components/dashboard/Voentorg";
+import Achievements from "../../components/dashboard/Achievements";
 
 export default function DashboardPage() {
-  const { user, courses, answers, logout, isInitialized } = useAppContext();
+  const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem } = useAppContext();
   const router = useRouter();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -90,8 +93,9 @@ export default function DashboardPage() {
       />
 
       {/* ОСНОВНИЙ КОНТЕНТ */}
-      <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-8 px-4 py-8 items-start xl:grid-cols-[1fr_320px] md:px-6">
-        <div>
+      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-6 px-4 py-8 items-start xl:grid-cols-[1fr_340px] md:px-6">
+        {/* Ліва колонка: курси + досягнення */}
+        <div className="flex flex-col gap-6">
           <CourseList
             courses={courses}
             answers={myAnswers}
@@ -100,10 +104,28 @@ export default function DashboardPage() {
             onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}
             isDarkMode={isDarkMode}
           />
+          {gamification && (
+            <Achievements
+              gamification={gamification}
+              courses={courses}
+              isDarkMode={isDarkMode}
+            />
+          )}
         </div>
 
-        <div>
+        {/* Права колонка: SLP + інструктор + воєнторг */}
+        <div className="flex flex-col gap-6">
           <ProfileStats isDarkMode={isDarkMode} />
+          {gamification && (
+            <>
+              <InstructorCard gamification={gamification} mood={instructorMood} isDarkMode={isDarkMode} />
+              <Voentorg
+                gamification={gamification}
+                isDarkMode={isDarkMode}
+                onBuy={buyShopItem}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

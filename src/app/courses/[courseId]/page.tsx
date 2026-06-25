@@ -6,6 +6,7 @@ import { useAppContext } from "../../../context/AppContext";
 import { supabase } from "../../../lib/supabase";
 import { useDarkMode } from "../../../hooks/useDarkMode";
 import { recalculateSlp } from "../../../lib/slp";
+import { awardCoins } from "../../../lib/gamification";
 import DashboardHeader from "../../../components/dashboard/DashboardHeader";
 import {
   ArrowLeft,
@@ -161,35 +162,47 @@ export default function CoursePage() {
   const handleQuizSubmit = async () => {
     if (!activeLesson?.quiz?.length || !user) return;
 
+    // Перевіряємо чи тест вже здавали (anti-cheat)
+    const { data: existing } = await supabase
+      .from("quiz_results")
+      .select("id, score")
+      .eq("user_id", user.id)
+      .eq("lesson_id", activeLesson.id)
+      .maybeSingle();
+
+    if (existing) {
+      // Вже здавали — тільки показуємо результат, коїни не нараховуємо
+      setQuizScore(existing.score);
+      setQuizSubmitted(true);
+      return;
+    }
+
     const correctCount = activeLesson.quiz.filter(
       (q) => quizAnswers[q.id] === q.correctAnswer,
     ).length;
     const score = Math.round((correctCount / activeLesson.quiz.length) * 100);
 
-    // Зберігаємо результат в Supabase ПЕРЕД тим як оновити UI.
-    // upsert замість insert — безпечно при повторній здачі або помилці мережі.
+    // INSERT (не upsert) — унікальний constraint на DB рівні захищає від дублів
     const { error } = await supabase
       .from("quiz_results")
-      .upsert(
-        {
-          user_id: user.id,
-          lesson_id: activeLesson.id,
-          score,
-          answers: quizAnswers,
-        },
-        { onConflict: "user_id,lesson_id" },
-      );
+      .insert({
+        user_id: user.id,
+        lesson_id: activeLesson.id,
+        score,
+        answers: quizAnswers,
+      });
 
     if (error) {
-      // RLS або мережева помилка — показуємо стан без збереження
       console.error("Помилка при збереженні результату тесту:", error);
+    } else {
+      // Нараховуємо 1 коїн за кожну правильну відповідь
+      if (correctCount > 0) {
+        await awardCoins(supabase, user.id, correctCount);
+      }
     }
 
-    // Оновлюємо UI лише після спроби збереження
     setQuizScore(score);
     setQuizSubmitted(true);
-
-    // Перераховуємо SLP як середнє по всіх результатах
     await recalculateSlp(supabase, user.id, courses);
   };
 

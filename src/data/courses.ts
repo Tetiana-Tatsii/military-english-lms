@@ -249,8 +249,8 @@ export const initialCourses = [
     },
   },
   {
-    id: "general-english-b2",
-    title: "General English (B2 Upper-Intermediate)",
+    id: "general-english",
+    title: "General English",
     subtitle: "Загальний курс англійської мови",
     description:
       "Курс у розробці. Фокус на загальну граматику, розмовну практику та письмо.",

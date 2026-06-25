@@ -7,11 +7,19 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { initialCourses } from "../data/courses";
+import { initialCourses } from "../data/courses"; // використовується лише для seeding
 import { supabase } from "../lib/supabase";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { mapDbRowToAnswer } from "../lib/mappers";
 import { recalculateSlp } from "../lib/slp";
+import {
+  GamificationProfile,
+  fetchGamificationProfile,
+  processDailyStreak,
+  awardCoins,
+  buyShopItemInDb,
+  checkAndCompleteCourse,
+} from "../lib/gamification";
 
 /**
  * Перетворює будь-яке ім'я (кирилиця, пробіли, спецсимволи) на
@@ -101,7 +109,10 @@ export interface Answer {
   score?: number;
   locked_by_teacher_id?: string | null;
   user_id?: string;
+  coins_awarded?: boolean;
 }
+
+export type { GamificationProfile };
 
 export interface SupportTicket {
   id: string;
@@ -167,7 +178,13 @@ interface AppState {
     feedbackText: string,
     feedbackAudio: boolean,
     score?: number,
+    coinsToAward?: number,
   ) => void;
+
+  gamification: GamificationProfile | null;
+  instructorMood: "happy" | "angry" | "proud";
+  refreshGamification: () => Promise<void>;
+  buyShopItem: (itemId: string, price: number) => Promise<string | null>;
 
   addSupportTicket: (type: "bug" | "improvement", message: string) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: "open" | "closed") => Promise<void>;
@@ -212,11 +229,13 @@ const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppState["user"]>(null);
-  const [courses, setCourses] = useState<Course[]>(initialCourses as Course[]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [usersDb, setUsersDb] = useState<UserAccount[]>([]);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [gamification, setGamification] = useState<GamificationProfile | null>(null);
+  const [instructorMood, setInstructorMood] = useState<"happy" | "angry" | "proud">("happy");
 
   // СИНХРОНІЗАЦІЯ КОРИСТУВАЧІВ З SUPABASE
   const fetchUsersFromSupabase = async () => {
@@ -238,8 +257,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshGamification = async (uid?: string) => {
+    const id = uid ?? user?.id;
+    if (!id) return;
+    const profile = await fetchGamificationProfile(supabase, id);
+    if (profile) setGamification(profile);
+  };
+
+  const buyShopItem = async (itemId: string, price: number): Promise<string | null> => {
+    if (!user) return "Не авторизований";
+    const err = await buyShopItemInDb(supabase, user.id, itemId, price);
+    if (!err) await refreshGamification();
+    return err;
+  };
+
   // СИНХРОНІЗАЦІЯ КУРСІВ З SUPABASE
-  const fetchCoursesFromSupabase = async () => {
+  const fetchCoursesFromSupabase = async (): Promise<Course[]> => {
     try {
       const { data, error } = await supabase
         .from("lms_courses")
@@ -248,41 +281,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error("Помилка завантаження курсів з Supabase:", error);
-        return;
+        return [];
       }
 
       if (data && data.length > 0) {
-        // Трансформуємо змійок snake_case з бази у camelCase
         const formattedCourses: Course[] = data.map((c) => ({
           id: c.id,
           title: c.title,
           subtitle: c.subtitle || "",
           description: c.description || "",
-          status: c.status as "active" | "draft",
+          status: (c.status as "active" | "draft") || "draft",
           modules: c.modules || [],
           finalTest: c.final_test || { title: "", questions: [] },
         }));
         setCourses(formattedCourses);
-        localStorage.setItem("lanp_courses", JSON.stringify(formattedCourses));
+        return formattedCourses;
       }
+
+      return [];
     } catch (error) {
       console.error("Помилка при завантаженні курсів:", error);
+      return [];
     }
   };
 
   const saveCourseToSupabase = async (course: Course) => {
     try {
-      const courseToSave = {
-        id: course.id,
-        title: course.title || "",
-        subtitle: course.subtitle || "",
-        description: course.description || "",
-        modules: course.modules || []
-      };
-
       const { error } = await supabase
         .from('lms_courses')
-        .upsert(courseToSave);
+        .upsert({
+          id: course.id,
+          title: course.title || "",
+          subtitle: course.subtitle || "",
+          description: course.description || "",
+          status: course.status || "draft",
+          modules: course.modules || [],
+          final_test: course.finalTest || { title: "", questions: [] },
+        });
 
       if (error) {
         console.error("Помилка Supabase при збереженні курсу:", error);
@@ -348,26 +383,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadSavedData = async () => {
       try {
+        // Прибираємо застарілі localStorage-ключі (курси та відповіді тепер у Supabase)
+        localStorage.removeItem("lanp_courses");
+        localStorage.removeItem("lanp_answers");
+
         // Спочатку відновлюємо сесію Supabase Auth
         const { data: { session } } = await supabase.auth.getSession();
         
         const savedUserSession = sessionStorage.getItem("lanp_user");
 
-        // Спочатку завантажуємо курси з Supabase
-        await fetchCoursesFromSupabase();
+        // Завантажуємо курси з Supabase (єдине джерело правди)
+        const loadedCourses = await fetchCoursesFromSupabase();
 
-        // Потім завантажуємо відповіді з Supabase
-        await fetchAnswersFromSupabase();
-
-        // Якщо в Supabase немає курсів, завантажуємо з localStorage
-        const savedCourses = localStorage.getItem("lanp_courses");
-        if (savedCourses && courses.length === 0) {
-          try {
-            setCourses(JSON.parse(savedCourses));
-          } catch (e) {
-            console.error("Помилка парсингу курсів:", e);
+        // Якщо в Supabase ще немає курсів — сідимо initialCourses одноразово
+        if (loadedCourses.length === 0) {
+          for (const course of initialCourses as Course[]) {
+            await supabase.from("lms_courses").upsert({
+              id: course.id,
+              title: course.title,
+              subtitle: course.subtitle,
+              description: course.description,
+              status: course.status || "draft",
+              modules: course.modules,
+              final_test: course.finalTest || { title: "", questions: [] },
+            });
           }
+          await fetchCoursesFromSupabase();
         }
+
+        // Завантажуємо відповіді з Supabase
+        await fetchAnswersFromSupabase();
 
         const savedSupportTickets = localStorage.getItem("lanp_support_tickets");
         if (savedSupportTickets) {
@@ -430,6 +475,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         // Обов'язково завантажуємо актуальних користувачів з хмари
         await fetchUsersFromSupabase();
+
+        // Завантажуємо геймфікацію якщо юзер вже залогінений
+        if (session?.user) {
+          await refreshGamification(session.user.id);
+        }
       } catch (error) {
         console.error("Помилка завантаження системи:", error);
       } finally {
@@ -462,16 +512,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [isInitialized, user]);
 
-  // 2. ЗБЕРЕЖЕННЯ КУРСІВ ТА ВІДПОВІДЕЙ (Поки що в LocalStorage, наступним кроком перенесемо теж в хмару)
-  useEffect(() => {
-    if (isInitialized) {
-      try {
-        localStorage.setItem("lanp_courses", JSON.stringify(courses));
-      } catch (e) {
-        console.error("Помилка збереження курсів:", e);
-      }
-    }
-  }, [courses, isInitialized]);
+  // Курси зберігаються виключно в Supabase — localStorage для курсів більше не використовується
 
   // --- СЕРВЕРНА ЛОГІКА АВТОРИЗАЦІЇ (SUPABASE) ---
 
@@ -594,6 +635,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
       setUser(sessionData);
       sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
+      const streakResult = await processDailyStreak(supabase, data.id);
+      if (streakResult.wasStreakBroken) setInstructorMood("angry");
+      await refreshGamification(data.id);
       return null;
     }
 
@@ -620,6 +664,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
       setUser(sessionData);
       sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
+      const streakResult2 = await processDailyStreak(supabase, profileData.id);
+      if (streakResult2.wasStreakBroken) setInstructorMood("angry");
+      await refreshGamification(profileData.id);
       return null;
     }
 
@@ -762,11 +809,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     feedbackText: string,
     feedbackAudio: boolean,
     score?: number,
+    coinsToAward?: number,
   ) => {
-    // 1. Знаходимо відповідь
     const answer = answers.find((a) => a.id === answerId);
-    
-    // 2. Оновлюємо локальний стейт
+    const willAwardCoins = !!(coinsToAward && coinsToAward > 0 && !answer?.coins_awarded);
+
+    // Optimistic update
     setAnswers((prev) =>
       prev.map((ans) =>
         ans.id === answerId
@@ -776,34 +824,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
               teacherFeedbackAudio: feedbackAudio,
               score,
               status: "reviewed",
+              coins_awarded: willAwardCoins ? true : ans.coins_awarded,
             }
           : ans,
       ),
     );
 
-    // 3. Зберігаємо фідбек в таблицю answers
     const { error } = await supabase
-      .from('answers')
+      .from("answers")
       .update({
-        score: score,
+        score,
         teacher_feedback: feedbackText,
         teacher_feedback_audio: feedbackAudio,
-        status: 'reviewed'
+        status: "reviewed",
+        ...(willAwardCoins ? { coins_awarded: true } : {}),
       })
-      .eq('id', answerId);
+      .eq("id", answerId);
 
     if (error) {
       console.error("Помилка Supabase при збереженні фідбеку:", error);
       throw error;
     }
 
-    // 4. Оновлюємо SLP профіль (Виправлена логіка)
-    if (answer && score !== undefined) {
-      // Надійно шукаємо ID курсанта
-      const studentId = answer.user_id || usersDb.find(u => u.name === answer.studentName)?.id;
-      
-      if (studentId) {
-        // Перераховуємо SLP як середнє по всіх результатах курсанта
+    const studentId = answer?.user_id || usersDb.find((u) => u.name === answer?.studentName)?.id;
+
+    if (studentId) {
+      // Нараховуємо коїни (тільки якщо ще не нараховані)
+      if (willAwardCoins && coinsToAward) {
+        await awardCoins(supabase, studentId, coinsToAward);
+      }
+
+      // Перевіряємо завершення курсу
+      if (answer?.courseId) {
+        const justCompleted = await checkAndCompleteCourse(supabase, studentId, answer.courseId, courses);
+        if (justCompleted) {
+          setInstructorMood("proud");
+          await refreshGamification(studentId);
+        }
+      }
+
+      // Оновлюємо SLP
+      if (score !== undefined) {
         await recalculateSlp(supabase, studentId, courses);
       }
     }
@@ -1087,6 +1148,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addLesson,
         updateLesson,
         deleteLesson,
+        gamification,
+        instructorMood,
+        refreshGamification,
+        buyShopItem,
       }}
     >
       {isInitialized ? (

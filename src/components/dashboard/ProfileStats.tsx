@@ -29,13 +29,16 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
 
         if (!error && data) {
           setSlpMetrics({
-            listening: data.slp_listening || 0,
-            speaking: data.slp_speaking || 0,
-            reading: data.slp_reading || 0,
-            writing: data.slp_writing || 0,
+            listening: data.slp_listening ?? 0,
+            speaking: data.slp_speaking ?? 0,
+            reading: data.slp_reading ?? 0,
+            writing: data.slp_writing ?? 0,
           });
         } else if (error) {
-          console.error("Error loading SLP metrics:", error);
+          // Silently ignore if columns don't exist yet (migration pending)
+          if (!error.message?.includes("does not exist")) {
+            console.error("Error loading SLP metrics:", error);
+          }
         }
       };
       loadSlpMetrics();

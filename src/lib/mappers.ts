@@ -19,5 +19,6 @@ export function mapDbRowToAnswer(a: Record<string, any>): Answer {
     score: a.score ?? undefined,
     locked_by_teacher_id: a.locked_by_teacher_id ?? null,
     user_id: a.user_id ?? undefined,
+    coins_awarded: a.coins_awarded ?? false,
   };
 }
