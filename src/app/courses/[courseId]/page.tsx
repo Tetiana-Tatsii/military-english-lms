@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppContext } from "../../../context/AppContext";
 import { supabase } from "../../../lib/supabase";
 import { useDarkMode } from "../../../hooks/useDarkMode";
+import { recalculateSlp } from "../../../lib/slp";
 import DashboardHeader from "../../../components/dashboard/DashboardHeader";
 import {
   ArrowLeft,
@@ -188,25 +189,8 @@ export default function CoursePage() {
     setQuizScore(score);
     setQuizSubmitted(true);
 
-    // Оновлюємо SLP метрики в профілі
-    const SKILL_TO_COLUMN: Partial<Record<string, string>> = {
-      listening: "slp_listening",
-      speaking: "slp_speaking",
-      reading: "slp_reading",
-      writing: "slp_writing",
-    };
-    const slpColumn = activeLesson.skill ? SKILL_TO_COLUMN[activeLesson.skill] : null;
-
-    if (slpColumn) {
-      const { error: slpError } = await supabase
-        .from("profiles")
-        .update({ [slpColumn]: score })
-        .eq("id", user.id);
-
-      if (slpError) {
-        console.error("Помилка при оновленні SLP метрик:", slpError);
-      }
-    }
+    // Перераховуємо SLP як середнє по всіх результатах
+    await recalculateSlp(supabase, user.id, courses);
   };
 
   const startRecording = async () => {

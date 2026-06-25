@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Users, Key, Trash2, CheckCircle, Clock } from "lucide-react";
+import { Users, Key, Trash2, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import {
   Answer,
   Course,
@@ -32,6 +32,8 @@ export default function UsersTab({
 }: UsersTabProps) {
   const [editingPasswordId, setEditingPasswordId] = useState<string | null>(null);
   const [newPasswordValue, setNewPasswordValue] = useState("");
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const getProgress = (u: UserAccount) => {
     if (u.role !== "student") return null;
@@ -103,23 +105,38 @@ export default function UsersTab({
     );
   };
 
-  const ActionButtons = ({ u }: { u: UserAccount }) => (
+  const handleApprove = async (userId: string) => {
+    setLoadingId(userId + "-approve");
+    await approveUser(userId);
+    setLoadingId(null);
+  };
+
+  const handleDelete = async (userId: string) => {
+    setLoadingId(userId + "-delete");
+    await rejectUser(userId);
+    setLoadingId(null);
+    setConfirmDeleteId(null);
+  };
+
+  const renderActionButtons = (u: UserAccount) => (
     <div className="flex flex-wrap gap-2">
       {u.status === "pending" && (
         <button
-          onClick={() => approveUser(u.id)}
+          disabled={loadingId === u.id + "-approve"}
+          onClick={() => handleApprove(u.id)}
           style={{
-            background: "#8a8a45",
+            background: loadingId === u.id + "-approve" ? "#b5b87a" : "#8a8a45",
             color: "#fff",
             border: "none",
             padding: "6px 12px",
             borderRadius: 6,
-            cursor: "pointer",
+            cursor: loadingId === u.id + "-approve" ? "not-allowed" : "pointer",
             fontSize: 13,
             fontWeight: 600,
+            opacity: loadingId === u.id + "-approve" ? 0.7 : 1,
           }}
         >
-          ✓ Підтвердити
+          {loadingId === u.id + "-approve" ? "..." : "✓ Підтвердити"}
         </button>
       )}
       {currentUserRole === "admin" && (
@@ -144,7 +161,7 @@ export default function UsersTab({
         </button>
       )}
       <button
-        onClick={() => rejectUser(u.id)}
+        onClick={() => setConfirmDeleteId(u.id)}
         style={{
           background: "transparent",
           border: "1px solid #c97a4a",
@@ -162,7 +179,7 @@ export default function UsersTab({
     </div>
   );
 
-  const PasswordForm = ({ u }: { u: UserAccount }) =>
+  const renderPasswordForm = (u: UserAccount) =>
     editingPasswordId === u.id ? (
       <div
         className="mt-3 rounded-md p-3"
@@ -172,6 +189,7 @@ export default function UsersTab({
         }}
       >
         <input
+          autoFocus
           type="password"
           placeholder="Новий пароль"
           value={newPasswordValue}
@@ -225,10 +243,79 @@ export default function UsersTab({
       </div>
     ) : null;
 
+  const confirmDeleteUser = visibleUsers.find((u) => u.id === confirmDeleteId);
   const dm = isDarkMode;
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease" }}>
+      {/* ───── ДІАЛОГ ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ ───── */}
+      {confirmDeleteId && confirmDeleteUser && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: dm ? "#2d2f2a" : "#fff",
+              border: dm ? "1px solid #3e403a" : "1px solid #e0dcd0",
+              borderRadius: 12,
+              padding: "28px 32px",
+              maxWidth: 380,
+              width: "90%",
+              textAlign: "center",
+            }}
+          >
+            <AlertTriangle size={36} color="#c97a4a" style={{ margin: "0 auto 12px" }} />
+            <p style={{ fontSize: 16, fontWeight: 600, color: dm ? "#e6e4dc" : "#3a3528", marginBottom: 8 }}>
+              Видалити користувача?
+            </p>
+            <p style={{ fontSize: 14, color: dm ? "#a3a198" : "#9a8f70", marginBottom: 24 }}>
+              <strong>{confirmDeleteUser.name}</strong> буде видалено назавжди.
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 6,
+                  border: dm ? "1px solid #3e403a" : "1px solid #d8cdb4",
+                  background: "transparent",
+                  color: dm ? "#e6e4dc" : "#5c574a",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                Скасувати
+              </button>
+              <button
+                disabled={loadingId === confirmDeleteId + "-delete"}
+                onClick={() => handleDelete(confirmDeleteId)}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: loadingId === confirmDeleteId + "-delete" ? "#e0a07a" : "#c97a4a",
+                  color: "#fff",
+                  cursor: loadingId === confirmDeleteId + "-delete" ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  opacity: loadingId === confirmDeleteId + "-delete" ? 0.7 : 1,
+                }}
+              >
+                {loadingId === confirmDeleteId + "-delete" ? "Видалення..." : "Так, видалити"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <h2
         className="mb-6 flex items-center gap-2 text-2xl font-bold"
         style={{ color: dm ? "#e6e4dc" : "#3a3528" }}
@@ -302,8 +389,8 @@ export default function UsersTab({
               className="border-t pt-3"
               style={{ borderColor: dm ? "#3e403a" : "#e0dcd0" }}
             >
-              <ActionButtons u={u} />
-              <PasswordForm u={u} />
+              {renderActionButtons(u)}
+              {renderPasswordForm(u)}
             </div>
           </div>
         ))}
@@ -374,8 +461,8 @@ export default function UsersTab({
                     <ProgressBar u={u} />
                   </td>
                   <td style={{ padding: 16, textAlign: "right" }}>
-                    <ActionButtons u={u} />
-                    <PasswordForm u={u} />
+                    {renderActionButtons(u)}
+                    {renderPasswordForm(u)}
                   </td>
                 </tr>
               ))}

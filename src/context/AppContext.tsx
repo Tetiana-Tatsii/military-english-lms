@@ -11,6 +11,7 @@ import { initialCourses } from "../data/courses";
 import { supabase } from "../lib/supabase";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { mapDbRowToAnswer } from "../lib/mappers";
+import { recalculateSlp } from "../lib/slp";
 
 /**
  * Перетворює будь-яке ім'я (кирилиця, пробіли, спецсимволи) на
@@ -377,8 +378,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
         
-        // Якщо є активна сесія Supabase Auth, використовуємо її
-        if (session?.user) {
+        // Пріоритет: sessionStorage цієї вкладки (уникаємо cross-tab конфліктів)
+        if (savedUserSession) {
+          try {
+            const savedUser = JSON.parse(savedUserSession) as UserAccount;
+            // Якщо Auth-сесія належить тому самому користувачу — оновлюємо профіль з БД
+            if (session?.user && session.user.id === savedUser.id) {
+              const { data: profileData } = await supabase
+                .from("profiles")
+                .select("id, name, role, status, squad_id")
+                .eq("id", session.user.id)
+                .single();
+              if (profileData) {
+                const refreshed = {
+                  id: profileData.id,
+                  name: profileData.name,
+                  role: profileData.role as UserRole,
+                  squadId: profileData.squad_id,
+                };
+                setUser(refreshed);
+                sessionStorage.setItem("lanp_user", JSON.stringify(refreshed));
+              } else {
+                setUser(savedUser);
+              }
+            } else {
+              // Auth-сесія належить іншій вкладці — ігноруємо її
+              setUser(savedUser);
+            }
+          } catch (e) {
+            console.error("Помилка парсингу сесії:", e);
+          }
+        } else if (session?.user) {
+          // Нова вкладка без sessionStorage — завантажуємо профіль з Auth
           const { data: profileData, error: profileError } = await supabase
             .from("profiles")
             .select("id, name, role, status, squad_id")
@@ -394,13 +425,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
             setUser(sessionData);
             sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-          }
-        } else if (savedUserSession) {
-          // Fallback на старий метод
-          try {
-            setUser(JSON.parse(savedUserSession));
-          } catch (e) {
-            console.error("Помилка парсингу сесії:", e);
           }
         }
 
@@ -610,23 +634,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const approveUser = async (userId: string) => {
+    // Optimistic update — instant UI response
+    setUsersDb((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, status: "approved" as const } : u)),
+    );
     const { error } = await supabase
       .from("profiles")
       .update({ status: "approved" })
       .eq("id", userId);
-    if (!error) await fetchUsersFromSupabase();
+    if (error) await fetchUsersFromSupabase(); // revert on error
   };
 
   const rejectUser = async (userId: string) => {
-    if (
-      confirm("Ви впевнені, що хочете відхилити заявку / видалити користувача?")
-    ) {
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
-      if (!error) await fetchUsersFromSupabase();
-    }
+    // Optimistic update — instant UI response (confirm dialog moved to UsersTab)
+    setUsersDb((prev) => prev.filter((u) => u.id !== userId));
+    const { error } = await supabase.from("profiles").delete().eq("id", userId);
+    if (error) await fetchUsersFromSupabase(); // revert on error
   };
 
   const changeUserPassword = async (userId: string, newPassword: string) => {
@@ -635,7 +658,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .from("profiles")
       .update({ password: hashedPassword })
       .eq("id", userId);
-    if (!error) await fetchUsersFromSupabase();
+    if (error) console.error("Помилка зміни пароля:", error.message);
   };
 
   // --- ІНШІ ФУНКЦІЇ (ВІДПОВІДІ ТА CRUD КУРСІВ) ---
@@ -780,28 +803,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const studentId = answer.user_id || usersDb.find(u => u.name === answer.studentName)?.id;
       
       if (studentId) {
-        // Визначаємо навичку. За замовчуванням ставимо 'writing' для ДЗ
-        let lessonSkill = "writing"; 
-        for (const course of courses) {
-          for (const module of course.modules) {
-            const lesson = module.lessons.find((l) => l.id === answer.lessonId);
-            if (lesson && lesson.skill) {
-              lessonSkill = lesson.skill;
-            }
-          }
-        }
-
-        const skillColumn = `slp_${lessonSkill}`; // Збираємо назву колонки (напр. slp_writing)
-        
-        const { error: slpError } = await supabase
-          .from("profiles")
-          .update({ [skillColumn]: score })
-          .eq("id", studentId);
-
-        if (slpError) {
-          console.error("Помилка при оновленні SLP метрик:", slpError);
-        } else {
-        }
+        // Перераховуємо SLP як середнє по всіх результатах курсанта
+        await recalculateSlp(supabase, studentId, courses);
       }
     }
   };
