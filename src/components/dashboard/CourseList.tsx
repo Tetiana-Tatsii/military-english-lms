@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { BookOpen, ChevronDown, ChevronUp, Award, CheckCircle, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Award, CheckCircle, Clock } from "lucide-react";
 import { Course, Answer } from "@/context/AppContext";
 
 interface CourseListProps {
@@ -35,14 +35,7 @@ export default function CourseList({
 
   return (
     <>
-      <h2
-        className={`mb-4 flex items-center gap-2 text-lg font-semibold ${
-          isDarkMode ? "text-[#f6f1e4]" : "text-[#3a3528]"
-        }`}
-      >
-        <BookOpen size={20} color="#8a8a45" /> Доступні курси
-      </h2>
-      <div className="mb-10 flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         {courses.map((course) => {
           const progress = getCourseProgress(course.id);
           const isExpanded = expandedCourses.has(course.id);

@@ -27,7 +27,7 @@ export default function Achievements({ gamification, courses, isDarkMode }: Achi
 
   return (
     <div
-      className="rounded-xl border"
+      className="rounded-2xl border"
       style={{
         background: isDarkMode ? "#2d2f2a" : "#f6f1e4",
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
@@ -38,7 +38,7 @@ export default function Achievements({ gamification, courses, isDarkMode }: Achi
         style={{ borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e8e2d4" }}
       >
         <span className="font-bold" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
-          🏅 Досягнення та Коїни
+          🏅 Achievements & Badges
         </span>
       </div>
 
@@ -105,15 +105,15 @@ export default function Achievements({ gamification, courses, isDarkMode }: Achi
                 className="rounded-full px-2 py-0.5 text-xs font-bold"
                 style={{ background: "#8a8a45", color: "#fff" }}
               >
-                Завершено ✓
+                  Completed ✓
               </span>
             ) : (
               <span
-                className="text-xs"
-                style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}
-              >
-                Не завершено
-              </span>
+                  className="text-xs"
+                  style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}
+                >
+                  Not completed
+                </span>
             )}
           </div>
         ))}

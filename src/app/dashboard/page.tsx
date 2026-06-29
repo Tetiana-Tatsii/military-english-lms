@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showPxStore, setShowPxStore] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("darkMode");
@@ -93,17 +94,47 @@ export default function DashboardPage() {
       />
 
       {/* ОСНОВНИЙ КОНТЕНТ */}
-      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-6 px-4 py-8 items-start xl:grid-cols-[1fr_340px] md:px-6">
-        {/* Ліва колонка: курси + досягнення */}
+      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-6 px-4 py-8 items-start xl:grid-cols-[1fr_300px] md:px-6">
+
+        {/* ЛІВА КОЛОНКА: курси → інструктор → PX store (якщо відкрито) → досягнення */}
         <div className="flex flex-col gap-6">
-          <CourseList
-            courses={courses}
-            answers={myAnswers}
-            getCourseProgress={getCourseProgress}
-            getLessonTitle={getLessonTitle}
-            onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}
-            isDarkMode={isDarkMode}
-          />
+          {/* Heading + courses grouped — heading top aligns with SLP card */}
+          <div className="flex flex-col gap-4">
+            <h2
+              className="text-lg font-semibold leading-none"
+              style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
+            >
+              Available courses
+            </h2>
+            <CourseList
+              courses={courses}
+              answers={myAnswers}
+              getCourseProgress={getCourseProgress}
+              getLessonTitle={getLessonTitle}
+              onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}
+              isDarkMode={isDarkMode}
+            />
+          </div>
+
+          {gamification && (
+            <InstructorCard
+              gamification={gamification}
+              mood={instructorMood}
+              isDarkMode={isDarkMode}
+              isPxStoreOpen={showPxStore}
+              onPxStoreToggle={() => setShowPxStore((v) => !v)}
+            />
+          )}
+
+          {gamification && showPxStore && (
+            <Voentorg
+              gamification={gamification}
+              isDarkMode={isDarkMode}
+              onBuy={buyShopItem}
+              defaultOpen={true}
+            />
+          )}
+
           {gamification && (
             <Achievements
               gamification={gamification}
@@ -113,20 +144,11 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Права колонка: SLP + інструктор + воєнторг */}
+        {/* ПРАВА КОЛОНКА: тільки SLP профіль */}
         <div className="flex flex-col gap-6">
           <ProfileStats isDarkMode={isDarkMode} />
-          {gamification && (
-            <>
-              <InstructorCard gamification={gamification} mood={instructorMood} isDarkMode={isDarkMode} />
-              <Voentorg
-                gamification={gamification}
-                isDarkMode={isDarkMode}
-                onBuy={buyShopItem}
-              />
-            </>
-          )}
         </div>
+
       </div>
     </div>
   );

@@ -66,7 +66,7 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
 
   return (
     <div
-      className={`rounded-xl border p-6 ${
+      className={`rounded-2xl border p-6 ${
         isDarkMode
           ? "bg-[#2d2f2a] border-[#3e403a]"
           : "bg-[#f6f1e4] border-[#d8cdb4]"

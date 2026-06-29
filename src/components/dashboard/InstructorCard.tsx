@@ -1,26 +1,26 @@
 "use client";
 
 import React from "react";
+import { ShoppingCart } from "lucide-react";
 import type { GamificationProfile } from "@/context/AppContext";
 
 interface InstructorCardProps {
   gamification: GamificationProfile;
   mood: "happy" | "angry" | "proud";
   isDarkMode: boolean;
+  isPxStoreOpen: boolean;
+  onPxStoreToggle: () => void;
 }
 
-// Items that have a dedicated happy variant image
 const HAPPY_ITEM_IMAGES: Record<string, string> = {
-  coffee:   "/instructor/happy.png",
-  snickers: "/instructor/happy-snickers.png",
-  energy:   "/instructor/happy-energy.png",
-  thermos:  "/instructor/happy-thermos.png",
-  statute:  "/instructor/happy-statute.png",
+  coffee:   "/instructor/happy.webp",
+  snickers: "/instructor/happy-snickers.webp",
+  energy:   "/instructor/happy-energy.webp",
+  thermos:  "/instructor/happy-thermos.webp",
 };
 
 const MOOD_CONFIG = {
   happy: {
-    emoji: "😊",
     fallbackEmoji: "😊",
     borderColor: "#8a8a45",
     bgColor: "#eef0df",
@@ -28,20 +28,18 @@ const MOOD_CONFIG = {
     message: null,
   },
   angry: {
-    emoji: "😠",
     fallbackEmoji: "😠",
     borderColor: "#c97a4a",
     bgColor: "#fdeced",
     bgDark: "#2a1a1a",
-    message: "Мій внутрішній командир починає тупати ніжкою. Де домашка?",
+    message: "My inner commander is getting impatient. Where's the homework?",
   },
   proud: {
-    emoji: "🥲",
     fallbackEmoji: "🥲",
     borderColor: "#5a7abf",
     bgColor: "#e8edf8",
     bgDark: "#1a202e",
-    message: "До зустрічі на новому курсі 🥲",
+    message: "See you in the next course! 🥲",
   },
 } as const;
 
@@ -50,77 +48,115 @@ const EQUIPPED_EMOJI: Record<string, string> = {
   snickers: "🍫",
   energy:   "🥤",
   thermos:  "🫖",
-  statute:  "📕",
 };
 
 function getInstructorImage(mood: "happy" | "angry" | "proud", activeItem: string): string {
-  if (mood === "angry") return "/instructor/angry.png";
-  if (mood === "proud") return "/instructor/proud.png";
-  // happy — показуємо предмет який він тримає
+  if (mood === "angry") return "/instructor/angry.webp";
+  if (mood === "proud") return "/instructor/proud.webp";
   return HAPPY_ITEM_IMAGES[activeItem] ?? HAPPY_ITEM_IMAGES.coffee;
 }
 
-export default function InstructorCard({ gamification, mood, isDarkMode }: InstructorCardProps) {
+const COIN_OPEN   = "/coins/coffee-coin_open.webp";
+const COIN_LOCKED = "/coins/coffee-coin_locked.webp";
+
+function CoinImg({ filled }: { filled: boolean }) {
+  return (
+    <img
+      src={filled ? COIN_OPEN : COIN_LOCKED}
+      alt={filled ? "completed" : "locked"}
+      // 72 px coins
+      className="w-[72px] h-[72px] object-contain flex-shrink-0 transition-all duration-300"
+      style={{ opacity: filled ? 1 : 0.55 }}
+    />
+  );
+}
+
+export default function InstructorCard({
+  gamification,
+  mood,
+  isDarkMode,
+  isPxStoreOpen,
+  onPxStoreToggle,
+}: InstructorCardProps) {
   const { streakCount, activeInstructorItem, coffeeCoins } = gamification;
   const config = MOOD_CONFIG[mood];
   const filledCups = streakCount === 0 ? 0 : ((streakCount - 1) % 7) + 1;
-  const equippedEmoji = EQUIPPED_EMOJI[activeInstructorItem] ?? "☕";
+  const equippedEmoji = mood === "happy" ? (EQUIPPED_EMOJI[activeInstructorItem] ?? "☕") : null;
   const imageSrc = getInstructorImage(mood, activeInstructorItem);
 
   return (
+    // paddingTop: 0 as requested; head may naturally peek into gap above
     <div
-      className="rounded-xl border overflow-hidden"
+      className="rounded-2xl border flex flex-row overflow-visible"
       style={{
         background: isDarkMode ? "#2d2f2a" : "#f6f1e4",
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
+        minHeight: 210,
       }}
     >
-      {/* Header */}
+      {/* ── LEFT: Instructor image — no background, head slightly overflows ── */}
       <div
-        className="flex items-center justify-between px-5 pt-4 pb-2"
-        style={{ borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e8e2d4" }}
+        className="flex-shrink-0"
+        style={{ width: 210, position: "relative", minHeight: 240 }}
       >
-        <span className="text-sm font-bold" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
-          🪖 Інструктор Тарас {equippedEmoji}
-        </span>
-        <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
-          {coffeeCoins} ☕
-        </span>
+        <img
+          src={imageSrc}
+          alt={`Instructor — ${mood}`}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            width: 210,
+            height: 340,
+            objectFit: "contain",
+            objectPosition: "bottom",
+          }}
+          onError={(e) => {
+            const t = e.currentTarget;
+            t.style.display = "none";
+            const p = t.parentElement;
+            if (p) {
+              p.style.fontSize = "72px";
+              p.style.display = "flex";
+              p.style.alignItems = "flex-end";
+              p.style.justifyContent = "center";
+              p.textContent = config.fallbackEmoji;
+            }
+          }}
+        />
       </div>
 
-      <div className="flex flex-col items-center gap-4 p-4">
-        {/* Instructor portrait — full body */}
-        <div
-          className="relative flex items-end justify-center overflow-hidden rounded-xl transition-all duration-500 w-full"
-          style={{
-            height: 380,
-            background: isDarkMode ? config.bgDark : config.bgColor,
-            border: `2px solid ${config.borderColor}`,
-          }}
-        >
-          <img
-            src={imageSrc}
-            alt={`Інструктор — ${mood}`}
-            className="h-full w-full object-contain object-bottom"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.style.display = "none";
-              const parent = target.parentElement;
-              if (parent) {
-                parent.style.fontSize = "120px";
-                parent.style.display = "flex";
-                parent.style.alignItems = "center";
-                parent.style.justifyContent = "center";
-                parent.textContent = config.fallbackEmoji;
-              }
+      {/* ── RIGHT: Content ── */}
+      <div className="flex flex-col flex-1 px-5 py-4 gap-3 min-w-0">
+
+        {/* Header: PX button right, title centred */}
+        <div className="relative flex items-center justify-center">
+          <span
+            className="text-sm font-bold text-center"
+            style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
+          >
+            🪖 Your Instructor Kava{equippedEmoji ? ` ${equippedEmoji}` : ""}
+          </span>
+          <button
+            onClick={onPxStoreToggle}
+            className="absolute right-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer"
+            style={{
+              background: isPxStoreOpen
+                ? "#3a3528"
+                : (isDarkMode ? "#2a3020" : "#eef0df"),
+              color: isPxStoreOpen ? "#fff" : (isDarkMode ? "#c4c89a" : "#8a8a45"),
+              border: `1px solid ${isDarkMode ? "#4a5030" : "#c4c27a"}`,
             }}
-          />
+          >
+            <ShoppingCart size={13} />
+            PX Store {isPxStoreOpen ? "↑" : "→"}
+          </button>
         </div>
 
-        {/* Mood message or streak */}
+        {/* Mood message OR streak coins */}
         {config.message ? (
           <div
-            className="w-full rounded-lg px-4 py-3 text-center text-sm font-semibold leading-snug"
+            className="rounded-lg px-4 py-3 text-sm font-semibold leading-snug"
             style={{
               background: isDarkMode ? config.bgDark : config.bgColor,
               color: isDarkMode ? "#e6e4dc" : "#3a3528",
@@ -130,31 +166,59 @@ export default function InstructorCard({ gamification, mood, isDarkMode }: Instr
             {config.message}
           </div>
         ) : (
-          <div className="w-full text-center">
-            <p className="mb-2 text-lg font-bold" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
-              {streakCount} {streakCount === 1 ? "день" : streakCount < 5 ? "дні" : "днів"} поспіль!
-            </p>
-
-            {/* 7 coffee cups streak tracker */}
-            <div className="flex justify-center gap-1.5">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="text-xl transition-all"
-                  style={{ opacity: i < filledCups ? 1 : 0.2 }}
-                >
-                  ☕
-                </span>
+          <div className="flex flex-col gap-2">
+            {/* Row 1: coins 1–4, close together, centred */}
+            <div className="flex justify-center items-center gap-3">
+              {[0, 1, 2, 3].map((i) => (
+                <CoinImg key={i} filled={i < filledCups} />
               ))}
             </div>
 
-            {streakCount > 0 && streakCount % 7 === 0 && (
-              <p className="mt-1 text-xs font-semibold" style={{ color: "#c97a4a" }}>
-                🎉 Тижневий бонус! +7 коїнів
+            {/* Row 2: coins 5–7, same gap, centred */}
+            <div className="flex justify-center items-center gap-3">
+              {[4, 5, 6].map((i) => (
+                <CoinImg key={i} filled={i < filledCups} />
+              ))}
+            </div>
+
+            {/* Streak text — centred */}
+            <div className="text-center mt-1">
+              <p
+                className="text-sm font-bold"
+                style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
+              >
+                Well done!&nbsp;
+                {streakCount} {streakCount === 1 ? "day" : "days"} in a row
               </p>
-            )}
+
+              {streakCount > 0 && streakCount % 7 === 0 ? (
+                <p
+                  className="text-xs font-bold animate-pulse mt-0.5"
+                  style={{ color: "#c97a4a" }}
+                >
+                  🎉 +7 coins bonus!
+                </p>
+              ) : (
+                <p
+                  className="text-xs mt-0.5"
+                  style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}
+                >
+                  {7 - filledCups}{" "}
+                  {(7 - filledCups) === 1 ? "day" : "days"} to weekly bonus
+                </p>
+              )}
+            </div>
           </div>
         )}
+
+        {/* Coin balance — bottom right */}
+        <div className="flex justify-end items-center gap-1.5 mt-auto">
+          <span className="text-base font-bold" style={{ color: "#8a8a45" }}>
+            {coffeeCoins}
+          </span>
+          <img src={COIN_OPEN} alt="coins" className="w-7 h-7 object-contain" />
+        </div>
+
       </div>
     </div>
   );

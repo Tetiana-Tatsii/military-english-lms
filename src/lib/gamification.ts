@@ -9,12 +9,12 @@ export interface GamificationProfile {
   completedCourses: string[];
 }
 
-// Shop catalogue — add new items here anytime
+// Shop catalogue — add new items here anytime without touching business logic
 export const SHOP_ITEMS = [
-  { id: "snickers", name: "Снікерс",     price: 50,  emoji: "🍫", image: "/shop/snickers.png" },
-  { id: "energy",   name: "Енергетик",   price: 100, emoji: "🥤", image: "/shop/energy.png"   },
-  { id: "thermos",  name: "Термокухоль", price: 200, emoji: "☕", image: "/shop/thermos.png"  },
-  { id: "statute",  name: "Статут ЗСУ",  price: 150, emoji: "📕", image: "/shop/statute.png"  },
+  { id: "coffee",   name: "Coffee",      price: 0,  emoji: "☕", image: "/shop/coffee.webp"   },
+  { id: "snickers", name: "Energy Bar",  price: 30, emoji: "🍫", image: "/shop/snickers.webp" },
+  { id: "energy",   name: "Energy Drink",price: 40, emoji: "🥤", image: "/shop/energy.webp"   },
+  { id: "thermos",  name: "Thermo Cup",  price: 50, emoji: "🫖", image: "/shop/thermos.webp"  },
 ] as const;
 
 export type ShopItemId = (typeof SHOP_ITEMS)[number]["id"];
@@ -23,12 +23,12 @@ export type ShopItemId = (typeof SHOP_ITEMS)[number]["id"];
 export const COURSE_BADGES: Record<string, { name: string; image: string; emoji: string }> = {
   "military-english-stanag-2": {
     name: "STANAG 6001",
-    image: "/badges/stanag-gold.png",
+    image: "/badges/stanag-gold.webp",
     emoji: "🎖️",
   },
   "general-english": {
     name: "General English",
-    image: "/badges/general-gold.png",
+    image: "/badges/general-gold.webp",
     emoji: "🏅",
   },
 };
@@ -117,7 +117,8 @@ export async function awardCoins(
     .eq("id", userId);
 }
 
-// ─── Buy shop item ────────────────────────────────────────────────────────────
+// ─── Buy or activate shop item ────────────────────────────────────────────────
+// If the item is already owned (or free), just activates it without charging.
 export async function buyShopItemInDb(
   supabase: SupabaseClient,
   userId: string,
@@ -131,15 +132,19 @@ export async function buyShopItemInDb(
     .single();
 
   if (!profile) return "Профіль не знайдено.";
-  if ((profile.coffee_coins ?? 0) < price) return "Недостатньо Кава-коїнів ☕";
 
   const purchased = (profile.purchased_items as string[]) ?? [];
+  const alreadyOwned = price === 0 || purchased.includes(itemId);
+
+  if (!alreadyOwned && (profile.coffee_coins ?? 0) < price) {
+    return "Недостатньо Кава-коїнів ☕";
+  }
 
   await supabase
     .from("profiles")
     .update({
-      coffee_coins: profile.coffee_coins - price,
-      purchased_items: [...purchased, itemId],
+      coffee_coins: alreadyOwned ? profile.coffee_coins : (profile.coffee_coins ?? 0) - price,
+      purchased_items: alreadyOwned ? purchased : [...purchased, itemId],
       active_instructor_item: itemId,
     })
     .eq("id", userId);
