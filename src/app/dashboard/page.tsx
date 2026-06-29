@@ -94,27 +94,28 @@ export default function DashboardPage() {
       />
 
       {/* ОСНОВНИЙ КОНТЕНТ */}
-      <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-6 px-4 py-8 items-start xl:grid-cols-[1fr_300px] md:px-6">
+      <div className="mx-auto max-w-[1200px] px-4 py-8 md:px-6">
 
-        {/* ЛІВА КОЛОНКА: курси → інструктор → PX store (якщо відкрито) → досягнення */}
+        {/* Заголовок над усією сіткою — обидві колонки стартують на одному рівні */}
+        <h2
+          className="text-lg font-semibold leading-none mb-4"
+          style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
+        >
+          Available courses
+        </h2>
+
+        <div className="grid grid-cols-1 gap-6 items-start xl:grid-cols-[1fr_300px]">
+
+        {/* ЛІВА КОЛОНКА */}
         <div className="flex flex-col gap-6">
-          {/* Heading + courses grouped — heading top aligns with SLP card */}
-          <div className="flex flex-col gap-4">
-            <h2
-              className="text-lg font-semibold leading-none"
-              style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
-            >
-              Available courses
-            </h2>
-            <CourseList
-              courses={courses}
-              answers={myAnswers}
-              getCourseProgress={getCourseProgress}
-              getLessonTitle={getLessonTitle}
-              onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}
-              isDarkMode={isDarkMode}
-            />
-          </div>
+          <CourseList
+            courses={courses}
+            answers={myAnswers}
+            getCourseProgress={getCourseProgress}
+            getLessonTitle={getLessonTitle}
+            onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}
+            isDarkMode={isDarkMode}
+          />
 
           {gamification && (
             <InstructorCard
@@ -144,12 +145,13 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ПРАВА КОЛОНКА: тільки SLP профіль */}
+        {/* ПРАВА КОЛОНКА: SLP профіль */}
         <div className="flex flex-col gap-6">
           <ProfileStats isDarkMode={isDarkMode} />
         </div>
 
-      </div>
+        </div>{/* end grid */}
+      </div>{/* end max-w container */}
     </div>
   );
 }

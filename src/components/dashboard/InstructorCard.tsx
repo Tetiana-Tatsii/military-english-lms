@@ -64,8 +64,7 @@ function CoinImg({ filled }: { filled: boolean }) {
     <img
       src={filled ? COIN_OPEN : COIN_LOCKED}
       alt={filled ? "completed" : "locked"}
-      // 72 px coins
-      className="w-[72px] h-[72px] object-contain flex-shrink-0 transition-all duration-300"
+      className="w-7 h-7 sm:w-10 sm:h-10 md:w-[56px] md:h-[56px] lg:w-[72px] lg:h-[72px] object-contain flex-shrink-0 transition-all duration-300"
       style={{ opacity: filled ? 1 : 0.55 }}
     />
   );
@@ -85,72 +84,42 @@ export default function InstructorCard({
   const imageSrc = getInstructorImage(mood, activeInstructorItem);
 
   return (
-    // paddingTop: 0 as requested; head may naturally peek into gap above
     <div
-      className="rounded-2xl border flex flex-row overflow-visible"
+      className="relative rounded-2xl border flex flex-row overflow-visible mt-6"
       style={{
         background: isDarkMode ? "#2d2f2a" : "#f6f1e4",
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
         minHeight: 210,
       }}
     >
-      {/* ── LEFT: Instructor image — no background, head slightly overflows ── */}
+      {/* Spacer — keeps content clear of the instructor silhouette */}
       <div
-        className="flex-shrink-0"
-        style={{ width: 210, position: "relative", minHeight: 240 }}
-      >
-        <img
-          src={imageSrc}
-          alt={`Instructor — ${mood}`}
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: 210,
-            height: 340,
-            objectFit: "contain",
-            objectPosition: "bottom",
-          }}
-          onError={(e) => {
-            const t = e.currentTarget;
-            t.style.display = "none";
-            const p = t.parentElement;
-            if (p) {
-              p.style.fontSize = "72px";
-              p.style.display = "flex";
-              p.style.alignItems = "flex-end";
-              p.style.justifyContent = "center";
-              p.textContent = config.fallbackEmoji;
-            }
-          }}
-        />
-      </div>
+        className="flex-shrink-0 w-[100px] sm:w-[120px] md:w-[150px] lg:w-[180px]"
+        aria-hidden
+      />
+
+      {/* Instructor — anchored to card bottom-left, head peeks above top edge */}
+      <img
+        src={imageSrc}
+        alt={`Instructor — ${mood}`}
+        className="absolute bottom-0 left-2 sm:left-4 h-[112%] sm:h-[115%] w-auto object-contain object-bottom z-10 pointer-events-none"
+        onError={(e) => {
+          const t = e.currentTarget;
+          t.style.display = "none";
+        }}
+      />
 
       {/* ── RIGHT: Content ── */}
-      <div className="flex flex-col flex-1 px-5 py-4 gap-3 min-w-0">
+      <div className="flex flex-col flex-1 px-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3 min-w-0">
 
-        {/* Header: PX button right, title centred */}
-        <div className="relative flex items-center justify-center">
+        {/* Header: instructor name */}
+        <div className="flex items-center justify-center">
           <span
             className="text-sm font-bold text-center"
             style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
           >
             🪖 Your Instructor Kava{equippedEmoji ? ` ${equippedEmoji}` : ""}
           </span>
-          <button
-            onClick={onPxStoreToggle}
-            className="absolute right-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer"
-            style={{
-              background: isPxStoreOpen
-                ? "#3a3528"
-                : (isDarkMode ? "#2a3020" : "#eef0df"),
-              color: isPxStoreOpen ? "#fff" : (isDarkMode ? "#c4c89a" : "#8a8a45"),
-              border: `1px solid ${isDarkMode ? "#4a5030" : "#c4c27a"}`,
-            }}
-          >
-            <ShoppingCart size={13} />
-            PX Store {isPxStoreOpen ? "↑" : "→"}
-          </button>
         </div>
 
         {/* Mood message OR streak coins */}
@@ -167,57 +136,61 @@ export default function InstructorCard({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {/* Row 1: coins 1–4, close together, centred */}
-            <div className="flex justify-center items-center gap-3">
+            {/* Row 1: coins 1–4 */}
+            <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-3">
               {[0, 1, 2, 3].map((i) => (
                 <CoinImg key={i} filled={i < filledCups} />
               ))}
             </div>
 
-            {/* Row 2: coins 5–7, same gap, centred */}
-            <div className="flex justify-center items-center gap-3">
+            {/* Row 2: coins 5–7 */}
+            <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-3">
               {[4, 5, 6].map((i) => (
                 <CoinImg key={i} filled={i < filledCups} />
               ))}
             </div>
 
-            {/* Streak text — centred */}
-            <div className="text-center mt-1">
-              <p
-                className="text-sm font-bold"
-                style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
-              >
-                Well done!&nbsp;
-                {streakCount} {streakCount === 1 ? "day" : "days"} in a row
-              </p>
+            {/* Footer: streak text centred, balance + store pinned right */}
+            <div className="relative flex items-center justify-center w-full mt-6">
+              <div>
+                <p
+                  className="text-xs font-bold text-center"
+                  style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
+                >
+                  Well done! {streakCount} {streakCount === 1 ? "day" : "days"} in a row
+                </p>
+                {streakCount > 0 && streakCount % 7 === 0 ? (
+                  <p className="text-xs font-bold text-center animate-pulse mt-0.5" style={{ color: "#c97a4a" }}>
+                    🎉 +7 coins bonus!
+                  </p>
+                ) : (
+                  <p className="text-xs text-center mt-0.5" style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}>
+                    {7 - filledCups} {(7 - filledCups) === 1 ? "day" : "days"} to weekly bonus
+                  </p>
+                )}
+              </div>
 
-              {streakCount > 0 && streakCount % 7 === 0 ? (
-                <p
-                  className="text-xs font-bold animate-pulse mt-0.5"
-                  style={{ color: "#c97a4a" }}
+              <div className="absolute right-0 flex items-center gap-3">
+                <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
+                  {coffeeCoins}
+                </span>
+                <img src={COIN_OPEN} alt="coins" className="w-5 h-5 object-contain" />
+                <button
+                  onClick={onPxStoreToggle}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-all cursor-pointer"
+                  style={{
+                    background: isPxStoreOpen ? "#3a3528" : (isDarkMode ? "#2a3020" : "#eef0df"),
+                    color: isPxStoreOpen ? "#fff" : (isDarkMode ? "#c4c89a" : "#8a8a45"),
+                    border: `1px solid ${isDarkMode ? "#4a5030" : "#c4c27a"}`,
+                  }}
                 >
-                  🎉 +7 coins bonus!
-                </p>
-              ) : (
-                <p
-                  className="text-xs mt-0.5"
-                  style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}
-                >
-                  {7 - filledCups}{" "}
-                  {(7 - filledCups) === 1 ? "day" : "days"} to weekly bonus
-                </p>
-              )}
+                  <ShoppingCart size={13} />
+                  {isPxStoreOpen ? "↑" : "→"}
+                </button>
+              </div>
             </div>
           </div>
         )}
-
-        {/* Coin balance — bottom right */}
-        <div className="flex justify-end items-center gap-1.5 mt-auto">
-          <span className="text-base font-bold" style={{ color: "#8a8a45" }}>
-            {coffeeCoins}
-          </span>
-          <img src={COIN_OPEN} alt="coins" className="w-7 h-7 object-contain" />
-        </div>
 
       </div>
     </div>
