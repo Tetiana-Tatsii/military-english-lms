@@ -192,8 +192,8 @@ interface AppState {
   updateTicketStatus: (ticketId: string, status: "open" | "closed") => Promise<void>;
   fetchSupportTickets: () => Promise<void>;
 
-  addCourse: (title: string, subtitle: string, description: string) => void;
-  updateCourse: (courseId: string, updatedData: Partial<Course>) => void;
+  addCourse: (title: string, subtitle: string, description: string) => Promise<void>;
+  updateCourse: (courseId: string, updatedData: Partial<Course>) => Promise<void>;
   deleteCourse: (courseId: string) => void;
   addModule: (courseId: string, title: string, icon: string) => void;
   updateModule: (
