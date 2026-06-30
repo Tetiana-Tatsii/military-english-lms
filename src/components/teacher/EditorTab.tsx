@@ -31,11 +31,11 @@ const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 interface EditorTabProps {
   courses: Course[];
   isDarkMode: boolean;
-  addCourse: (title: string, subtitle: string, description: string) => void;
+  addCourse: (title: string, subtitle: string, description: string) => Promise<void>;
   updateCourse: (
     courseId: string,
     data: { title: string; subtitle: string; description: string },
-  ) => void;
+  ) => Promise<void>;
   deleteCourse: (courseId: string) => void;
   addModule: (courseId: string, title: string, icon: string) => void;
   updateModule: (
@@ -73,6 +73,7 @@ export default function EditorTab({
   );
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [isEditingCourse, setIsEditingCourse] = useState(false);
+  const [isSavingCourse, setIsSavingCourse] = useState(false);
   const [courseData, setCourseData] = useState({
     title: "",
     subtitle: "",
@@ -102,11 +103,19 @@ export default function EditorTab({
 
   const activeCourse = courses.find((c) => c.id === selectedCourseId);
 
-  const handleCreateCourse = () => {
-    if (!courseData.title) return;
-    addCourse(courseData.title, courseData.subtitle, courseData.description);
-    setCourseData({ title: "", subtitle: "", description: "" });
-    setIsAddingCourse(false);
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseData.title || isSavingCourse) return;
+    setIsSavingCourse(true);
+    try {
+      await addCourse(courseData.title, courseData.subtitle, courseData.description);
+      setCourseData({ title: "", subtitle: "", description: "" });
+      setIsAddingCourse(false);
+    } catch (error) {
+      console.error("Помилка створення курсу:", error);
+    } finally {
+      setIsSavingCourse(false);
+    }
   };
 
   const openEditCourseModal = () => {
@@ -114,15 +123,36 @@ export default function EditorTab({
     setCourseData({
       title: activeCourse.title,
       subtitle: activeCourse.subtitle || "",
-      description: "",
+      description: activeCourse.description || "",
     });
     setIsEditingCourse(true);
   };
 
-  const handleUpdateCourse = () => {
-    if (!activeCourse) return;
-    updateCourse(activeCourse.id, courseData);
-    setIsEditingCourse(false);
+  const handleUpdateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeCourse || !courseData.title || isSavingCourse) return;
+    setIsSavingCourse(true);
+    try {
+      await updateCourse(activeCourse.id, {
+        title: courseData.title,
+        subtitle: courseData.subtitle,
+        description: courseData.description,
+      });
+      setIsEditingCourse(false);
+      setCourseData({ title: "", subtitle: "", description: "" });
+    } catch (error) {
+      console.error("Помилка оновлення курсу:", error);
+    } finally {
+      setIsSavingCourse(false);
+    }
+  };
+
+  const handleCourseFormSubmit = (e: React.FormEvent) => {
+    if (isAddingCourse) {
+      void handleCreateCourse(e);
+    } else {
+      void handleUpdateCourse(e);
+    }
   };
 
   const handleDeleteCourse = () => {
@@ -1763,6 +1793,7 @@ onClick={() => {
   >
     {isAddingCourse ? "Створити новий курс" : "Редагувати курс"}
   </h2>
+  <form onSubmit={handleCourseFormSubmit}>
   <div style={{ marginBottom: 16 }}>
     <label
       style={{
@@ -1845,13 +1876,14 @@ onClick={() => {
         fontFamily: "inherit",
         lineHeight: 1.6,
         background: isDarkMode ? "#2d2f2a" : "#fff",
-        color: "#3a3528",
+        color: isDarkMode ? "#e6e4dc" : "#3a3528",
         resize: "vertical",
       }}
     />
   </div>
   <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
     <button
+      type="button"
       onClick={() => {
         setIsAddingCourse(false);
         setIsEditingCourse(false);
@@ -1871,7 +1903,8 @@ onClick={() => {
       Скасувати
     </button>
     <button
-      onClick={isAddingCourse ? handleCreateCourse : handleUpdateCourse}
+      type="submit"
+      disabled={isSavingCourse}
       style={{
         background: "#8a8a45",
         color: "#fff",
@@ -1880,12 +1913,14 @@ onClick={() => {
         borderRadius: 8,
         fontWeight: 600,
         fontSize: 14,
-        cursor: "pointer",
+        cursor: isSavingCourse ? "not-allowed" : "pointer",
+        opacity: isSavingCourse ? 0.7 : 1,
       }}
     >
-      {isAddingCourse ? "Створити" : "Зберегти"}
+      {isSavingCourse ? "Збереження..." : isAddingCourse ? "Створити" : "Зберегти"}
     </button>
   </div>
+  </form>
 </div>
         </div>
       )}

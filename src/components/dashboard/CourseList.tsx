@@ -35,14 +35,14 @@ export default function CourseList({
 
   return (
     <>
-      <div className="flex flex-col gap-4">
+      <div className="flex w-full flex-col gap-4">
         {courses.map((course) => {
           const progress = getCourseProgress(course.id);
           const isExpanded = expandedCourses.has(course.id);
           return (
             <div
               key={course.id}
-              className={`rounded-xl border p-4 md:p-6 ${
+              className={`w-full rounded-xl border p-4 md:p-6 ${
                 isDarkMode
                   ? "bg-[#2d2f2a] border-[#3e403a]"
                   : "bg-[#f6f1e4] border-[#d8cdb4]"
@@ -60,6 +60,15 @@ export default function CourseList({
                   <p className="text-sm font-medium text-[#8a8a45]">
                     {course.subtitle}
                   </p>
+                  {course.description && (
+                    <p
+                      className={`text-sm leading-relaxed mt-2 line-clamp-2 max-w-[85%] sm:max-w-[75%] ${
+                        isDarkMode ? "text-[#a3a198]" : "text-[#5a5440]"
+                      }`}
+                    >
+                      {course.description}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 sm:gap-3">
                   {course.status === "active" ? (

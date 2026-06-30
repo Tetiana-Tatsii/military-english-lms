@@ -13,21 +13,24 @@ interface AchievementsProps {
 export default function Achievements({ gamification, courses, isDarkMode }: AchievementsProps) {
   const { completedCourses } = gamification;
 
-  // Only show badges for courses that exist in the system
   const badgeEntries = courses
-    .map((course) => ({
-      courseId: course.id,
-      courseName: course.title,
-      badge: COURSE_BADGES[course.id],
-      completed: completedCourses.includes(course.id),
-    }))
-    .filter((entry) => entry.badge); // only courses that have a defined badge
+    .map((course) => {
+      const badge = COURSE_BADGES[course.id];
+      if (!badge) return null;
+      return {
+        courseId: course.id,
+        courseName: badge.name,
+        badge,
+        completed: completedCourses.includes(course.id),
+      };
+    })
+    .filter((entry) => entry !== null);
 
   if (badgeEntries.length === 0) return null;
 
   return (
     <div
-      className="rounded-2xl border"
+      className="w-full rounded-2xl border"
       style={{
         background: isDarkMode ? "#2d2f2a" : "#f6f1e4",
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
@@ -42,79 +45,58 @@ export default function Achievements({ gamification, courses, isDarkMode }: Achi
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3">
+      <div className="flex justify-center gap-8 px-5 py-4">
         {badgeEntries.map(({ courseId, courseName, badge, completed }) => (
-          <div
-            key={courseId}
-            className="flex flex-col items-center gap-2 text-center"
-          >
-            {/* Badge image */}
-            <div
-              className="relative flex items-center justify-center overflow-hidden rounded-full"
-              style={{
-                width: 80,
-                height: 80,
-                background: completed
-                  ? (isDarkMode ? "#2a3020" : "#eef0df")
-                  : (isDarkMode ? "#252622" : "#e8e4db"),
-                border: completed
-                  ? "3px solid #8a8a45"
-                  : (isDarkMode ? "3px solid #3e403a" : "3px solid #d0ccbf"),
-                filter: completed ? "none" : "grayscale(100%)",
-                opacity: completed ? 1 : 0.45,
-              }}
-            >
-              <img
-                src={badge.image}
-                alt={badge.name}
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = "none";
-                  const parent = target.parentElement;
-                  if (parent) {
-                    parent.style.fontSize = "36px";
-                    parent.textContent = badge.emoji;
-                  }
-                }}
-              />
-              {/* Lock overlay */}
-              {!completed && (
-                <div
-                  className="absolute inset-0 flex items-center justify-center rounded-full text-2xl"
-                  style={{ background: "rgba(0,0,0,0.35)" }}
-                >
-                  🔒
-                </div>
-              )}
-            </div>
-
+          <div key={courseId} className="w-72 flex flex-col items-center">
             <p
-              className="text-xs font-bold leading-tight"
+              className="h-10 flex items-end justify-center text-sm font-bold leading-tight text-center mb-1 px-0.5"
               style={{
                 color: completed
                   ? (isDarkMode ? "#e6e4dc" : "#3a3528")
                   : (isDarkMode ? "#6b6860" : "#a09890"),
               }}
             >
-              {courseName.length > 20 ? courseName.slice(0, 18) + "…" : courseName}
+              {courseName}
             </p>
 
-            {completed ? (
-              <span
-                className="rounded-full px-2 py-0.5 text-xs font-bold"
-                style={{ background: "#8a8a45", color: "#fff" }}
-              >
-                  Completed ✓
-              </span>
-            ) : (
-              <span
-                  className="text-xs"
-                  style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}
+            <div
+              className="w-72 h-72 flex items-center justify-center shrink-0"
+              style={{ transform: badge.imageOffsetY ? `translateY(${badge.imageOffsetY}px)` : undefined }}
+            >
+              <img
+                src={badge.image}
+                alt={badge.name}
+                draggable={false}
+                className={`w-full h-full object-contain transition-transform duration-300 ${
+                  completed ? "hover:scale-110" : "grayscale opacity-60"
+                }`}
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.style.display = "none";
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.style.fontSize = "48px";
+                    parent.textContent = badge.emoji;
+                  }
+                }}
+              />
+            </div>
+
+            <p
+              className="text-xs font-medium leading-none text-center mt-1"
+              style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}
+            >
+              {completed ? (
+                <span
+                  className="inline-block rounded-full px-3 py-1 text-xs font-bold leading-none"
+                  style={{ background: "#8a8a45", color: "#fff" }}
                 >
-                  Not completed
+                  Completed ✓
                 </span>
-            )}
+              ) : (
+                "Not completed"
+              )}
+            </p>
           </div>
         ))}
       </div>

@@ -19,6 +19,8 @@ import {
   awardCoins,
   buyShopItemInDb,
   checkAndCompleteCourse,
+  DEFAULT_GAMIFICATION_PROFILE,
+  type BuyShopResult,
 } from "../lib/gamification";
 
 /**
@@ -184,7 +186,7 @@ interface AppState {
   gamification: GamificationProfile | null;
   instructorMood: "happy" | "angry" | "proud";
   refreshGamification: () => Promise<void>;
-  buyShopItem: (itemId: string, price: number) => Promise<string | null>;
+  buyShopItem: (itemId: string, price: number) => Promise<BuyShopResult>;
 
   addSupportTicket: (type: "bug" | "improvement", message: string) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: "open" | "closed") => Promise<void>;
@@ -261,14 +263,67 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const id = uid ?? user?.id;
     if (!id) return;
     const profile = await fetchGamificationProfile(supabase, id);
-    if (profile) setGamification(profile);
+    setGamification(profile ?? DEFAULT_GAMIFICATION_PROFILE);
   };
 
-  const buyShopItem = async (itemId: string, price: number): Promise<string | null> => {
-    if (!user) return "Не авторизований";
-    const err = await buyShopItemInDb(supabase, user.id, itemId, price);
-    if (!err) await refreshGamification();
-    return err;
+  const syncGamification = async (uid?: string) => {
+    const id = uid ?? user?.id;
+    if (!id) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (!refreshed.session?.user?.id) {
+        console.warn(
+          "syncGamification: Supabase Auth session missing — daily streak skipped.",
+          "Log out and log in again.",
+        );
+        await refreshGamification(id);
+        return;
+      }
+    }
+
+    const streakResult = await processDailyStreak(supabase, id);
+    if (streakResult.wasStreakBroken) setInstructorMood("angry");
+
+    const profile = await fetchGamificationProfile(supabase, id);
+    const base = profile ?? DEFAULT_GAMIFICATION_PROFILE;
+
+    if (streakResult.coinsEarned > 0) {
+      setGamification({
+        ...base,
+        streakCount: streakResult.newStreak,
+        coffeeCoins: streakResult.newCoffeeCoins,
+      });
+      return;
+    }
+
+    setGamification(base);
+  };
+
+  const buyShopItem = async (itemId: string, price: number): Promise<BuyShopResult> => {
+    if (!user) {
+      return {
+        error: "Не авторизований",
+        charged: false,
+        coffeeCoins: gamification?.coffeeCoins ?? 0,
+        purchasedItems: gamification?.purchasedItems ?? [],
+        activeInstructorItem: gamification?.activeInstructorItem ?? "coffee",
+      };
+    }
+
+    const result = await buyShopItemInDb(supabase, user.id, itemId, price);
+
+    if (!result.error) {
+      setGamification((prev) => ({
+        ...(prev ?? DEFAULT_GAMIFICATION_PROFILE),
+        coffeeCoins: result.coffeeCoins,
+        purchasedItems: result.purchasedItems,
+        activeInstructorItem: result.activeInstructorItem,
+      }));
+    }
+
+    return result;
   };
 
   // СИНХРОНІЗАЦІЯ КУРСІВ З SUPABASE
@@ -444,6 +499,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         const savedUserSession = sessionStorage.getItem("lanp_user");
+        let activeUserId: string | null = session?.user?.id ?? null;
 
         // Завантажуємо курси з Supabase (єдине джерело правди)
         const loadedCourses = await fetchCoursesFromSupabase();
@@ -515,13 +571,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   squadId: profileData.squad_id,
                 };
                 setUser(refreshed);
+                activeUserId = refreshed.id;
                 sessionStorage.setItem("lanp_user", JSON.stringify(refreshed));
               } else {
                 setUser(savedUser);
+                activeUserId = savedUser.id;
               }
             } else {
               // Auth-сесія належить іншій вкладці — ігноруємо її
               setUser(savedUser);
+              activeUserId = savedUser.id;
             }
           } catch (e) {
             console.error("Помилка парсингу сесії:", e);
@@ -542,6 +601,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               squadId: profileData.squad_id,
             };
             setUser(sessionData);
+            activeUserId = sessionData.id;
             sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
           }
         }
@@ -549,9 +609,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Обов'язково завантажуємо актуальних користувачів з хмари
         await fetchUsersFromSupabase();
 
-        // Завантажуємо геймфікацію якщо юзер вже залогінений
-        if (session?.user) {
-          await refreshGamification(session.user.id);
+        // Завантажуємо геймфікацію для будь-якого відновленого користувача
+        // (не лише коли є Supabase Auth session — fallback-login теж має працювати)
+        if (activeUserId) {
+          await syncGamification(activeUserId);
         }
       } catch (error) {
         console.error("Помилка завантаження системи:", error);
@@ -562,6 +623,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     loadSavedData();
   }, []);
+
+  // Підстраховка: якщо user є, а gamification ще null — завантажуємо
+  useEffect(() => {
+    if (!isInitialized || !user || gamification) return;
+    syncGamification(user.id);
+  }, [isInitialized, user, gamification]);
 
   // Realtime-підписка на зміни profiles (замість polling)
   useEffect(() => {
@@ -803,6 +870,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data.status === "pending")
         return "Ваш акаунт ще не активовано адміністрацією.";
 
+      // Fallback login has no Auth session — streak/coins require Supabase Auth.
+      const email = nameToEmail(data.name);
+      const { error: authRetryError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (authRetryError) {
+        console.error(
+          "Fallback login: Supabase Auth session not established.",
+          "Daily streak and coin rewards will not work until Auth password is synced.",
+          authRetryError.message,
+        );
+      }
+
       const sessionData = {
         id: data.id,
         name: data.name,
@@ -811,9 +892,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
       setUser(sessionData);
       sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-      const streakResult = await processDailyStreak(supabase, data.id);
-      if (streakResult.wasStreakBroken) setInstructorMood("angry");
-      await refreshGamification(data.id);
+      await syncGamification(data.id);
       return null;
     }
 
@@ -840,9 +919,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
       setUser(sessionData);
       sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-      const streakResult2 = await processDailyStreak(supabase, profileData.id);
-      if (streakResult2.wasStreakBroken) setInstructorMood("angry");
-      await refreshGamification(profileData.id);
+      await syncGamification(profileData.id);
       return null;
     }
 

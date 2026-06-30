@@ -2,14 +2,26 @@
 
 import React, { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { SHOP_ITEMS } from "@/lib/gamification";
+import { SHOP_ITEMS, type BuyShopResult } from "@/lib/gamification";
 import type { GamificationProfile } from "@/context/AppContext";
 
 interface VoentorgProps {
   gamification: GamificationProfile;
   isDarkMode: boolean;
-  onBuy: (itemId: string, price: number) => Promise<string | null>;
+  onBuy: (itemId: string, price: number) => Promise<BuyShopResult>;
   defaultOpen?: boolean;
+}
+
+const COIN_OPEN = "/coins/coffee-coin_open.webp";
+
+function CoffeeCoin({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <img
+      src={COIN_OPEN}
+      alt="coffee coin"
+      className={`object-contain flex-shrink-0 ${className}`}
+    />
+  );
 }
 
 export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen = false }: VoentorgProps) {
@@ -23,13 +35,13 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
     setTimeout(() => setToast(null), 3000);
   };
 
-  const getSuccessMessage = (itemId: string, wasOwned: boolean): string => {
+  const getSuccessMessage = (itemId: string, charged: boolean): string => {
     if (itemId === "coffee") return "You made Instructor Kava happier ☕";
-    if (wasOwned) return "Item equipped! ✅";
-    return "Purchased! Instructor updated ✅";
+    if (charged) return "Purchased! Instructor updated ✅";
+    return "Item equipped! ✅";
   };
 
-  const handleBuy = async (itemId: string, price: number, alreadyOwned: boolean, isCurrentlyActive: boolean) => {
+  const handleBuy = async (itemId: string, price: number, isCurrentlyActive: boolean) => {
     // Coffee already active — just show happy message, no DB call needed
     if (itemId === "coffee" && isCurrentlyActive) {
       showToast("You made Instructor Kava happier ☕", true);
@@ -38,14 +50,14 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
 
     setBuying(itemId);
     try {
-      const err = await onBuy(itemId, price);
-      if (err) {
-        showToast(err, false);
+      const result = await onBuy(itemId, price);
+      if (result.error) {
+        showToast(result.error, false);
       } else {
-        showToast(getSuccessMessage(itemId, alreadyOwned), true);
+        showToast(getSuccessMessage(itemId, result.charged), true);
       }
     } catch {
-      showToast(getSuccessMessage(itemId, alreadyOwned), true);
+      showToast("Purchase failed. Try logging in again.", false);
     } finally {
       setBuying(null);
     }
@@ -53,7 +65,7 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
 
   return (
     <div
-      className="rounded-2xl border overflow-hidden"
+      className="w-full rounded-2xl border overflow-hidden"
       style={{
         background: isDarkMode ? "#2d2f2a" : "#f6f1e4",
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
@@ -62,21 +74,22 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
       {/* Accordion header — always visible, click to toggle */}
       <button
         onClick={() => setIsOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors"
-        style={{
-          borderBottom: isOpen ? (isDarkMode ? "1px solid #3e403a" : "1px solid #e8e2d4") : "none",
-          background: "transparent",
-          border: isOpen ? undefined : "none",
-          borderRadius: isOpen ? "1rem 1rem 0 0" : "1rem",
-        }}
+        className={`flex w-full items-center justify-between bg-transparent px-5 py-4 text-left transition-colors ${
+          isOpen
+            ? `border-b ${isDarkMode ? "border-[#3e403a]" : "border-[#e8e2d4]"} rounded-t-2xl`
+            : "rounded-2xl"
+        }`}
       >
         <span className="font-bold" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
           🛒 Post Exchange Store & Coffee
         </span>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
-            {coffeeCoins} ☕
-          </span>
+          <div className="flex items-center gap-0.5">
+            <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
+              {coffeeCoins}
+            </span>
+            <CoffeeCoin />
+          </div>
           <ChevronDown
             size={18}
             className="transition-transform duration-300"
@@ -94,10 +107,9 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
       {/* Items grid */}
       <div className="grid grid-cols-2 gap-3 p-4">
         {SHOP_ITEMS.map((item) => {
-          // Coffee (price=0) is always considered owned
           const owned = item.price === 0 || purchasedItems.includes(item.id);
           const isActive = activeInstructorItem === item.id;
-          const canAfford = item.price === 0 || owned || coffeeCoins >= item.price;
+          const canAfford = owned || coffeeCoins >= item.price;
           const isLoading = buying === item.id;
 
           return (
@@ -136,8 +148,15 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
               <p className="text-xs font-bold" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
                 {item.name}
               </p>
-              <p className="text-xs font-semibold" style={{ color: "#8a8a45" }}>
-                {item.price === 0 ? "Free" : `${item.price} ☕`}
+              <p className="text-xs font-semibold flex items-center justify-center gap-0.5" style={{ color: "#8a8a45" }}>
+                {item.price === 0 ? (
+                  "Free"
+                ) : (
+                  <>
+                    {item.price}
+                    <CoffeeCoin className="w-3.5 h-3.5" />
+                  </>
+                )}
               </p>
 
               {/* Coffee is always clickable — shows happy toast even when active */}
@@ -150,23 +169,26 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
                 </span>
               ) : (
                 <button
-                  onClick={() => handleBuy(item.id, item.price, owned, isActive)}
+                  onClick={() => handleBuy(item.id, item.price, isActive)}
                   disabled={!canAfford || isLoading}
-                  className="w-full rounded-md px-2 py-1 text-xs font-bold transition-all duration-150"
-                  style={{
-                    background: canAfford ? "#3a3528" : "#c0bcb0",
-                    color: "#fff",
-                    border: "none",
-                    cursor: canAfford && !isLoading ? "pointer" : "not-allowed",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (canAfford && !isLoading) e.currentTarget.style.background = "#5a5440";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (canAfford && !isLoading) e.currentTarget.style.background = "#3a3528";
-                  }}
+                  className={`w-full rounded-lg px-2 py-1.5 text-xs font-bold transition-colors duration-200 ${
+                    canAfford && !isLoading
+                      ? "bg-[#8a8a45] text-white cursor-pointer hover:bg-[#6b6b36]"
+                      : "bg-[#e9e1cd] text-[#9a8f70] cursor-not-allowed"
+                  }`}
                 >
-                  {isLoading ? "..." : item.id === "coffee" ? "Give coffee ☕" : owned ? "Activate" : "Buy"}
+                  {isLoading ? (
+                    "..."
+                  ) : item.id === "coffee" ? (
+                    <span className="inline-flex items-center justify-center gap-1">
+                      Give coffee
+                      <CoffeeCoin className="w-3.5 h-3.5" />
+                    </span>
+                  ) : owned ? (
+                    "Activate"
+                  ) : (
+                    "Buy"
+                  )}
                 </button>
               )}
             </div>

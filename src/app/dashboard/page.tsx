@@ -9,6 +9,7 @@ import ProfileStats from "../../components/dashboard/ProfileStats";
 import InstructorCard from "../../components/dashboard/InstructorCard";
 import Voentorg from "../../components/dashboard/Voentorg";
 import Achievements from "../../components/dashboard/Achievements";
+import { DEFAULT_GAMIFICATION_PROFILE } from "@/lib/gamification";
 
 export default function DashboardPage() {
   const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem } = useAppContext();
@@ -75,6 +76,8 @@ export default function DashboardPage() {
     return "Невідомий урок";
   };
 
+  const activeGamification = gamification ?? DEFAULT_GAMIFICATION_PROFILE;
+
   return (
     <div
       className={`min-h-screen font-sans transition-all ${
@@ -117,32 +120,28 @@ export default function DashboardPage() {
             isDarkMode={isDarkMode}
           />
 
-          {gamification && (
-            <InstructorCard
-              gamification={gamification}
-              mood={instructorMood}
-              isDarkMode={isDarkMode}
-              isPxStoreOpen={showPxStore}
-              onPxStoreToggle={() => setShowPxStore((v) => !v)}
-            />
-          )}
+          <InstructorCard
+            gamification={activeGamification}
+            mood={instructorMood}
+            isDarkMode={isDarkMode}
+            isPxStoreOpen={showPxStore}
+            onPxStoreToggle={() => setShowPxStore((v) => !v)}
+          />
 
-          {gamification && showPxStore && (
+          {showPxStore && (
             <Voentorg
-              gamification={gamification}
+              gamification={activeGamification}
               isDarkMode={isDarkMode}
               onBuy={buyShopItem}
               defaultOpen={true}
             />
           )}
 
-          {gamification && (
-            <Achievements
-              gamification={gamification}
-              courses={courses}
-              isDarkMode={isDarkMode}
-            />
-          )}
+          <Achievements
+            gamification={activeGamification}
+            courses={courses}
+            isDarkMode={isDarkMode}
+          />
         </div>
 
         {/* ПРАВА КОЛОНКА: SLP профіль */}

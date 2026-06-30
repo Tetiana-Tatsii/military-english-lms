@@ -85,7 +85,7 @@ export default function InstructorCard({
 
   return (
     <div
-      className="relative rounded-2xl border flex flex-row overflow-visible mt-6"
+      className="relative w-full rounded-2xl border flex flex-row overflow-visible mt-6"
       style={{
         background: isDarkMode ? "#2d2f2a" : "#f6f1e4",
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
@@ -115,7 +115,7 @@ export default function InstructorCard({
         {/* Header: instructor name */}
         <div className="flex items-center justify-center">
           <span
-            className="text-sm font-bold text-center"
+            className="text-xl font-bold text-center"
             style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
           >
             🪖 Your Instructor Kava{equippedEmoji ? ` ${equippedEmoji}` : ""}
@@ -150,42 +150,41 @@ export default function InstructorCard({
               ))}
             </div>
 
-            {/* Footer: streak text centred, balance + store pinned right */}
-            <div className="relative flex items-center justify-center w-full mt-6">
-              <div>
+            {/* Footer: streak text, then balance + store below */}
+            <div className="flex flex-col items-center w-full mt-6 gap-3">
+              <div className="text-center">
                 <p
-                  className="text-xs font-bold text-center"
+                  className="text-xs font-bold"
                   style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
                 >
                   Well done! {streakCount} {streakCount === 1 ? "day" : "days"} in a row
                 </p>
                 {streakCount > 0 && streakCount % 7 === 0 ? (
-                  <p className="text-xs font-bold text-center animate-pulse mt-0.5" style={{ color: "#c97a4a" }}>
+                  <p className="text-xs font-bold animate-pulse mt-0.5" style={{ color: "#c97a4a" }}>
                     🎉 +7 coins bonus!
                   </p>
                 ) : (
-                  <p className="text-xs text-center mt-0.5" style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}>
+                  <p className="text-xs mt-0.5" style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}>
                     {7 - filledCups} {(7 - filledCups) === 1 ? "day" : "days"} to weekly bonus
                   </p>
                 )}
               </div>
 
-              <div className="absolute right-0 flex items-center gap-3">
-                <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
-                  {coffeeCoins}
-                </span>
-                <img src={COIN_OPEN} alt="coins" className="w-5 h-5 object-contain" />
+              <div className="flex items-center gap-3 self-end">
+                <div className="flex items-center gap-0.5">
+                  <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
+                    {coffeeCoins}
+                  </span>
+                  <img src={COIN_OPEN} alt="coins" className="w-5 h-5 object-contain" />
+                </div>
                 <button
                   onClick={onPxStoreToggle}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-all cursor-pointer"
-                  style={{
-                    background: isPxStoreOpen ? "#3a3528" : (isDarkMode ? "#2a3020" : "#eef0df"),
-                    color: isPxStoreOpen ? "#fff" : (isDarkMode ? "#c4c89a" : "#8a8a45"),
-                    border: `1px solid ${isDarkMode ? "#4a5030" : "#c4c27a"}`,
-                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-medium bg-[#8a8a45] hover:opacity-90 transition-opacity cursor-pointer text-sm"
                 >
-                  <ShoppingCart size={13} />
-                  {isPxStoreOpen ? "↑" : "→"}
+                  <ShoppingCart size={16} className="text-white shrink-0" />
+                  <span className="text-white">
+                    {isPxStoreOpen ? "PX Store ↑" : "PX Store →"}
+                  </span>
                 </button>
               </div>
             </div>
