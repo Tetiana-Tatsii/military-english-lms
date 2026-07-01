@@ -12,7 +12,9 @@ import {
   getSelectedOptionIndex,
   isQuizAnswerCorrect,
 } from "../../../lib/quiz";
+import { normalizeLessonHtml } from "../../../lib/lessonHtml";
 import DashboardHeader from "../../../components/dashboard/DashboardHeader";
+import LessonCollapsibleSection from "../../../components/courses/LessonCollapsibleSection";
 import {
   ArrowLeft,
   PlayCircle,
@@ -370,14 +372,9 @@ export default function CoursePage() {
               height: 100% !important;
             }
           }
-          /* Вимикаємо авто-перенос по складах (lang="uk" вмикає його на рівні браузера) */
-          .rich-text-content,
-          .rich-text-content * {
-            hyphens: none !important;
-            -webkit-hyphens: none !important;
-            -ms-hyphens: none !important;
-            word-break: normal !important;
-            overflow-wrap: break-word !important;
+          .lesson-content-area {
+            min-width: 0;
+            width: 100%;
           }
         `,
           }}
@@ -556,8 +553,8 @@ export default function CoursePage() {
       >
         {activeLesson ? (
           <div
+            className="lesson-content-area"
             style={{
-              maxWidth: "800px",
               margin: "0 auto",
               animation: "fadeIn 0.4s ease",
             }}
@@ -594,14 +591,14 @@ export default function CoursePage() {
             {/* 2. ТЕОРІЯ / ТЕКСТ УРОКУ */}
             {activeLesson.content && activeLesson.content !== "<p><br></p>" && (
               <div
+                className="lesson-content-card md:padding-[32px] md:marginBottom-[40px]"
                 style={{
                   background: "#faf9f6",
-                  padding: 20,
+                  padding: 24,
                   borderRadius: 12,
                   border: "1px solid #e0dcd0",
                   marginBottom: 24,
                 }}
-                className="md:padding-[32px] md:marginBottom-[40px]"
               >
                 <div
                   style={{
@@ -619,80 +616,26 @@ export default function CoursePage() {
                 </div>
                 <div
                   className="rich-text-content"
-                  dangerouslySetInnerHTML={{ __html: activeLesson.content }}
+                  dangerouslySetInnerHTML={{
+                    __html: normalizeLessonHtml(activeLesson.content),
+                  }}
                   style={{
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    color: "#4a4a4a",
-                    hyphens: "none",
-                    WebkitHyphens: "none",
-                    overflowWrap: "break-word",
-                    wordBreak: "normal",
+                    fontSize: 15,
+                    lineHeight: 1.65,
+                    color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
                   }}
                 />
               </div>
             )}
 
-            {/* 3. ГРАМАТИЧНИЙ ДОВІДНИК */}
-            {activeLesson.grammarContent &&
-              activeLesson.grammarContent !== "<p><br></p>" && (
-                <div
-                  style={{
-                    background: "#fdf8f5",
-                    padding: 20,
-                    borderRadius: 12,
-                    border: "1px solid #facbce",
-                    marginBottom: 40,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 20,
-                      color: "#c97a4a",
-                      fontWeight: 700,
-                      fontSize: 18,
-                    }}
-                  >
-                    <BookOpen size={22} /> Граматичний довідник
-                  </div>
-                  <div
-                    className="rich-text-content"
-                    dangerouslySetInnerHTML={{
-                      __html: activeLesson.grammarContent,
-                    }}
-                    style={{
-                      fontSize: 16,
-                      lineHeight: 1.8,
-                      color: "#4a4a4a",
-                      hyphens: "none",
-                      WebkitHyphens: "none",
-                      overflowWrap: "break-word",
-                      wordBreak: "normal",
-                    }}
-                  />
-                </div>
-              )}
-
-            {/* 4. ФОТО УРОКУ */}
-            {activeLesson.imageUrl && (
-              <img
-                src={activeLesson.imageUrl}
-                alt="Матеріал до уроку"
-                className="w-full max-w-2xl h-auto rounded-lg mb-6"
-              />
-            )}
-
-            {/* 5. АУДІО ПЛЕЄР */}
+            {/* 3. АУДІО ПЛЕЄР — одразу після теорії */}
             {activeLesson.audioUrl && (
               <div
                 style={{
                   background: "#f0ede5",
                   padding: 24,
                   borderRadius: 12,
-                  marginBottom: 40,
+                  marginBottom: 24,
                   border: "1px solid #e0dcd0",
                   display: "flex",
                   alignItems: "center",
@@ -711,7 +654,7 @@ export default function CoursePage() {
                 >
                   <Headphones size={24} color="#fff" />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <p
                     style={{
                       margin: "0 0 8px",
@@ -731,6 +674,41 @@ export default function CoursePage() {
                   </audio>
                 </div>
               </div>
+            )}
+
+            {/* 4. ГРАМАТИЧНИЙ ДОВІДНИК */}
+            {activeLesson.grammarContent &&
+              activeLesson.grammarContent !== "<p><br></p>" && (
+                <LessonCollapsibleSection
+                  title="Граматичний довідник"
+                  icon={<BookOpen size={22} />}
+                  defaultOpen
+                  headerColor="#c97a4a"
+                  borderColor="#facbce"
+                  background="#fdf8f5"
+                  isDarkMode={isDarkMode}
+                >
+                  <div
+                    className="rich-text-content"
+                    dangerouslySetInnerHTML={{
+                      __html: normalizeLessonHtml(activeLesson.grammarContent),
+                    }}
+                    style={{
+                      fontSize: 15,
+                      lineHeight: 1.65,
+                      color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
+                    }}
+                  />
+                </LessonCollapsibleSection>
+              )}
+
+            {/* 5. ФОТО УРОКУ */}
+            {activeLesson.imageUrl && (
+              <img
+                src={activeLesson.imageUrl}
+                alt="Матеріал до уроку"
+                className="lesson-lesson-image"
+              />
             )}
 
             {/* 6. ВІДЕО ПЛЕЄР */}
@@ -761,28 +739,13 @@ export default function CoursePage() {
 
             {/* 7. ДОКУМЕНТИ УРОКУ */}
             {activeLesson.documents && activeLesson.documents.length > 0 && (
-              <div
-                style={{
-                  background: "#faf9f6",
-                  padding: 32,
-                  borderRadius: 12,
-                  border: "1px solid #e0dcd0",
-                  marginBottom: 40,
-                }}
+              <LessonCollapsibleSection
+                title="Навчальні документи"
+                icon={<FileText size={22} />}
+                headerColor="#8a8a45"
+                background="#faf9f6"
+                isDarkMode={isDarkMode}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    marginBottom: 20,
-                    color: "#8a8a45",
-                    fontWeight: 700,
-                    fontSize: 18,
-                  }}
-                >
-                  <FileText size={22} /> Навчальні документи
-                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {activeLesson.documents.map((doc) => (
                     <a
@@ -810,22 +773,17 @@ export default function CoursePage() {
                     </a>
                   ))}
                 </div>
-              </div>
+              </LessonCollapsibleSection>
             )}
 
             {/* 8. СЛОВНИК (КАРТКИ QUIZLET) */}
             {activeLesson.quizlet && activeLesson.quizlet.length > 0 && (
-              <div style={{ marginBottom: 48 }}>
-                <h3
-                  style={{
-                    fontSize: 20,
-                    color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
-                    marginBottom: 20,
-                    fontWeight: 700,
-                  }}
-                >
-                  Словник уроку (Клікніть, щоб перегорнути)
-                </h3>
+              <LessonCollapsibleSection
+                title="Словник уроку (клікніть, щоб перегорнути)"
+                icon={<BookOpen size={22} />}
+                headerColor={isDarkMode ? "rgb(250, 249, 246)" : "#3a3528"}
+                isDarkMode={isDarkMode}
+              >
                 <div
                   style={{
                     display: "grid",
@@ -885,7 +843,7 @@ export default function CoursePage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </LessonCollapsibleSection>
             )}
 
             {/* 9. ПРАКТИЧНИЙ ТЕСТ (QUIZ) */}
@@ -1066,39 +1024,28 @@ export default function CoursePage() {
 
           {/* 10. ІНСТРУКЦІЯ ДО ДОМАШНЬОГО ЗАВДАННЯ */}
             {activeLesson.homeworkInstruction && (
-              <div
-                style={{
-                  background: isDarkMode ? "#2d2f2a" : "#fdf8f5",
-                  padding: 32,
-                  borderRadius: 12,
-                  border: isDarkMode ? "1px solid #3e403a" : "1px solid #facbce",
-                  marginBottom: 40,
-                }}
+              <LessonCollapsibleSection
+                title="Інструкція до домашнього завдання"
+                icon={<ClipboardList size={22} />}
+                defaultOpen
+                headerColor={isDarkMode ? "#dcfce7" : "#c97a4a"}
+                borderColor="#facbce"
+                background={isDarkMode ? "#2d2f2a" : "#fdf8f5"}
+                isDarkMode={isDarkMode}
               >
-                <h3
-                  style={{
-                    fontSize: 20,
-                    color: isDarkMode ? "#dcfce7" : "#c97a4a",
-                    marginBottom: 20,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <ClipboardList size={22} /> Інструкція до домашнього завдання
-                </h3>
                 <div
                   style={{
                     fontSize: 16,
                     lineHeight: 1.8,
                     color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
                     whiteSpace: "pre-wrap",
+                    wordBreak: "normal",
+                    overflowWrap: "normal",
                   }}
                 >
                   {activeLesson.homeworkInstruction}
                 </div>
-              </div>
+              </LessonCollapsibleSection>
             )}
 
             {/* 11. БЛОК ВІДПРАВКИ ЗАВДАННЯ */}

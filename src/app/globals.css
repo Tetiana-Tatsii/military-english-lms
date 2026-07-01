@@ -41,39 +41,143 @@ body {
 }
 
 /* ─── Rich-text content (Quill HTML output) ─── */
-/*
- * !important потрібен тому що <html lang="uk"> змушує браузер (Chrome/Safari)
- * автоматично вмикати словникову розстановку переносів (hyphens: auto),
- * яка перевизначає звичайний CSS без !important.
- */
-.rich-text-content,
-.rich-text-content * {
-  /* Забороняємо авто-перенос з дефісом — слово цілком іде на наступний рядок */
-  hyphens: none !important;
-  -webkit-hyphens: none !important;
-  -ms-hyphens: none !important;
-  /* Слова не розриваються посередині */
-  word-break: normal !important;
-  /* Довгі URL/хеші переносяться лише якщо зовсім не вміщуються */
-  overflow-wrap: break-word !important;
-}
-
 .rich-text-content {
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+  -ms-hyphens: none !important;
+  word-break: normal !important;
+  /* normal — перенос лише на пробілах; break-word рве слова посередині */
+  overflow-wrap: normal !important;
+  /* pre-wrap як у Quill: перенос по пробілах + збереження Enter */
+  white-space: pre-wrap !important;
+  line-break: auto;
 }
 
-.rich-text-content * {
+.rich-text-content p,
+.rich-text-content li,
+.rich-text-content h1,
+.rich-text-content h2,
+.rich-text-content h3,
+.rich-text-content h4,
+.rich-text-content blockquote {
+  white-space: pre-wrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+}
+
+.rich-text-content span,
+.rich-text-content em,
+.rich-text-content strong,
+.rich-text-content b,
+.rich-text-content i {
+  white-space: inherit !important;
+  hyphens: none !important;
+}
+
+.rich-text-content a {
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.rich-text-content code,
+.rich-text-content pre {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.rich-text-content img,
+.rich-text-content video,
+.rich-text-content iframe,
+.rich-text-content pre {
   max-width: 100%;
   box-sizing: border-box;
 }
 
+/* Таблиці: окремий скрол лише для широких таблиць, без накладання колонок */
+.rich-text-content .rich-text-table-wrap,
+.rich-text-content table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1em 0;
+}
+
+.rich-text-content table {
+  border-collapse: collapse;
+}
+
+.rich-text-content table thead,
+.rich-text-content table tbody,
+.rich-text-content table tfoot {
+  display: table;
+  width: 100%;
+  min-width: 520px;
+  table-layout: auto;
+}
+
+.rich-text-content table col,
+.rich-text-content table colgroup col {
+  width: auto !important;
+}
+
+.rich-text-content td[style],
+.rich-text-content th[style],
+.rich-text-content table[style] {
+  width: auto !important;
+  max-width: none;
+}
+
+.rich-text-content [style*="nowrap"] {
+  white-space: normal !important;
+}
+
+.rich-text-content td,
+.rich-text-content th {
+  padding: 10px 12px;
+  vertical-align: top;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  min-width: 110px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 .rich-text-content img {
+  display: block;
   max-width: 100%;
   height: auto;
+  margin: 16px auto;
   border-radius: 8px;
-  margin: 16px 0;
+}
+
+.rich-text-content .ql-align-center,
+.rich-text-content p.ql-align-center {
+  text-align: center;
+}
+
+.rich-text-content .ql-align-right,
+.rich-text-content p.ql-align-right {
+  text-align: right;
+}
+
+.rich-text-content .ql-align-right img {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.rich-text-content .ql-align-left img {
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .rich-text-content ul,
@@ -91,4 +195,94 @@ body {
 
 .rich-text-content em {
   font-style: italic;
+}
+
+/* ─── Student lesson layout ─── */
+.lesson-content-area {
+  max-width: 920px;
+  width: 100%;
+  min-width: 0;
+}
+
+.lesson-content-card {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.lesson-content-card .rich-text-content {
+  width: 100%;
+}
+
+.lesson-lesson-image {
+  display: block;
+  max-width: 42rem;
+  width: 100%;
+  height: auto;
+  margin: 0 auto 24px;
+  border-radius: 12px;
+}
+
+/* ─── Teacher lesson editor sections ─── */
+.lesson-editor-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin-top: 8px;
+}
+
+.lesson-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lesson-editor-section .editor-quill .ql-toolbar.ql-snow {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.lesson-editor-section .editor-quill .ql-container.ql-snow {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.lesson-editor-section .editor-quill--reading .ql-container {
+  height: 260px;
+}
+
+.lesson-editor-section .editor-quill--grammar .ql-container {
+  height: 320px;
+}
+
+.lesson-editor-section .editor-quill .ql-editor {
+  min-height: 100%;
+  white-space: pre-wrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+.lesson-editor-section .ql-editor table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+
+.lesson-editor-section .ql-editor table tbody,
+.lesson-editor-section .ql-editor table thead {
+  display: table;
+  width: 100%;
+  min-width: 480px;
+  table-layout: auto;
+}
+
+.lesson-editor-section .ql-editor td,
+.lesson-editor-section .ql-editor th {
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  vertical-align: top;
 }

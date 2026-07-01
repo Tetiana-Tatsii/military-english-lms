@@ -39,4 +39,24 @@ AuthProvider → GamificationProvider → CoursesProvider → AppProviderInner
 - [ ] Baseline counts 2/20
 
 ### Далі (P3)
-- Розбити `EditorTab` на менші компоненти
+- ~~PR3a: hook + підкомпоненти EditorTab~~ ✅
+- PR3b: розбити `LessonEditorPanel` (quiz, media, quizlet секції)
+
+---
+
+## P3 PR3a: EditorTab split ✅
+
+- `src/components/teacher/editor/useEditorTab.ts` — стан і handlers
+- `src/components/teacher/editor/utils.ts` — quill, upload, YouTube
+- `src/components/teacher/editor/types.ts` — EditorTabProps
+- `CourseStructurePanel` — вибір курсу, модулі, уроки
+- `LessonEditorPanel` — глибоке редагування уроку
+- `CourseFormModal` — створення/редагування курсу
+- `EditorMobileGuard` — блок на mobile
+- `EditorTab.tsx` — thin wrapper (~35 рядків)
+
+### Smoke після deploy
+- [ ] Teacher → Editor → вибір курсу
+- [ ] Rename module / lesson
+- [ ] Відкрити урок → зберегти текст, quiz, media
+- [ ] Створити / редагувати курс (modal)
