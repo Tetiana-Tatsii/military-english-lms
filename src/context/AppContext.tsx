@@ -417,7 +417,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.rpc(rpcName, args);
     if (error) {
       console.error(`RPC ${rpcName} failed:`, error.message);
-      throw error;
+      throw new Error(
+        error.message ||
+          `RPC ${rpcName} failed (перевірте права на schema private).`,
+      );
     }
     const newModules = (data as Module[]) || [];
     setCourses((prev) =>
@@ -499,38 +502,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
         
+        const clearBrokenSession = async () => {
+          await supabase.auth.signOut();
+          sessionStorage.removeItem("lanp_user");
+          setUser(null);
+          activeUserId = null;
+        };
+
+        const restoreUserFromAuthSession = async (authUserId: string) => {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("id, name, role, status, squad_id")
+            .eq("id", authUserId)
+            .single();
+
+          if (!profileData) {
+            await clearBrokenSession();
+            return;
+          }
+
+          const sessionData = {
+            id: profileData.id,
+            name: profileData.name,
+            role: profileData.role as UserRole,
+            squadId: profileData.squad_id,
+          };
+          setUser(sessionData);
+          activeUserId = sessionData.id;
+          sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
+        };
+
         // Пріоритет: sessionStorage цієї вкладки (уникаємо cross-tab конфліктів)
         if (savedUserSession) {
           try {
             const savedUser = JSON.parse(savedUserSession) as UserAccount;
-            // Якщо Auth-сесія належить тому самому користувачу — оновлюємо профіль з БД
-            if (session?.user && session.user.id === savedUser.id) {
-              const { data: profileData } = await supabase
-                .from("profiles")
-                .select("id, name, role, status, squad_id")
-                .eq("id", session.user.id)
-                .single();
-              if (profileData) {
-                const refreshed = {
-                  id: profileData.id,
-                  name: profileData.name,
-                  role: profileData.role as UserRole,
-                  squadId: profileData.squad_id,
-                };
-                setUser(refreshed);
-                activeUserId = refreshed.id;
-                sessionStorage.setItem("lanp_user", JSON.stringify(refreshed));
-              } else {
-                setUser(savedUser);
-                activeUserId = savedUser.id;
-              }
+
+            if (session?.user) {
+              await restoreUserFromAuthSession(session.user.id);
             } else {
-              // Auth-сесія належить іншій вкладці — ігноруємо її
-              setUser(savedUser);
-              activeUserId = savedUser.id;
+              // Без Auth-сесії lanp_user недійсний (RLS / streak потребують JWT)
+              sessionStorage.removeItem("lanp_user");
+              setUser(null);
+              activeUserId = null;
             }
           } catch (e) {
             console.error("Помилка парсингу сесії:", e);
+            sessionStorage.removeItem("lanp_user");
           }
         } else if (session?.user) {
           // Нова вкладка без sessionStorage — завантажуємо профіль з Auth
@@ -550,6 +567,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setUser(sessionData);
             activeUserId = sessionData.id;
             sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
+          } else {
+            await clearBrokenSession();
           }
         }
 

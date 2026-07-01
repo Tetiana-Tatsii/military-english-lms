@@ -23,6 +23,7 @@ import {
   Layers,
 } from "lucide-react";
 import { Course, Lesson } from "@/context/AppContext";
+import { getCorrectOptionIndex } from "@/lib/quiz";
 import { supabase } from "@/lib/supabase";
 import "react-quill-new/dist/quill.snow.css";
 
@@ -197,11 +198,18 @@ export default function EditorTab({
     setEditingModuleName(currentName);
   };
 
-  const handleSaveModuleName = () => {
+  const handleSaveModuleName = async () => {
     if (!editingModuleId || !editingModuleName.trim()) return;
-    updateModule(selectedCourseId, editingModuleId, { title: editingModuleName });
-    setEditingModuleId(null);
-    setEditingModuleName("");
+    try {
+      await updateModule(selectedCourseId, editingModuleId, {
+        title: editingModuleName,
+      });
+      setEditingModuleId(null);
+      setEditingModuleName("");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Невідома помилка";
+      alert(`Не вдалося зберегти модуль: ${msg}`);
+    }
   };
 
   const handleCancelEditModuleName = () => {
@@ -1699,7 +1707,11 @@ export default function EditorTab({
                     Правильна відповідь:
                   </label>
                   <select
-                    value={question.correctAnswer}
+                    value={
+                      getCorrectOptionIndex(question) >= 0
+                        ? String(getCorrectOptionIndex(question))
+                        : ""
+                    }
                     onChange={(e) => {
                       if (!editingLesson) return;
                       const updatedQuiz = [...(editingLesson.lesson as any).quiz];
@@ -1722,7 +1734,7 @@ export default function EditorTab({
                   >
                     <option value="">Оберіть правильну відповідь</option>
                     {question.options.map((opt: string, optIndex: number) => (
-                      <option key={optIndex} value={opt}>
+                      <option key={optIndex} value={String(optIndex)}>
                         Варіант {optIndex + 1}: {opt || "(пусто)"}
                       </option>
                     ))}

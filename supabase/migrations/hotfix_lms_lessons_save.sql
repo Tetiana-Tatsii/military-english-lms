@@ -4,6 +4,7 @@
 -- =============================================================
 
 CREATE SCHEMA IF NOT EXISTS private;
+GRANT USAGE ON SCHEMA private TO authenticated;
 
 CREATE OR REPLACE FUNCTION private.is_teacher_or_admin()
 RETURNS boolean

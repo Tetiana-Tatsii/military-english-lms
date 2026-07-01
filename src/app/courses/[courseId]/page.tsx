@@ -7,6 +7,11 @@ import { supabase } from "../../../lib/supabase";
 import { useDarkMode } from "../../../hooks/useDarkMode";
 import { recalculateSlp } from "../../../lib/slp";
 import { awardCoins } from "../../../lib/gamification";
+import {
+  getCorrectOptionIndex,
+  getSelectedOptionIndex,
+  isQuizAnswerCorrect,
+} from "../../../lib/quiz";
 import DashboardHeader from "../../../components/dashboard/DashboardHeader";
 import {
   ArrowLeft,
@@ -177,8 +182,8 @@ export default function CoursePage() {
       return;
     }
 
-    const correctCount = activeLesson.quiz.filter(
-      (q) => quizAnswers[q.id] === q.correctAnswer,
+    const correctCount = activeLesson.quiz.filter((q) =>
+      isQuizAnswerCorrect(q, quizAnswers[q.id]),
     ).length;
     const score = Math.round((correctCount / activeLesson.quiz.length) * 100);
 
@@ -910,7 +915,8 @@ export default function CoursePage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                   {activeLesson.quiz.map((question, index) => {
                     const userAnswer = quizAnswers[question.id];
-                    const isCorrect = userAnswer === question.correctAnswer;
+                    const selectedIdx = getSelectedOptionIndex(question, userAnswer);
+                    const isCorrect = isQuizAnswerCorrect(question, userAnswer);
                     const showFeedback = quizSubmitted;
                     
                     return (
@@ -927,8 +933,9 @@ export default function CoursePage() {
                         </p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {question.options.map((option, optIndex) => {
-                            const isSelected = userAnswer === option;
-                            const isOptionCorrect = option === question.correctAnswer;
+                            const isSelected = selectedIdx === optIndex;
+                            const isOptionCorrect =
+                              getCorrectOptionIndex(question) === optIndex;
                             
                             let optionStyle = {
                               display: "flex",
@@ -981,9 +988,14 @@ export default function CoursePage() {
                                 <input
                                   type="radio"
                                   name={`question-${question.id}`}
-                                  value={option}
-                                  checked={quizAnswers[question.id] === option}
-                                  onChange={(e) => handleQuizAnswerChange(question.id, e.target.value)}
+                                  value={String(optIndex)}
+                                  checked={selectedIdx === optIndex}
+                                  onChange={() =>
+                                    handleQuizAnswerChange(
+                                      question.id,
+                                      String(optIndex),
+                                    )
+                                  }
                                   disabled={quizSubmitted}
                                   style={{ width: 18, height: 18, accentColor: "#8a8a45" }}
                                 />
