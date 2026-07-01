@@ -3,6 +3,8 @@
 import React from "react";
 import { ShoppingCart } from "lucide-react";
 import type { GamificationProfile } from "@/context/AppContext";
+import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
+import StreakCoinIcon from "@/components/ui/StreakCoinIcon";
 
 interface InstructorCardProps {
   gamification: GamificationProfile;
@@ -54,20 +56,6 @@ function getInstructorImage(mood: "happy" | "angry" | "proud", activeItem: strin
   if (mood === "angry") return "/instructor/angry.webp";
   if (mood === "proud") return "/instructor/proud.webp";
   return HAPPY_ITEM_IMAGES[activeItem] ?? HAPPY_ITEM_IMAGES.coffee;
-}
-
-const COIN_OPEN   = "/coins/coffee-coin_open.webp";
-const COIN_LOCKED = "/coins/coffee-coin_locked.webp";
-
-function CoinImg({ filled }: { filled: boolean }) {
-  return (
-    <img
-      src={filled ? COIN_OPEN : COIN_LOCKED}
-      alt={filled ? "completed" : "locked"}
-      className="w-7 h-7 sm:w-10 sm:h-10 md:w-[56px] md:h-[56px] lg:w-[72px] lg:h-[72px] object-contain flex-shrink-0 transition-all duration-300"
-      style={{ opacity: filled ? 1 : 0.55 }}
-    />
-  );
 }
 
 export default function InstructorCard({
@@ -139,14 +127,13 @@ export default function InstructorCard({
             {/* Row 1: coins 1–4 */}
             <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-3">
               {[0, 1, 2, 3].map((i) => (
-                <CoinImg key={i} filled={i < filledCups} />
+                <StreakCoinIcon key={i} filled={i < filledCups} />
               ))}
             </div>
 
-            {/* Row 2: coins 5–7 */}
             <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-3">
               {[4, 5, 6].map((i) => (
-                <CoinImg key={i} filled={i < filledCups} />
+                <StreakCoinIcon key={i} filled={i < filledCups} />
               ))}
             </div>
 
@@ -171,11 +158,11 @@ export default function InstructorCard({
               </div>
 
               <div className="flex items-center gap-3 self-end">
-                <div className="flex items-center gap-0.5">
+                <div className="flex items-center gap-1">
                   <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
                     {coffeeCoins}
                   </span>
-                  <img src={COIN_OPEN} alt="coins" className="w-5 h-5 object-contain" />
+                  <CoffeeCoinIcon />
                 </div>
                 <button
                   onClick={onPxStoreToggle}

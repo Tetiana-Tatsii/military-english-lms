@@ -595,17 +595,25 @@ export default function AnswersTab({
                       />
                     </div>
                     <button
-                      onClick={() => {
-                        provideFeedback(
-                          ans.id,
-                          feedbackTexts[ans.id] || "",
-                          false,
-                          scores[ans.id],
-                          coinsMap[ans.id] ?? 0,
-                        );
-                        setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
-                        setScores({ ...scores, [ans.id]: 0 });
-                        setCoinsMap({ ...coinsMap, [ans.id]: 0 });
+                      onClick={async () => {
+                        try {
+                          await provideFeedback(
+                            ans.id,
+                            feedbackTexts[ans.id] || "",
+                            false,
+                            scores[ans.id],
+                            coinsMap[ans.id] ?? 0,
+                          );
+                          setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
+                          setScores({ ...scores, [ans.id]: 0 });
+                          setCoinsMap({ ...coinsMap, [ans.id]: 0 });
+                        } catch (e) {
+                          alert(
+                            e instanceof Error
+                              ? e.message
+                              : "Не вдалося зберегти оцінку",
+                          );
+                        }
                       }}
                       disabled={!!(lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId)}
                       className="flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-opacity sm:w-auto sm:justify-start"
@@ -654,6 +662,34 @@ export default function AnswersTab({
                           {ans.score || 0}/100
                         </div>
                       </div>
+                      {(ans.coins_awarded || (ans.coins_awarded_amount ?? 0) > 0) && (
+                        <div className="w-full">
+                          <label
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: isDarkMode ? "#a3a198" : "#7a7568",
+                              marginBottom: 8,
+                              display: "block",
+                            }}
+                          >
+                            ☕ Нараховано коїнів
+                          </label>
+                          <div
+                            style={{
+                              fontSize: 18,
+                              fontWeight: 700,
+                              color: "#8a8a45",
+                              padding: 10,
+                              background: isDarkMode ? "#2d2f2a" : "#fff",
+                              borderRadius: 6,
+                              border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
+                            }}
+                          >
+                            {ans.coins_awarded_amount ?? "—"}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {ans.teacherFeedbackText && (
                       <div>

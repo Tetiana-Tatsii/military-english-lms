@@ -236,6 +236,57 @@ export async function processDailyStreak(
 }
 
 // ─── Award coins (atomic-safe for low-concurrency apps) ───────────────────────
+// ─── Award coins for homework (teacher → student via RPC) ─────────────────────
+export async function awardHomeworkCoins(
+  supabase: SupabaseClient,
+  answerId: string,
+  amount: number,
+): Promise<{
+  error: string | null;
+  coinsAwardedAmount?: number;
+  newCoffeeCoins?: number;
+  studentId?: string;
+}> {
+  if (amount <= 0) {
+    return { error: null, coinsAwardedAmount: 0 };
+  }
+
+  const { data, error } = await supabase.rpc("award_homework_coins", {
+    p_answer_id: answerId,
+    p_amount: amount,
+  });
+
+  if (error) {
+    console.error("award_homework_coins RPC failed:", error.message);
+    return { error: error.message };
+  }
+
+  const payload = data as Record<string, unknown> | null;
+  if (!payload) {
+    return { error: "empty_response" };
+  }
+
+  if (payload.error) {
+    const code = String(payload.error);
+    if (code === "already_awarded") {
+      return {
+        error: null,
+        coinsAwardedAmount: Number(payload.coinsAwardedAmount ?? 0),
+      };
+    }
+    console.error("award_homework_coins:", code);
+    return { error: code };
+  }
+
+  return {
+    error: null,
+    coinsAwardedAmount: Number(payload.coinsAwardedAmount ?? amount),
+    newCoffeeCoins: Number(payload.newCoffeeCoins ?? 0),
+    studentId: String(payload.studentId ?? ""),
+  };
+}
+
+/** @deprecated Use awardHomeworkCoins — direct profile update blocked by RLS for teachers */
 export async function awardCoins(
   supabase: SupabaseClient,
   userId: string,

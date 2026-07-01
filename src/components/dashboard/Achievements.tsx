@@ -37,45 +37,49 @@ export default function Achievements({ gamification, courses, isDarkMode }: Achi
       }}
     >
       <div
-        className="px-5 py-4"
+        className="px-4 py-3 sm:px-5 sm:py-4"
         style={{ borderBottom: isDarkMode ? "1px solid #3e403a" : "1px solid #e8e2d4" }}
       >
-        <span className="font-bold" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
+        <span className="font-bold text-sm sm:text-base" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
           🏅 Achievements & Badges
         </span>
       </div>
 
-      <div className="flex justify-center gap-8 px-5 py-4">
+      <div className="grid grid-cols-2 gap-3 px-3 py-4 sm:flex sm:flex-wrap sm:justify-center sm:gap-8 sm:px-5">
         {badgeEntries.map(({ courseId, courseName, badge, completed }) => (
-          <div key={courseId} className="w-72 flex flex-col items-center">
+          <div
+            key={courseId}
+            className="flex w-full min-w-0 flex-col items-center sm:w-56"
+          >
             <p
-              className="h-10 flex items-end justify-center text-sm font-bold leading-tight text-center mb-1 px-0.5"
+              className="mb-1.5 flex min-h-[2.5rem] items-end justify-center px-0.5 text-center text-xs font-bold leading-tight sm:mb-2 sm:min-h-[2.5rem] sm:text-sm"
               style={{
                 color: completed
-                  ? (isDarkMode ? "#e6e4dc" : "#3a3528")
-                  : (isDarkMode ? "#6b6860" : "#a09890"),
+                  ? isDarkMode
+                    ? "#e6e4dc"
+                    : "#3a3528"
+                  : isDarkMode
+                    ? "#6b6860"
+                    : "#a09890",
               }}
             >
               {courseName}
             </p>
 
-            <div
-              className="w-72 h-72 flex items-center justify-center shrink-0"
-              style={{ transform: badge.imageOffsetY ? `translateY(${badge.imageOffsetY}px)` : undefined }}
-            >
+            <div className="flex aspect-square w-full max-w-[8.75rem] shrink-0 items-center justify-center overflow-hidden sm:h-56 sm:w-56 sm:max-w-none">
               <img
                 src={badge.image}
                 alt={badge.name}
                 draggable={false}
-                className={`w-full h-full object-contain transition-transform duration-300 ${
-                  completed ? "hover:scale-110" : "grayscale opacity-60"
+                className={`max-h-full max-w-full object-contain object-center transition-transform duration-300 ${
+                  completed ? "sm:hover:scale-105" : "grayscale opacity-60"
                 }`}
                 onError={(e) => {
                   const target = e.currentTarget;
                   target.style.display = "none";
                   const parent = target.parentElement;
                   if (parent) {
-                    parent.style.fontSize = "48px";
+                    parent.style.fontSize = "2rem";
                     parent.textContent = badge.emoji;
                   }
                 }}
@@ -83,12 +87,12 @@ export default function Achievements({ gamification, courses, isDarkMode }: Achi
             </div>
 
             <p
-              className="text-xs font-medium leading-none text-center mt-1"
+              className="mt-1.5 text-center text-[11px] font-medium leading-none sm:mt-2 sm:text-xs"
               style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}
             >
               {completed ? (
                 <span
-                  className="inline-block rounded-full px-3 py-1 text-xs font-bold leading-none"
+                  className="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold leading-none sm:px-3 sm:py-1 sm:text-xs"
                   style={{ background: "#8a8a45", color: "#fff" }}
                 >
                   Completed ✓

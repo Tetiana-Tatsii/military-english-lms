@@ -4,24 +4,13 @@ import React, { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { SHOP_ITEMS, type BuyShopResult } from "@/lib/gamification";
 import type { GamificationProfile } from "@/context/AppContext";
+import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 
 interface VoentorgProps {
   gamification: GamificationProfile;
   isDarkMode: boolean;
   onBuy: (itemId: string, price: number) => Promise<BuyShopResult>;
   defaultOpen?: boolean;
-}
-
-const COIN_OPEN = "/coins/coffee-coin_open.webp";
-
-function CoffeeCoin({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <img
-      src={COIN_OPEN}
-      alt="coffee coin"
-      className={`object-contain flex-shrink-0 ${className}`}
-    />
-  );
 }
 
 export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen = false }: VoentorgProps) {
@@ -41,10 +30,18 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
     return "Item equipped! ✅";
   };
 
+  const isOwned = (itemId: string, price: number) =>
+    price === 0 || purchasedItems.includes(itemId);
+
   const handleBuy = async (itemId: string, price: number, isCurrentlyActive: boolean) => {
-    // Coffee already active — just show happy message, no DB call needed
     if (itemId === "coffee" && isCurrentlyActive) {
       showToast("You made Instructor Kava happier ☕", true);
+      return;
+    }
+
+    const owned = isOwned(itemId, price);
+    if (!owned && coffeeCoins < price) {
+      showToast("Недостатньо Кава-коїнів ☕", false);
       return;
     }
 
@@ -71,7 +68,6 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
       }}
     >
-      {/* Accordion header — always visible, click to toggle */}
       <button
         onClick={() => setIsOpen((v) => !v)}
         className={`flex w-full items-center justify-between bg-transparent px-5 py-4 text-left transition-colors ${
@@ -84,11 +80,11 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
           🛒 Post Exchange Store & Coffee
         </span>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
               {coffeeCoins}
             </span>
-            <CoffeeCoin />
+            <CoffeeCoinIcon />
           </div>
           <ChevronDown
             size={18}
@@ -101,15 +97,15 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
         </div>
       </button>
 
-      {/* Collapsible content */}
       {isOpen && (
         <>
-      {/* Items grid */}
       <div className="grid grid-cols-2 gap-3 p-4">
         {SHOP_ITEMS.map((item) => {
-          const owned = item.price === 0 || purchasedItems.includes(item.id);
+          const owned = isOwned(item.id, item.price);
           const isActive = activeInstructorItem === item.id;
-          const canAfford = owned || coffeeCoins >= item.price;
+          const canPurchase = !owned && coffeeCoins >= item.price;
+          const canActivate = owned && !isActive;
+          const canClick = item.id === "coffee" ? true : canPurchase || canActivate;
           const isLoading = buying === item.id;
 
           return (
@@ -121,10 +117,9 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
                   ? (isDarkMode ? "#2a3020" : "#eef0df")
                   : (isDarkMode ? "#252622" : "#fff"),
                 borderColor: isActive ? "#8a8a45" : (isDarkMode ? "#3e403a" : "#e0dcd0"),
-                opacity: !canAfford ? 0.5 : 1,
+                opacity: canClick || isActive ? 1 : 0.5,
               }}
             >
-              {/* Item image */}
               <div
                 className="flex items-center justify-center overflow-hidden rounded-lg"
                 style={{ width: 64, height: 64, background: isDarkMode ? "#2d2f2a" : "#f0ede5" }}
@@ -148,18 +143,19 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
               <p className="text-xs font-bold" style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}>
                 {item.name}
               </p>
-              <p className="text-xs font-semibold flex items-center justify-center gap-0.5" style={{ color: "#8a8a45" }}>
+              <p className="text-xs font-semibold flex items-center justify-center gap-1" style={{ color: "#8a8a45" }}>
                 {item.price === 0 ? (
                   "Free"
+                ) : owned ? (
+                  "У власності"
                 ) : (
                   <>
                     {item.price}
-                    <CoffeeCoin className="w-3.5 h-3.5" />
+                    <CoffeeCoinIcon />
                   </>
                 )}
               </p>
 
-              {/* Coffee is always clickable — shows happy toast even when active */}
               {isActive && item.id !== "coffee" ? (
                 <span
                   className="rounded-full px-2 py-0.5 text-xs font-bold"
@@ -170,9 +166,9 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
               ) : (
                 <button
                   onClick={() => handleBuy(item.id, item.price, isActive)}
-                  disabled={!canAfford || isLoading}
+                  disabled={!canClick || isLoading}
                   className={`w-full rounded-lg px-2 py-1.5 text-xs font-bold transition-colors duration-200 ${
-                    canAfford && !isLoading
+                    canClick && !isLoading
                       ? "bg-[#8a8a45] text-white cursor-pointer hover:bg-[#6b6b36]"
                       : "bg-[#e9e1cd] text-[#9a8f70] cursor-not-allowed"
                   }`}
@@ -182,7 +178,7 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
                   ) : item.id === "coffee" ? (
                     <span className="inline-flex items-center justify-center gap-1">
                       Give coffee
-                      <CoffeeCoin className="w-3.5 h-3.5" />
+                      <CoffeeCoinIcon />
                     </span>
                   ) : owned ? (
                     "Activate"
@@ -196,7 +192,6 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
         })}
       </div>
 
-      {/* Toast */}
       {toast && (
         <div
           className="mx-4 mb-4 rounded-lg px-4 py-2 text-sm font-semibold"

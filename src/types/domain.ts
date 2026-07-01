@@ -81,6 +81,7 @@ export interface Answer {
   locked_by_teacher_id?: string | null;
   user_id?: string;
   coins_awarded?: boolean;
+  coins_awarded_amount?: number;
 }
 
 export type { GamificationProfile };

@@ -1,24 +1,42 @@
 # P2 — Рефакторинг AppContext
 
-## PR1 (поточний): типи + AuthProvider
+## PR1: типи + AuthProvider ✅
 
-### Зроблено
 - `src/types/domain.ts` — доменні типи
 - `src/context/auth/AuthProvider.tsx` — login, logout, register, users, session restore
 - `src/context/AppContext.tsx` — thin wrapper; `useAppContext()` API **без змін**
-- Re-export типів з `AppContext` для backward compatibility
 
 ### Новий hook (опційно)
 ```tsx
 import { useAuth } from "@/context/auth";
 ```
 
+---
+
+## PR2: CoursesProvider + GamificationProvider ✅
+
+- `src/context/courses/CoursesProvider.tsx` — курси, уроки, модулі, answers, realtime, CRUD
+- `src/context/gamification/GamificationProvider.tsx` — streak, shop, coins, instructorMood
+- `AppContext` — лише support tickets + profiles realtime + compose providers
+
+### Нові hooks (опційно)
+```tsx
+import { useCourses } from "@/context/courses";
+import { useGamification } from "@/context/gamification";
+```
+
+### Порядок провайдерів
+```
+AuthProvider → GamificationProvider → CoursesProvider → AppProviderInner
+```
+
 ### Smoke після deploy
 - [ ] Login teacher / student
-- [ ] Save lesson
-- [ ] Users tab (admin)
+- [ ] Save lesson + rename module (уроки не зникають)
+- [ ] Quiz — один radio
+- [ ] Feedback + coins (teacher → student)
+- [ ] Shop / streak (dashboard)
 - [ ] Baseline counts 2/20
 
-### Далі (P2 PR2)
-- `CoursesProvider` — courses, lessons, modules, realtime
-- `GamificationProvider` — streak, shop, coins
+### Далі (P3)
+- Розбити `EditorTab` на менші компоненти

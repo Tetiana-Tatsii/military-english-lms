@@ -1221,6 +1221,22 @@ export default function CoursePage() {
                       <span style={{ color: "#4a4a4a" }}>
                         {existingAnswer.teacherFeedbackText}
                       </span>
+                      {(existingAnswer.coins_awarded_amount ?? 0) > 0 && (
+                        <p
+                          style={{
+                            marginTop: 12,
+                            padding: "10px 12px",
+                            background: "#eef0df",
+                            borderRadius: 6,
+                            color: "#8a8a45",
+                            fontWeight: 600,
+                            fontSize: 14,
+                          }}
+                        >
+                          ☕ Вам надано {existingAnswer.coins_awarded_amount}{" "}
+                          кава-коїнів за сумлінне виконання домашнього завдання!
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

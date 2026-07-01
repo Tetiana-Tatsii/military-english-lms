@@ -12,7 +12,7 @@ import Achievements from "../../components/dashboard/Achievements";
 import { DEFAULT_GAMIFICATION_PROFILE } from "@/lib/gamification";
 
 export default function DashboardPage() {
-  const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem } = useAppContext();
+  const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem, refreshGamification } = useAppContext();
   const router = useRouter();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -40,6 +40,21 @@ export default function DashboardPage() {
     }
   }, [user, router, isInitialized]);
 
+  const myAnswers = user
+    ? answers.filter((a) => a.studentName === user.name)
+    : [];
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const totalAwarded = myAnswers.reduce(
+      (sum, a) => sum + (a.coins_awarded_amount ?? 0),
+      0,
+    );
+    if (totalAwarded > 0) {
+      refreshGamification();
+    }
+  }, [myAnswers, refreshGamification, user?.id]);
+
   if (!isInitialized || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f0e9d8] text-[#8a8a45] font-semibold text-lg">
@@ -47,8 +62,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const myAnswers = answers.filter((a) => a.studentName === user.name);
 
   const getCourseProgress = (courseId: string) => {
     const course = courses.find((c) => c.id === courseId);

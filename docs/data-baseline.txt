@@ -1,0 +1,17 @@
+# Baseline даних LMS (заповнюйте після verify_data_baseline.sql)
+
+Формат: дата | хто | lms_courses | lms_lessons | profiles | answers | quiz_results | support_tickets | примітка
+
+---
+
+
+ЗАПИСИ:
+
+2026-07-01 | Tetiana | 2 | 20 | 7 | 3 | 4 | 5 | P0 baseline PRODUCTION (Free, no scheduled backups). Teachers 6/6 profile_auth_ok.
+
+# Еталон після deploy/SQL (без навмисних змін):
+# lms_courses=2 | lms_lessons=20 | profiles=7 | answers=3 | quiz_results=4 | support_tickets=5
+
+# P4 progress:
+# 2026-07-01 | p4_step3_revoke_password_select | OK | login OK, lesson save OK, counts 2/20
+# 2026-07-01 | p4_step4a student RLS | OK | answers 5 policies, quiz_results 4 policies — 4b skip

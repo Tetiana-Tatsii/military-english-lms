@@ -3,6 +3,7 @@
 import React from "react";
 import { MessageSquare, CheckCircle, Clock, Award } from "lucide-react";
 import { Answer } from "@/context/AppContext";
+import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 
 interface AnswerListProps {
   answers: Answer[];
@@ -85,9 +86,26 @@ export default function AnswerList({
                     <strong>Коментар викладача:</strong>{" "}
                     {ans.teacherFeedbackText || "Без коментарів"}
                   </p>
-                  {ans.score && (
-                    <div className="flex items-center gap-1.5 font-bold text-[#8a8a45] text-[15px]">
+                  {ans.score != null && ans.score > 0 && (
+                    <div className="mb-2 flex items-center gap-1.5 text-[15px] font-bold text-[#8a8a45]">
                       <Award size={18} /> Оцінка: {ans.score}/100
+                    </div>
+                  )}
+                  {(ans.coins_awarded_amount ?? 0) > 0 && (
+                    <div
+                      className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold"
+                      style={{
+                        background: isDarkMode ? "#2a3020" : "#eef0df",
+                        color: "#8a8a45",
+                        border: "1px solid #8a8a45",
+                      }}
+                    >
+                      <CoffeeCoinIcon />
+                      <span>
+                        Вам надано {ans.coins_awarded_amount} кава-коїн
+                        {ans.coins_awarded_amount === 1 ? "" : "ів"} за сумлінне
+                        виконання домашнього завдання!
+                      </span>
                     </div>
                   )}
                 </div>
