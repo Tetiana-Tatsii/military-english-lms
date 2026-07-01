@@ -6,10 +6,10 @@ import React, {
   useState,
   ReactNode,
   useEffect,
+  useCallback,
 } from "react";
-import { initialCourses } from "../data/courses"; // використовується лише для seeding
+import { initialCourses } from "../data/courses";
 import { supabase } from "../lib/supabase";
-import { hashPassword, verifyPassword } from "../lib/password";
 import { mapDbRowToAnswer } from "../lib/mappers";
 import { recalculateSlp } from "../lib/slp";
 import {
@@ -22,121 +22,42 @@ import {
   DEFAULT_GAMIFICATION_PROFILE,
   type BuyShopResult,
 } from "../lib/gamification";
+import { AuthProvider, useAuth } from "./auth";
+import type {
+  SkillType,
+  UserRole,
+  AccountStatus,
+  QuizletCard,
+  QuizQuestion,
+  LessonDocument,
+  Lesson,
+  Module,
+  Course,
+  Answer,
+  SupportTicket,
+  GrammarRule,
+  Question,
+  UserAccount,
+} from "@/types";
 
-import { nameToEmail } from "../lib/authEmail";
-
-export type SkillType = "listening" | "reading" | "speaking" | "writing" | "mixed";
-export type UserRole = "student" | "teacher" | "admin";
-export type AccountStatus = "pending" | "approved";
-
-export interface QuizletCard {
-  term: string;
-  translation: string;
-}
-
-export interface QuizQuestion {
-  id: string;
-  text: string;
-  options: string[];
-  correctAnswer: string;
-}
-
-export interface LessonDocument {
-  id: string;
-  name: string;
-  url: string;
-  type: "pdf" | "doc" | "docx";
-}
-
-export type Lesson = {
-  id: string;
-  title: string;
-  section: string;
-  content: string;
-  videoLabel?: string;
-  duration: string;
-  quizlet?: { term: string; translation: string }[];
-  skill?: SkillType;
-
-  audioUrl?: string;
-  grammarContent?: string;
-  imageUrl?: string;
-  quiz?: QuizQuestion[];
-  documents?: LessonDocument[];
-  homeworkInstruction?: string;
-};
-
-export interface Module {
-  id: string;
-  title: string;
-  icon: string;
-  lessons: Lesson[];
-}
-
-export interface Course {
-  id: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  status: "active" | "draft";
-  modules: Module[];
-  finalTest: { title: string; questions: Question[] };
-}
-
-export interface Answer {
-  id: string;
-  lessonId: string;
-  courseId: string;
-  studentName: string;
-  squadId: string;
-  text: string;
-  voiceRecorded: boolean;
-  audioUrl?: string;
-  attachments: string[];
-  submittedAt: string;
-  status: "pending" | "reviewed";
-  teacherFeedbackText?: string;
-  teacherFeedbackAudio?: boolean;
-  score?: number;
-  locked_by_teacher_id?: string | null;
-  user_id?: string;
-  coins_awarded?: boolean;
-}
-
-export type { GamificationProfile };
-
-export interface SupportTicket {
-  id: string;
-  userName: string;
-  type: "bug" | "improvement";
-  message: string;
-  date: string;
-  status: "open" | "closed";
-}
-
-export interface GrammarRule {
-  id: string;
-  title: string;
-  category: string;
-  content: string;
-}
-
-export interface Question {
-  id: string;
-  text: string;
-  options?: string[];
-  correctAnswer?: string;
-  type?: "multiple-choice" | "text" | "true-false";
-}
-
-export interface UserAccount {
-  id: string;
-  name: string;
-  password: string;
-  role: UserRole;
-  squadId?: string;
-  status: AccountStatus;
-}
+// Re-export domain types (backward compatible imports from AppContext)
+export type {
+  SkillType,
+  UserRole,
+  AccountStatus,
+  QuizletCard,
+  QuizQuestion,
+  LessonDocument,
+  Lesson,
+  Module,
+  Course,
+  Answer,
+  GamificationProfile,
+  SupportTicket,
+  GrammarRule,
+  Question,
+  UserAccount,
+} from "@/types";
 
 interface AppState {
   user: { id: string; name: string; role: UserRole; squadId?: string } | null;
@@ -219,34 +140,34 @@ const GRAMMAR_BASE: GrammarRule[] = [
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AppState["user"]>(null);
+  return (
+    <AuthProvider>
+      <AppProviderInner>{children}</AppProviderInner>
+    </AuthProvider>
+  );
+}
+
+function AppProviderInner({ children }: { children: ReactNode }) {
+  const {
+    user,
+    usersDb,
+    authReady,
+    registerPostLoginHandler,
+    fetchUsersFromSupabase,
+    registerUser,
+    login,
+    logout,
+    approveUser,
+    rejectUser,
+    changeUserPassword,
+  } = useAuth();
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [usersDb, setUsersDb] = useState<UserAccount[]>([]);
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [gamification, setGamification] = useState<GamificationProfile | null>(null);
   const [instructorMood, setInstructorMood] = useState<"happy" | "angry" | "proud">("happy");
-
-  // СИНХРОНІЗАЦІЯ КОРИСТУВАЧІВ З SUPABASE
-  const fetchUsersFromSupabase = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, name, role, status, squad_id")
-      .order("created_at", { ascending: true });
-
-    if (!error && data) {
-      const formattedUsers: UserAccount[] = data.map((u) => ({
-        id: u.id,
-        name: u.name,
-        password: "",
-        role: u.role as UserRole,
-        status: u.status as AccountStatus,
-        squadId: u.squad_id,
-      }));
-      setUsersDb(formattedUsers);
-    }
-  };
 
   const refreshGamification = async (uid?: string) => {
     const id = uid ?? user?.id;
@@ -255,7 +176,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setGamification(profile ?? DEFAULT_GAMIFICATION_PROFILE);
   };
 
-  const syncGamification = async (uid?: string) => {
+  const syncGamification = useCallback(
+    async (uid?: string) => {
     const id = uid ?? user?.id;
     if (!id) return;
 
@@ -288,7 +210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     setGamification(base);
-  };
+  }, [user?.id]);
 
   const buyShopItem = async (itemId: string, price: number): Promise<BuyShopResult> => {
     if (!user) {
@@ -424,7 +346,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const newModules = (data as Module[]) || [];
     setCourses((prev) =>
-      prev.map((c) => (c.id === courseId ? { ...c, modules: newModules } : c)),
+      prev.map((c) => {
+        if (c.id !== courseId) return c;
+        // RPC повертає лише структуру модулів без уроків (уроки в lms_lessons)
+        const mergedModules = newModules.map((updMod) => {
+          const existingMod = c.modules.find((m) => m.id === updMod.id);
+          return { ...updMod, lessons: existingMod?.lessons ?? [] };
+        });
+        return { ...c, modules: mergedModules };
+      }),
     );
     return newModules;
   };
@@ -479,19 +409,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // 1. ЗАВАНТАЖЕННЯ ДАНИХ ПРИ ЗАПУСКУ
+  // Post-login: gamification + courses (AuthProvider викликає після login)
   useEffect(() => {
-    const loadSavedData = async () => {
+    return registerPostLoginHandler(async (userId) => {
+      await syncGamification(userId);
+      await fetchCoursesFromSupabase();
+      await fetchAnswersFromSupabase();
+    });
+  }, [registerPostLoginHandler, syncGamification]);
+
+  // Завантаження курсів/відповідей після відновлення auth-сесії
+  useEffect(() => {
+    if (!authReady) return;
+
+    const loadAppData = async () => {
       try {
-        // Прибираємо застарілі localStorage-ключі (курси та відповіді тепер у Supabase)
         localStorage.removeItem("lanp_courses");
         localStorage.removeItem("lanp_answers");
-
-        // Спочатку відновлюємо сесію Supabase Auth
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        const savedUserSession = sessionStorage.getItem("lanp_user");
-        let activeUserId: string | null = session?.user?.id ?? null;
 
         const savedSupportTickets = localStorage.getItem("lanp_support_tickets");
         if (savedSupportTickets) {
@@ -501,84 +435,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             console.error("Помилка парсингу тікетів підтримки:", e);
           }
         }
-        
-        const clearBrokenSession = async () => {
-          await supabase.auth.signOut();
-          sessionStorage.removeItem("lanp_user");
-          setUser(null);
-          activeUserId = null;
-        };
 
-        const restoreUserFromAuthSession = async (authUserId: string) => {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("id, name, role, status, squad_id")
-            .eq("id", authUserId)
-            .single();
-
-          if (!profileData) {
-            await clearBrokenSession();
-            return;
-          }
-
-          const sessionData = {
-            id: profileData.id,
-            name: profileData.name,
-            role: profileData.role as UserRole,
-            squadId: profileData.squad_id,
-          };
-          setUser(sessionData);
-          activeUserId = sessionData.id;
-          sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-        };
-
-        // Пріоритет: sessionStorage цієї вкладки (уникаємо cross-tab конфліктів)
-        if (savedUserSession) {
-          try {
-            const savedUser = JSON.parse(savedUserSession) as UserAccount;
-
-            if (session?.user) {
-              await restoreUserFromAuthSession(session.user.id);
-            } else {
-              // Без Auth-сесії lanp_user недійсний (RLS / streak потребують JWT)
-              sessionStorage.removeItem("lanp_user");
-              setUser(null);
-              activeUserId = null;
-            }
-          } catch (e) {
-            console.error("Помилка парсингу сесії:", e);
-            sessionStorage.removeItem("lanp_user");
-          }
-        } else if (session?.user) {
-          // Нова вкладка без sessionStorage — завантажуємо профіль з Auth
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("id, name, role, status, squad_id")
-            .eq("id", session.user.id)
-            .single();
-
-          if (!profileError && profileData) {
-            const sessionData = {
-              id: profileData.id,
-              name: profileData.name,
-              role: profileData.role as UserRole,
-              squadId: profileData.squad_id,
-            };
-            setUser(sessionData);
-            activeUserId = sessionData.id;
-            sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-          } else {
-            await clearBrokenSession();
-          }
-        }
-
-        // Обов'язково завантажуємо актуальних користувачів з хмари
-        await fetchUsersFromSupabase();
-
-        // Курси потребують authenticated — завантажуємо ПІСЛЯ відновлення сесії/користувача
         const loadedCourses = await fetchCoursesFromSupabase();
 
-        // Сідуємо ТІЛЬКИ якщо БД дійсно порожня (null = помилка — не чіпаємо дані)
         if (loadedCourses !== null && loadedCourses.length === 0) {
           for (const course of initialCourses as Course[]) {
             await supabase.from("lms_courses").upsert({
@@ -614,9 +473,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         await fetchAnswersFromSupabase();
 
-        // Завантажуємо геймфікацію для будь-якого відновленого користувача
-        if (activeUserId) {
-          await syncGamification(activeUserId);
+        if (user?.id) {
+          await syncGamification(user.id);
         }
       } catch (error) {
         console.error("Помилка завантаження системи:", error);
@@ -625,14 +483,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    loadSavedData();
-  }, []);
+    loadAppData();
+  }, [authReady]);
 
   // Підстраховка: якщо user є, а gamification ще null — завантажуємо
   useEffect(() => {
     if (!isInitialized || !user || gamification) return;
     syncGamification(user.id);
-  }, [isInitialized, user, gamification]);
+  }, [isInitialized, user, gamification, syncGamification]);
 
   // Після входу курси завантажуються лише для authenticated — refetch при зміні user
   useEffect(() => {
@@ -660,7 +518,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isInitialized, user]);
+  }, [isInitialized, user, fetchUsersFromSupabase]);
 
   // Realtime: зміни структури курсів (додавання/видалення модулів).
   // ВАЖЛИВО: не перезаписуємо lessons — вони живуть у lms_lessons.
@@ -767,222 +625,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [isInitialized]);
 
   // Курси зберігаються виключно в Supabase — localStorage для курсів більше не використовується
-
-  // --- СЕРВЕРНА ЛОГІКА АВТОРИЗАЦІЇ (SUPABASE) ---
-
-  const registerUser = async (
-    name: string,
-    password: string,
-    role: UserRole,
-  ): Promise<string | null> => {
-    // Перевіряємо унікальність імені безпосередньо в базі
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("name")
-      .eq("name", name);
-    if (existing && existing.length > 0) {
-      return "Користувач з таким іменем вже існує.";
-    }
-
-    // Хешуємо пароль перед збереженням
-    const hashedPassword = await hashPassword(password);
-
-    // Створюємо користувача в Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: nameToEmail(name),
-      password: password,
-      options: {
-        data: {
-          name: name,
-          role: role,
-        }
-      }
-    });
-
-    if (authError) {
-      console.error("Supabase Auth error:", authError);
-      // Якщо Supabase Auth не працює, fallback на старий метод
-      const uid = `usr-${Date.now()}`;
-      const { error } = await supabase.from("profiles").insert([
-        {
-          id: uid,
-          name,
-          password: hashedPassword,
-          role,
-          status: "pending",
-          squad_id: role === "student" ? "Alpha Squad" : null,
-        },
-      ]);
-
-      if (error) return "Помилка реєстрації на сервері.";
-      await fetchUsersFromSupabase();
-      return null;
-    }
-
-    // Якщо Supabase Auth успішний, створюємо профіль
-    if (authData.user) {
-      const { error } = await supabase.from("profiles").insert([
-        {
-          id: authData.user.id,
-          name,
-          password: hashedPassword,
-          role,
-          status: "pending",
-          squad_id: role === "student" ? "Alpha Squad" : null,
-        },
-      ]);
-
-      if (error) return "Помилка створення профілю.";
-      await fetchUsersFromSupabase();
-    }
-
-    return null;
-  };
-
-  const login = async (
-    name: string,
-    password: string,
-  ): Promise<string | null> => {
-    const finishLogin = async (userId: string) => {
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, name, role, status, squad_id")
-        .eq("id", userId)
-        .single();
-
-      if (profileError || !profileData) {
-        return "Профіль не знайдено.";
-      }
-
-      if (profileData.status === "pending") {
-        return "Ваш акаунт ще не активовано адміністрацією.";
-      }
-
-      const sessionData = {
-        id: profileData.id,
-        name: profileData.name,
-        role: profileData.role as UserRole,
-        squadId: profileData.squad_id,
-      };
-      setUser(sessionData);
-      sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-      await syncGamification(profileData.id);
-      await fetchCoursesFromSupabase();
-      await fetchAnswersFromSupabase();
-      return null;
-    };
-
-    // Спробуємо авторизуватися через Supabase Auth (email від введеного імені)
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: nameToEmail(name),
-      password: password,
-    });
-
-    if (!authError && authData?.user) {
-      return finishLogin(authData.user.id);
-    }
-
-    // Fallback: RPC + справжній email з auth.users (не nameToEmail)
-    const { data: rpcData, error: rpcError } = await supabase.rpc(
-      "get_profile_for_login",
-      { p_name: name },
-    );
-
-    if (rpcError || !rpcData || rpcData.error === "not_found") {
-      return authError?.message?.includes("Invalid login")
-        ? "Невірне ім'я або пароль."
-        : "Користувача не знайдено.";
-    }
-
-    const data = {
-      id: rpcData.id as string,
-      name: rpcData.name as string,
-      password: rpcData.password_hash as string,
-      role: rpcData.role as string,
-      status: rpcData.status as string,
-      squad_id: rpcData.squad_id as string | null,
-      auth_email: (rpcData.auth_email as string | null) ?? null,
-    };
-
-    if (data.status === "pending") {
-      return "Ваш акаунт ще не активовано адміністрацією.";
-    }
-
-    // Auth з реальним email (виправляє latin vs cyrillic)
-    if (data.auth_email) {
-      const { data: authByRealEmail, error: realEmailError } =
-        await supabase.auth.signInWithPassword({
-          email: data.auth_email,
-          password,
-        });
-      if (!realEmailError && authByRealEmail?.user) {
-        return finishLogin(authByRealEmail.user.id);
-      }
-    }
-
-    if (!data.password) return "Користувача не знайдено.";
-
-    const isHashed =
-      data.password.startsWith("$2b$") || data.password.startsWith("$2a$");
-    let isPasswordValid: boolean;
-
-    if (isHashed) {
-      isPasswordValid = await verifyPassword(password, data.password);
-    } else {
-      isPasswordValid = password === data.password;
-      if (isPasswordValid) {
-        const hashedPassword = await hashPassword(password);
-        await supabase
-          .from("profiles")
-          .update({ password: hashedPassword })
-          .eq("id", data.id);
-      }
-    }
-
-    if (!isPasswordValid) return "Невірний пароль.";
-
-    const authEmailHint = data.auth_email ?? nameToEmail(data.name);
-    return (
-      `Пароль у профілі правильний, але Supabase Auth не приймає його. ` +
-      `Синхронізуйте пароль для email: ${authEmailHint} ` +
-      `(Supabase → Authentication → Users, або SQL UPDATE auth.users за profile id).`
-    );
-  };
-
-  const logout = async () => {
-    // Вихід з Supabase Auth
-    await supabase.auth.signOut();
-    setUser(null);
-    sessionStorage.removeItem("lanp_user");
-  };
-
-  const approveUser = async (userId: string) => {
-    // Optimistic update — instant UI response
-    setUsersDb((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, status: "approved" as const } : u)),
-    );
-    const { error } = await supabase
-      .from("profiles")
-      .update({ status: "approved" })
-      .eq("id", userId);
-    if (error) await fetchUsersFromSupabase(); // revert on error
-  };
-
-  const rejectUser = async (userId: string) => {
-    // Optimistic update — instant UI response (confirm dialog moved to UsersTab)
-    setUsersDb((prev) => prev.filter((u) => u.id !== userId));
-    const { error } = await supabase.from("profiles").delete().eq("id", userId);
-    if (error) await fetchUsersFromSupabase(); // revert on error
-  };
-
-  const changeUserPassword = async (userId: string, newPassword: string) => {
-    const hashedPassword = await hashPassword(newPassword);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ password: hashedPassword })
-      .eq("id", userId);
-    if (error) console.error("Помилка зміни пароля:", error.message);
-  };
 
   // --- ІНШІ ФУНКЦІЇ (ВІДПОВІДІ ТА CRUD КУРСІВ) ---
   const submitAnswer = async (

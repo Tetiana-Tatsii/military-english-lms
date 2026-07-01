@@ -9,11 +9,22 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// sessionStorage — окрема auth-сесія на вкладку (localStorage спільний для всіх вкладок)
+const tabAuthStorage =
+  typeof window !== "undefined"
+    ? {
+        getItem: (key: string) => sessionStorage.getItem(key),
+        setItem: (key: string, value: string) =>
+          sessionStorage.setItem(key, value),
+        removeItem: (key: string) => sessionStorage.removeItem(key),
+      }
+    : undefined;
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // Disable auto-refresh for fallback (non-Auth) users to prevent 400 errors
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    storage: tabAuthStorage,
   },
 });
