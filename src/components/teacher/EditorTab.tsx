@@ -101,6 +101,15 @@ export default function EditorTab({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Курси завантажуються асинхронно після входу — синхронізуємо вибір
+  useEffect(() => {
+    if (courses.length === 0) return;
+    const selectedStillExists = courses.some((c) => c.id === selectedCourseId);
+    if (!selectedCourseId || !selectedStillExists) {
+      setSelectedCourseId(courses[0].id);
+    }
+  }, [courses, selectedCourseId]);
+
   const activeCourse = courses.find((c) => c.id === selectedCourseId);
 
   const handleCreateCourse = async (e: React.FormEvent) => {
@@ -240,15 +249,20 @@ export default function EditorTab({
     }
   };
 
-  const handleSaveDeepLesson = () => {
+  const handleSaveDeepLesson = async () => {
     if (!editingLesson) return;
-    updateLesson(
-      selectedCourseId,
-      editingLesson.moduleId,
-      editingLesson.lesson.id,
-      editingLesson.lesson,
-    );
-    setEditingLesson(null);
+    try {
+      await updateLesson(
+        selectedCourseId,
+        editingLesson.moduleId,
+        editingLesson.lesson.id,
+        editingLesson.lesson,
+      );
+      setEditingLesson(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Невідома помилка";
+      alert(`Не вдалося зберегти урок: ${msg}`);
+    }
   };
 
   const handleYouTubeChange = (val: string) => {

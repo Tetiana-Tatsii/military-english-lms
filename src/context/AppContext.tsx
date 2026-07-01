@@ -23,18 +23,7 @@ import {
   type BuyShopResult,
 } from "../lib/gamification";
 
-/**
- * Перетворює будь-яке ім'я (кирилиця, пробіли, спецсимволи) на
- * валідну синтетичну email-адресу для Supabase Auth.
- * Детермінована: одне і те ж ім'я → завжди той самий email.
- */
-function nameToEmail(name: string): string {
-  const bytes = new TextEncoder().encode(name.trim().toLowerCase());
-  const hex = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return `u${hex}@lanp.local`;
-}
+import { nameToEmail } from "../lib/authEmail";
 
 export type SkillType = "listening" | "reading" | "speaking" | "writing" | "mixed";
 export type UserRole = "student" | "teacher" | "admin";
@@ -501,48 +490,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const savedUserSession = sessionStorage.getItem("lanp_user");
         let activeUserId: string | null = session?.user?.id ?? null;
 
-        // Завантажуємо курси з Supabase (єдине джерело правди)
-        const loadedCourses = await fetchCoursesFromSupabase();
-
-        // Сідуємо ТІЛЬКИ якщо БД дійсно порожня (null = помилка — не чіпаємо дані)
-        if (loadedCourses !== null && loadedCourses.length === 0) {
-          for (const course of initialCourses as Course[]) {
-            // Зберігаємо курс БЕЗ уроків у modules (уроки — в lms_lessons)
-            await supabase.from("lms_courses").upsert({
-              id: course.id,
-              title: course.title,
-              subtitle: course.subtitle,
-              description: course.description,
-              status: course.status || "draft",
-              modules: course.modules.map((mod) => ({
-                id: mod.id,
-                title: mod.title,
-                icon: mod.icon,
-                lessons: [],
-              })),
-              final_test: course.finalTest || { title: "", questions: [] },
-            });
-
-            // Зберігаємо початкові уроки в lms_lessons
-            for (const mod of course.modules) {
-              for (let i = 0; i < mod.lessons.length; i++) {
-                const lesson = mod.lessons[i];
-                await supabase.from("lms_lessons").upsert({
-                  id: lesson.id,
-                  course_id: course.id,
-                  module_id: mod.id,
-                  order_index: i,
-                  content: lesson,
-                });
-              }
-            }
-          }
-          await fetchCoursesFromSupabase();
-        }
-
-        // Завантажуємо відповіді з Supabase
-        await fetchAnswersFromSupabase();
-
         const savedSupportTickets = localStorage.getItem("lanp_support_tickets");
         if (savedSupportTickets) {
           try {
@@ -609,8 +556,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Обов'язково завантажуємо актуальних користувачів з хмари
         await fetchUsersFromSupabase();
 
+        // Курси потребують authenticated — завантажуємо ПІСЛЯ відновлення сесії/користувача
+        const loadedCourses = await fetchCoursesFromSupabase();
+
+        // Сідуємо ТІЛЬКИ якщо БД дійсно порожня (null = помилка — не чіпаємо дані)
+        if (loadedCourses !== null && loadedCourses.length === 0) {
+          for (const course of initialCourses as Course[]) {
+            await supabase.from("lms_courses").upsert({
+              id: course.id,
+              title: course.title,
+              subtitle: course.subtitle,
+              description: course.description,
+              status: course.status || "draft",
+              modules: course.modules.map((mod) => ({
+                id: mod.id,
+                title: mod.title,
+                icon: mod.icon,
+                lessons: [],
+              })),
+              final_test: course.finalTest || { title: "", questions: [] },
+            });
+
+            for (const mod of course.modules) {
+              for (let i = 0; i < mod.lessons.length; i++) {
+                const lesson = mod.lessons[i];
+                await supabase.from("lms_lessons").upsert({
+                  id: lesson.id,
+                  course_id: course.id,
+                  module_id: mod.id,
+                  order_index: i,
+                  content: lesson,
+                });
+              }
+            }
+          }
+          await fetchCoursesFromSupabase();
+        }
+
+        await fetchAnswersFromSupabase();
+
         // Завантажуємо геймфікацію для будь-якого відновленого користувача
-        // (не лише коли є Supabase Auth session — fallback-login теж має працювати)
         if (activeUserId) {
           await syncGamification(activeUserId);
         }
@@ -629,6 +614,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isInitialized || !user || gamification) return;
     syncGamification(user.id);
   }, [isInitialized, user, gamification]);
+
+  // Після входу курси завантажуються лише для authenticated — refetch при зміні user
+  useEffect(() => {
+    if (!isInitialized || !user) return;
+    fetchCoursesFromSupabase();
+    fetchAnswersFromSupabase();
+  }, [isInitialized, user?.id]);
 
   // Realtime-підписка на зміни profiles (замість polling)
   useEffect(() => {
@@ -832,84 +824,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     name: string,
     password: string,
   ): Promise<string | null> => {
-    // Спробуємо авторизуватися через Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: nameToEmail(name),
-      password: password,
-    });
-
-    // Якщо Supabase Auth не спрацював, використовуємо fallback без помилок
-    if (authError) {
-      // Fallback на старий метод (без викидання помилок)
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, name, password, role, status, squad_id")
-        .ilike("name", name)
-        .maybeSingle();
-
-      if (error || !data) return "Користувача не знайдено.";
-      
-      const isHashed = data.password.startsWith("$2b$") || data.password.startsWith("$2a$");
-      let isPasswordValid: boolean;
-      
-      if (isHashed) {
-        isPasswordValid = await verifyPassword(password, data.password);
-      } else {
-        isPasswordValid = password === data.password;
-        if (isPasswordValid) {
-          const hashedPassword = await hashPassword(password);
-          await supabase
-            .from("profiles")
-            .update({ password: hashedPassword })
-            .eq("id", data.id);
-        }
-      }
-      
-      if (!isPasswordValid) return "Невірний пароль.";
-      
-      if (data.status === "pending")
-        return "Ваш акаунт ще не активовано адміністрацією.";
-
-      // Fallback login has no Auth session — streak/coins require Supabase Auth.
-      const email = nameToEmail(data.name);
-      const { error: authRetryError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (authRetryError) {
-        console.error(
-          "Fallback login: Supabase Auth session not established.",
-          "Daily streak and coin rewards will not work until Auth password is synced.",
-          authRetryError.message,
-        );
-      }
-
-      const sessionData = {
-        id: data.id,
-        name: data.name,
-        role: data.role as UserRole,
-        squadId: data.squad_id,
-      };
-      setUser(sessionData);
-      sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
-      await syncGamification(data.id);
-      return null;
-    }
-
-    // Якщо Supabase Auth успішний, отримуємо дані профілю
-    if (authData?.user) {
+    const finishLogin = async (userId: string) => {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id, name, role, status, squad_id")
-        .eq("id", authData.user.id)
+        .eq("id", userId)
         .single();
 
       if (profileError || !profileData) {
         return "Профіль не знайдено.";
       }
 
-      if (profileData.status === "pending")
+      if (profileData.status === "pending") {
         return "Ваш акаунт ще не активовано адміністрацією.";
+      }
 
       const sessionData = {
         id: profileData.id,
@@ -920,10 +848,86 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(sessionData);
       sessionStorage.setItem("lanp_user", JSON.stringify(sessionData));
       await syncGamification(profileData.id);
+      await fetchCoursesFromSupabase();
+      await fetchAnswersFromSupabase();
       return null;
+    };
+
+    // Спробуємо авторизуватися через Supabase Auth (email від введеного імені)
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: nameToEmail(name),
+      password: password,
+    });
+
+    if (!authError && authData?.user) {
+      return finishLogin(authData.user.id);
     }
 
-    return "Помилка авторизації.";
+    // Fallback: RPC + справжній email з auth.users (не nameToEmail)
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      "get_profile_for_login",
+      { p_name: name },
+    );
+
+    if (rpcError || !rpcData || rpcData.error === "not_found") {
+      return authError?.message?.includes("Invalid login")
+        ? "Невірне ім'я або пароль."
+        : "Користувача не знайдено.";
+    }
+
+    const data = {
+      id: rpcData.id as string,
+      name: rpcData.name as string,
+      password: rpcData.password_hash as string,
+      role: rpcData.role as string,
+      status: rpcData.status as string,
+      squad_id: rpcData.squad_id as string | null,
+      auth_email: (rpcData.auth_email as string | null) ?? null,
+    };
+
+    if (data.status === "pending") {
+      return "Ваш акаунт ще не активовано адміністрацією.";
+    }
+
+    // Auth з реальним email (виправляє latin vs cyrillic)
+    if (data.auth_email) {
+      const { data: authByRealEmail, error: realEmailError } =
+        await supabase.auth.signInWithPassword({
+          email: data.auth_email,
+          password,
+        });
+      if (!realEmailError && authByRealEmail?.user) {
+        return finishLogin(authByRealEmail.user.id);
+      }
+    }
+
+    if (!data.password) return "Користувача не знайдено.";
+
+    const isHashed =
+      data.password.startsWith("$2b$") || data.password.startsWith("$2a$");
+    let isPasswordValid: boolean;
+
+    if (isHashed) {
+      isPasswordValid = await verifyPassword(password, data.password);
+    } else {
+      isPasswordValid = password === data.password;
+      if (isPasswordValid) {
+        const hashedPassword = await hashPassword(password);
+        await supabase
+          .from("profiles")
+          .update({ password: hashedPassword })
+          .eq("id", data.id);
+      }
+    }
+
+    if (!isPasswordValid) return "Невірний пароль.";
+
+    const authEmailHint = data.auth_email ?? nameToEmail(data.name);
+    return (
+      `Пароль у профілі правильний, але Supabase Auth не приймає його. ` +
+      `Синхронізуйте пароль для email: ${authEmailHint} ` +
+      `(Supabase → Authentication → Users, або SQL UPDATE auth.users за profile id).`
+    );
   };
 
   const logout = async () => {
@@ -1283,17 +1287,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     // Зберігаємо ТІЛЬКИ цей урок — незалежний upsert, нуль race conditions
-    const { error } = await supabase.from("lms_lessons").upsert({
-      id: lessonId,
-      course_id: courseId,
-      module_id: moduleId,
-      order_index: orderIndex,
-      content: updatedLesson,
-    });
+    const { error } = await supabase.from("lms_lessons").upsert(
+      {
+        id: lessonId,
+        course_id: courseId,
+        module_id: moduleId,
+        order_index: Math.max(0, orderIndex),
+        content: updatedLesson,
+      },
+      { onConflict: "id" },
+    );
 
     if (error) {
-      console.error("Помилка збереження уроку:", error);
-      throw error;
+      console.error("Помилка збереження уроку:", error.message, error);
+      throw new Error(
+        error.message ||
+          "Немає прав на збереження (перевірте RLS для lms_lessons і роль teacher/admin).",
+      );
     }
   };
 
