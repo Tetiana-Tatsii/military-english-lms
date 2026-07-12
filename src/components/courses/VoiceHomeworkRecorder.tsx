@@ -16,7 +16,6 @@ export default function VoiceHomeworkRecorder({
   onAudioChange,
   resetKey = 0,
 }: VoiceHomeworkRecorderProps) {
-  const fileInputId = useId();
   const voiceMemoInputId = useId();
   const [isIOS] = useState(() => isIOSDevice());
 
@@ -107,17 +106,17 @@ export default function VoiceHomeworkRecorder({
           }}
         >
           {canRecord && (
-            <div style={{ width: "100%" }}>
+            <div className="w-full md:w-auto">
               {!isRecording ? (
                 <button
                   type="button"
                   onClick={startRecording}
+                  className="w-full md:w-auto"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
-                    width: "100%",
                     padding: "14px 20px",
                     borderRadius: 8,
                     fontWeight: 700,
@@ -136,12 +135,12 @@ export default function VoiceHomeworkRecorder({
                   type="button"
                   onClick={stopRecording}
                   disabled={!canStopRecording}
+                  className="w-full md:w-auto"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
-                    width: "100%",
                     padding: "14px 20px",
                     borderRadius: 8,
                     fontWeight: 700,
@@ -161,6 +160,7 @@ export default function VoiceHomeworkRecorder({
               )}
               {isIOS && !isRecording && (
                 <p
+                  className="md:hidden"
                   style={{
                     margin: "8px 0 0",
                     fontSize: 12,
@@ -175,7 +175,8 @@ export default function VoiceHomeworkRecorder({
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+          {/* Завантаження файлу — лише на телефоні (запасний варіант для iOS) */}
+          <div className="flex w-full flex-col gap-1.5 md:hidden">
             <input
               id={voiceMemoInputId}
               type="file"
@@ -217,36 +218,6 @@ export default function VoiceHomeworkRecorder({
               </p>
             )}
           </div>
-
-          {!isIOS && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <input
-                id={fileInputId}
-                type="file"
-                accept="audio/*,.m4a,.mp3,.wav,.aac,.webm,.ogg,.mp4,.caf"
-                onChange={handleFilePick}
-                style={{ display: "none" }}
-              />
-              <label
-                htmlFor={fileInputId}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 20px",
-                  borderRadius: 6,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  background: isDarkMode ? "#2a2c27" : "#f0ede5",
-                  color: "#8a8a45",
-                  border: "1px solid #8a8a45",
-                }}
-              >
-                <Upload size={16} />
-                Завантажити аудіофайл з телефону
-              </label>
-            </div>
-          )}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
