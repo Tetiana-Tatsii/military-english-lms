@@ -5,6 +5,8 @@ import { ShoppingCart } from "lucide-react";
 import type { GamificationProfile } from "@/context/AppContext";
 import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 import StreakCoinIcon from "@/components/ui/StreakCoinIcon";
+import InstructorSpeechBubble from "@/components/dashboard/InstructorSpeechBubble";
+import { getInstructorSpeechMessage } from "@/lib/instructorQuotes";
 
 interface InstructorCardProps {
   gamification: GamificationProfile;
@@ -15,47 +17,33 @@ interface InstructorCardProps {
 }
 
 const HAPPY_ITEM_IMAGES: Record<string, string> = {
-  coffee:   "/instructor/happy.webp",
+  coffee: "/instructor/happy.webp",
   snickers: "/instructor/happy-snickers.webp",
-  energy:   "/instructor/happy-energy.webp",
-  thermos:  "/instructor/happy-thermos.webp",
+  energy: "/instructor/happy-energy.webp",
+  thermos: "/instructor/happy-thermos.webp",
+  boots: "/instructor/happy-boots.webp",
 };
 
-const MOOD_CONFIG = {
-  happy: {
-    fallbackEmoji: "😊",
-    borderColor: "#8a8a45",
-    bgColor: "#eef0df",
-    bgDark: "#2a3020",
-    message: null,
-  },
-  angry: {
-    fallbackEmoji: "😠",
-    borderColor: "#c97a4a",
-    bgColor: "#fdeced",
-    bgDark: "#2a1a1a",
-    message: "My inner commander is getting impatient. Where's the homework?",
-  },
-  proud: {
-    fallbackEmoji: "🥲",
-    borderColor: "#5a7abf",
-    bgColor: "#e8edf8",
-    bgDark: "#1a202e",
-    message: "See you in the next course! 🥲",
-  },
-} as const;
-
 const EQUIPPED_EMOJI: Record<string, string> = {
-  coffee:   "☕",
+  coffee: "☕",
   snickers: "🍫",
-  energy:   "🥤",
-  thermos:  "🫖",
+  energy: "🥤",
+  thermos: "🫖",
+  boots: "🥾",
 };
 
 function getInstructorImage(mood: "happy" | "angry" | "proud", activeItem: string): string {
   if (mood === "angry") return "/instructor/angry.webp";
   if (mood === "proud") return "/instructor/proud.webp";
   return HAPPY_ITEM_IMAGES[activeItem] ?? HAPPY_ITEM_IMAGES.coffee;
+}
+
+function getBubbleVariant(
+  mood: "happy" | "angry" | "proud",
+): "happy" | "angry" | "proud" | "item" {
+  if (mood === "angry") return "angry";
+  if (mood === "proud") return "proud";
+  return "item";
 }
 
 export default function InstructorCard({
@@ -66,10 +54,11 @@ export default function InstructorCard({
   onPxStoreToggle,
 }: InstructorCardProps) {
   const { streakCount, activeInstructorItem, coffeeCoins } = gamification;
-  const config = MOOD_CONFIG[mood];
   const filledCups = streakCount === 0 ? 0 : ((streakCount - 1) % 7) + 1;
   const equippedEmoji = mood === "happy" ? (EQUIPPED_EMOJI[activeInstructorItem] ?? "☕") : null;
   const imageSrc = getInstructorImage(mood, activeInstructorItem);
+  const speechMessage = getInstructorSpeechMessage(mood, activeInstructorItem);
+  const showStreak = mood === "happy";
 
   return (
     <div
@@ -80,13 +69,11 @@ export default function InstructorCard({
         minHeight: 210,
       }}
     >
-      {/* Spacer — keeps content clear of the instructor silhouette */}
       <div
         className="flex-shrink-0 w-[100px] sm:w-[120px] md:w-[150px] lg:w-[180px]"
         aria-hidden
       />
 
-      {/* Instructor — anchored to card bottom-left, head peeks above top edge */}
       <img
         src={imageSrc}
         alt={`Instructor — ${mood}`}
@@ -97,10 +84,20 @@ export default function InstructorCard({
         }}
       />
 
-      {/* ── RIGHT: Content ── */}
-      <div className="flex flex-col flex-1 px-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3 min-w-0">
+      <div
+        className={`flex flex-col flex-1 px-2 sm:px-4 md:px-5 gap-2 sm:gap-3 min-w-0 ${
+          speechMessage ? "pt-2 pb-4" : "py-4"
+        }`}
+      >
+        {speechMessage && (
+          <InstructorSpeechBubble
+            message={speechMessage}
+            variant={getBubbleVariant(mood)}
+            isDarkMode={isDarkMode}
+            className="-ml-2 sm:-ml-1 max-w-full"
+          />
+        )}
 
-        {/* Header: instructor name */}
         <div className="flex items-center justify-center">
           <span
             className="text-xl font-bold text-center"
@@ -110,21 +107,8 @@ export default function InstructorCard({
           </span>
         </div>
 
-        {/* Mood message OR streak coins */}
-        {config.message ? (
-          <div
-            className="rounded-lg px-4 py-3 text-sm font-semibold leading-snug"
-            style={{
-              background: isDarkMode ? config.bgDark : config.bgColor,
-              color: isDarkMode ? "#e6e4dc" : "#3a3528",
-              border: `1px solid ${config.borderColor}`,
-            }}
-          >
-            {config.message}
-          </div>
-        ) : (
+        {showStreak ? (
           <div className="flex flex-col gap-2">
-            {/* Row 1: coins 1–4 */}
             <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-3">
               {[0, 1, 2, 3].map((i) => (
                 <StreakCoinIcon key={i} filled={i < filledCups} />
@@ -137,7 +121,6 @@ export default function InstructorCard({
               ))}
             </div>
 
-            {/* Footer: streak text, then balance + store below */}
             <div className="flex flex-col items-center w-full mt-6 gap-3">
               <div className="text-center">
                 <p
@@ -176,8 +159,19 @@ export default function InstructorCard({
               </div>
             </div>
           </div>
+        ) : (
+          <div className="flex flex-1 items-end justify-end pb-1">
+            <button
+              onClick={onPxStoreToggle}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-medium bg-[#8a8a45] hover:opacity-90 transition-opacity cursor-pointer text-sm"
+            >
+              <ShoppingCart size={16} className="text-white shrink-0" />
+              <span className="text-white">
+                {isPxStoreOpen ? "PX Store ↑" : "PX Store →"}
+              </span>
+            </button>
+          </div>
         )}
-
       </div>
     </div>
   );

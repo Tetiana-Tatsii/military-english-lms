@@ -19,10 +19,11 @@ export const DEFAULT_GAMIFICATION_PROFILE: GamificationProfile = {
 
 // Shop catalogue — add new items here anytime without touching business logic
 export const SHOP_ITEMS = [
-  { id: "coffee",   name: "Coffee",      price: 0,  emoji: "☕", image: "/shop/coffee.webp"   },
-  { id: "snickers", name: "Energy Bar",  price: 30, emoji: "🍫", image: "/shop/snickers.webp" },
-  { id: "energy",   name: "Energy Drink",price: 40, emoji: "🥤", image: "/shop/energy.webp"   },
-  { id: "thermos",  name: "Thermo Cup",  price: 50, emoji: "🫖", image: "/shop/thermos.webp"  },
+  { id: "coffee",   name: "Coffee",         price: 0,  emoji: "☕", image: "/shop/coffee.webp"   },
+  { id: "snickers", name: "Energy Bar",     price: 30, emoji: "🍫", image: "/shop/snickers.webp" },
+  { id: "energy",   name: "Energy Drink",   price: 40, emoji: "🥤", image: "/shop/energy.webp"   },
+  { id: "thermos",  name: "Thermo Cup",     price: 50, emoji: "🫖", image: "/shop/thermos.webp"  },
+  { id: "boots",    name: "Tactical Boots", price: 60, emoji: "🥾", image: "/shop/boots.webp"    },
 ] as const;
 
 export type ShopItemId = (typeof SHOP_ITEMS)[number]["id"];
