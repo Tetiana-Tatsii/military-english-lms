@@ -17,7 +17,7 @@ export default function VoiceHomeworkRecorder({
   resetKey = 0,
 }: VoiceHomeworkRecorderProps) {
   const fileInputId = useId();
-  const iosCaptureInputId = useId();
+  const voiceMemoInputId = useId();
   const [isIOS] = useState(() => isIOSDevice());
 
   const {
@@ -29,6 +29,7 @@ export default function VoiceHomeworkRecorder({
     previewWarning,
     canPreview,
     canRecord,
+    canStopRecording,
     startRecording,
     stopRecording,
     clearRecording,
@@ -105,109 +106,91 @@ export default function VoiceHomeworkRecorder({
             alignItems: "flex-start",
           }}
         >
-          {isIOS && (
-            <div style={{ width: "100%" }}>
-              <input
-                id={iosCaptureInputId}
-                type="file"
-                accept="audio/*"
-                capture="user"
-                onChange={handleFilePick}
-                style={{ display: "none" }}
-              />
-              <label
-                htmlFor={iosCaptureInputId}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  width: "100%",
-                  padding: "14px 20px",
-                  borderRadius: 8,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  background: "#8a8a45",
-                  color: "#fff",
-                  border: "none",
-                  fontSize: 15,
-                }}
-              >
-                <Mic size={18} />
-                Записати голос (рекомендовано для iPhone)
-              </label>
-              <p
-                style={{
-                  margin: "8px 0 0",
-                  fontSize: 12,
-                  color: isDarkMode ? "#a3a198" : "#7a7568",
-                  lineHeight: 1.4,
-                }}
-              >
-                Відкриється мікрофон iPhone — після запису файл одразу прикріпиться.
-              </p>
-            </div>
-          )}
-
           {canRecord && (
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ width: "100%" }}>
               {!isRecording ? (
                 <button
                   type="button"
                   onClick={startRecording}
                   style={{
-                    background: isIOS ? (isDarkMode ? "#2a2c27" : "#f0ede5") : "#8a8a45",
-                    color: isIOS ? "#8a8a45" : "#fff",
-                    border: isIOS ? "1px solid #8a8a45" : "none",
-                    padding: "10px 20px",
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "center",
                     gap: 8,
+                    width: "100%",
+                    padding: "14px 20px",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: "#8a8a45",
+                    color: "#fff",
+                    border: "none",
+                    fontSize: 15,
                   }}
                 >
-                  <Volume2 size={16} />
-                  {isIOS ? "Альтернатива: запис у браузері" : "Почати запис"}
+                  <Mic size={18} />
+                  {isIOS ? "Записати голос (рекомендовано для iPhone)" : "Почати запис"}
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={stopRecording}
+                  disabled={!canStopRecording}
                   style={{
-                    background: "#c97a4a",
-                    color: "#fff",
-                    border: "none",
-                    padding: "10px 20px",
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "center",
                     gap: 8,
+                    width: "100%",
+                    padding: "14px 20px",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    cursor: canStopRecording ? "pointer" : "not-allowed",
+                    background: canStopRecording ? "#c97a4a" : "#d8cdb4",
+                    color: "#fff",
+                    border: "none",
+                    fontSize: 15,
+                    opacity: canStopRecording ? 1 : 0.7,
                   }}
                 >
-                  <StopCircle size={16} /> Зупинити ({formatTime(recordingTime)})
+                  <StopCircle size={18} />
+                  {canStopRecording
+                    ? `Зупинити запис (${formatTime(recordingTime)})`
+                    : `Записуйте… (${formatTime(recordingTime)}, ще ${Math.max(0, 2 - recordingTime)} с)`}
                 </button>
+              )}
+              {isIOS && !isRecording && (
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: 12,
+                    color: isDarkMode ? "#a3a198" : "#7a7568",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Дозвольте доступ до мікрофона. Тримайте запис щонайменше 3 секунди перед
+                  зупинкою.
+                </p>
               )}
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
             <input
-              id={fileInputId}
+              id={voiceMemoInputId}
               type="file"
-              accept="audio/*,.m4a,.mp3,.wav,.aac,.webm,.ogg,.mp4,.caf"
+              accept="audio/x-m4a,audio/mp4,audio/mpeg,audio/*,.m4a,.mp3,.wav,.caf"
               onChange={handleFilePick}
               style={{ display: "none" }}
             />
             <label
-              htmlFor={fileInputId}
+              htmlFor={voiceMemoInputId}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: 8,
+                width: "100%",
                 padding: "10px 20px",
                 borderRadius: 6,
                 fontWeight: 600,
@@ -218,9 +201,52 @@ export default function VoiceHomeworkRecorder({
               }}
             >
               <Upload size={16} />
-              Завантажити аудіофайл з телефону
+              {isIOS ? "Додати з Диктофона / Файлів" : "Завантажити аудіофайл"}
             </label>
+            {isIOS && (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  color: isDarkMode ? "#a3a198" : "#7a7568",
+                  lineHeight: 1.4,
+                }}
+              >
+                Запишіть голос у програмі «Диктофон», потім натисніть цю кнопку і оберіть
+                запис.
+              </p>
+            )}
           </div>
+
+          {!isIOS && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <input
+                id={fileInputId}
+                type="file"
+                accept="audio/*,.m4a,.mp3,.wav,.aac,.webm,.ogg,.mp4,.caf"
+                onChange={handleFilePick}
+                style={{ display: "none" }}
+              />
+              <label
+                htmlFor={fileInputId}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 20px",
+                  borderRadius: 6,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  background: isDarkMode ? "#2a2c27" : "#f0ede5",
+                  color: "#8a8a45",
+                  border: "1px solid #8a8a45",
+                }}
+              >
+                <Upload size={16} />
+                Завантажити аудіофайл з телефону
+              </label>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

@@ -6,10 +6,16 @@ import {
   canPlayAudioBlob,
   normalizeAudioMimeType,
   getMicrophoneErrorMessage,
-  isAudioFile,
+  getVoiceFileMimeType,
+  isAcceptableVoiceFile,
   isIOSDevice,
   isVoiceRecordingSupported,
 } from "@/lib/voiceRecording";
+
+const IOS_MIN_RECORD_MS = 2000;
+const IOS_FINALIZE_DELAY_MS = 600;
+const DESKTOP_FINALIZE_DELAY_MS = 50;
+const RECORDING_TIMESLICE_MS = 500;
 
 export function useVoiceRecorder() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -26,7 +32,8 @@ export function useVoiceRecorder() {
   const chunksRef = useRef<BlobPart[]>([]);
   const mimeTypeRef = useRef("audio/mp4");
   const previewUrlRef = useRef<string | null>(null);
-  const gotDataRef = useRef(false);
+  const recordingStartedAtRef = useRef(0);
+  const recordingTimeRef = useRef(0);
 
   const revokePreviewUrl = useCallback(() => {
     if (previewUrlRef.current) {
@@ -36,7 +43,7 @@ export function useVoiceRecorder() {
   }, []);
 
   const setPreviewFromBlob = useCallback(
-    (blob: Blob | null) => {
+    (blob: Blob | null, options?: { fromVideo?: boolean }) => {
       revokePreviewUrl();
       setAudioBlob(blob);
       if (blob) {
@@ -46,11 +53,17 @@ export function useVoiceRecorder() {
           const url = URL.createObjectURL(blob);
           previewUrlRef.current = url;
           setAudioUrl(url);
-          setPreviewWarning(null);
+          setPreviewWarning(
+            options?.fromVideo
+              ? "Збережено як відеофайл з мікрофоном — на iPhone прев'ю може не працювати, але викладач прослухає на комп'ютері."
+              : null,
+          );
         } else {
           setAudioUrl(null);
           setPreviewWarning(
-            "Запис збережено. На iPhone прев'ю недоступне — це нормально. Можна надіслати ДЗ, викладач прослухає на комп'ютері.",
+            options?.fromVideo
+              ? "Файл збережено (відео з голосом). На iPhone прев'ю недоступне — надішліть ДЗ, викладач прослухає на комп'ютері."
+              : "Запис збережено. На iPhone прев'ю недоступне — це нормально. Можна надіслати ДЗ, викладач прослухає на комп'ютері.",
           );
         }
         setError(null);
@@ -71,7 +84,7 @@ export function useVoiceRecorder() {
     setPreviewWarning(null);
     setCanPreview(true);
     chunksRef.current = [];
-    gotDataRef.current = false;
+    recordingTimeRef.current = 0;
   }, [revokePreviewUrl]);
 
   useEffect(() => {
@@ -82,10 +95,15 @@ export function useVoiceRecorder() {
     let interval: ReturnType<typeof setInterval> | undefined;
     if (isRecording) {
       interval = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
+        setRecordingTime((prev) => {
+          const next = prev + 1;
+          recordingTimeRef.current = next;
+          return next;
+        });
       }, 1000);
     } else {
       setRecordingTime(0);
+      recordingTimeRef.current = 0;
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -106,41 +124,49 @@ export function useVoiceRecorder() {
 
   const finalizeRecording = () => {
     const recorder = recorderRef.current;
-    const rawBlob = new Blob(chunksRef.current, {
-      type:
-        mimeTypeRef.current ||
-        recorder?.mimeType ||
-        (isIOSDevice() ? "audio/mp4" : "audio/webm"),
+    const mime =
+      mimeTypeRef.current ||
+      recorder?.mimeType ||
+      (isIOSDevice() ? "audio/mp4" : "audio/webm");
+    const blob = new Blob(chunksRef.current, {
+      type: normalizeAudioMimeType(new Blob([], { type: mime })),
     });
-    const blob = new Blob([rawBlob], { type: normalizeAudioMimeType(rawBlob) });
 
     if (blob.size > 0) {
       setPreviewFromBlob(blob);
     } else {
       setError(
-        "Запис порожній. Тримайте запис 3+ секунди або скористайтесь кнопкою «Записати (iPhone)» нижче.",
+        isIOSDevice()
+          ? "Запис порожній. Тримайте кнопку «Зупинити» щонайменше 3 секунди після початку, або завантажте файл з Диктофона нижче."
+          : "Запис порожній. Спробуйте ще раз або завантажте аудіофайл.",
       );
     }
 
     stopStream();
     recorderRef.current = null;
-    gotDataRef.current = false;
+    chunksRef.current = [];
   };
 
   const startRecording = async () => {
     setError(null);
     setPreviewWarning(null);
-    gotDataRef.current = false;
+    chunksRef.current = [];
 
     if (!isVoiceRecordingSupported()) {
       setError(
-        "Запис у браузері недоступний. Скористайтесь кнопкою «Записати (iPhone)» або завантажте файл.",
+        "Запис у браузері недоступний на цьому пристрої. Завантажте файл з Диктофона або Файлів.",
       );
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+        video: false,
+      });
 
       streamRef.current = stream;
       chunksRef.current = [];
@@ -150,38 +176,37 @@ export function useVoiceRecorder() {
       recorderRef.current = recorder;
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data);
-          gotDataRef.current = true;
         }
       };
 
       recorder.onstop = () => {
-        setTimeout(finalizeRecording, isIOSDevice() ? 350 : 50);
+        setTimeout(
+          finalizeRecording,
+          isIOSDevice() ? IOS_FINALIZE_DELAY_MS : DESKTOP_FINALIZE_DELAY_MS,
+        );
       };
 
       recorder.onerror = (event) => {
         console.warn("MediaRecorder error:", event);
-        if (!gotDataRef.current && chunksRef.current.length === 0) {
+        if (chunksRef.current.length === 0) {
           setError(
-            "Помилка запису. Скористайтесь кнопкою «Записати (iPhone)» або завантажте m4a з Диктофона.",
+            "Помилка запису. Завантажте m4a з Диктофона або спробуйте ще раз.",
           );
           setIsRecording(false);
           stopStream();
         }
       };
 
-      // Safari на iOS надійніше віддає дані одним chunk при stop() без timeslice
-      if (isIOSDevice()) {
+      // iOS Safari потребує timeslice, інакше chunks часто порожні
+      try {
+        recorder.start(RECORDING_TIMESLICE_MS);
+      } catch {
         recorder.start();
-      } else {
-        try {
-          recorder.start(1000);
-        } catch {
-          recorder.start();
-        }
       }
 
+      recordingStartedAtRef.current = Date.now();
       setIsRecording(true);
     } catch (err) {
       console.error("Помилка доступу до мікрофона:", err);
@@ -192,24 +217,63 @@ export function useVoiceRecorder() {
 
   const stopRecording = () => {
     const recorder = recorderRef.current;
-    if (recorder && recorder.state === "recording") {
-      try {
-        recorder.requestData();
-      } catch {
-        // Safari може не підтримувати requestData
-      }
-      recorder.stop();
+    if (!recorder || recorder.state !== "recording") {
+      setIsRecording(false);
+      return;
     }
+
+    const elapsed = Date.now() - recordingStartedAtRef.current;
+    if (isIOSDevice() && elapsed < IOS_MIN_RECORD_MS) {
+      setError("Зачекайте щонайменше 2 секунди перед зупинкою запису.");
+      return;
+    }
+
     setIsRecording(false);
+
+    try {
+      if (typeof recorder.requestData === "function") {
+        recorder.requestData();
+      }
+    } catch {
+      // Safari iOS може не підтримувати requestData
+    }
+
+    // Невелика пауза перед stop — дає Safari час віддати останній chunk
+    setTimeout(() => {
+      try {
+        if (recorder.state === "recording") {
+          recorder.stop();
+        }
+      } catch (err) {
+        console.error("Помилка зупинки запису:", err);
+        if (chunksRef.current.length === 0) {
+          setError("Не вдалося зупинити запис. Спробуйте ще раз.");
+        }
+        stopStream();
+      }
+    }, isIOSDevice() ? 100 : 0);
   };
 
   const loadAudioFile = (file: File) => {
-    if (!isAudioFile(file)) {
-      setError("Оберіть аудіофайл (m4a, mp3, wav тощо).");
+    if (!isAcceptableVoiceFile(file)) {
+      setError("Оберіть аудіофайл (m4a, mp3, wav) або запис з Диктофона.");
       return;
     }
+
+    if (file.size === 0) {
+      setError("Файл порожній. Запишіть голос у Диктофоні і спробуйте знову.");
+      return;
+    }
+
+    const mime = getVoiceFileMimeType(file);
+    const blob =
+      file.type && file.type.length > 0
+        ? file
+        : new Blob([file], { type: mime });
+    const fromVideo = file.type.startsWith("video/") || /\.(mov|mp4)$/i.test(file.name);
+
     setError(null);
-    setPreviewFromBlob(file);
+    setPreviewFromBlob(blob, { fromVideo });
   };
 
   const formatTime = (seconds: number) => {
@@ -217,6 +281,9 @@ export function useVoiceRecorder() {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  const canStopRecording =
+    !isRecording || !isIOSDevice() || recordingTime >= 2;
 
   return {
     audioBlob,
@@ -227,6 +294,7 @@ export function useVoiceRecorder() {
     previewWarning,
     canPreview,
     canRecord,
+    canStopRecording,
     startRecording,
     stopRecording,
     clearRecording,

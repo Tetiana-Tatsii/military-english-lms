@@ -38,11 +38,20 @@ export function createAudioMediaRecorder(stream: MediaStream): {
   mimeType: string;
 } {
   if (isIOSDevice()) {
-    const recorder = new MediaRecorder(stream);
-    return {
-      recorder,
-      mimeType: recorder.mimeType || "audio/mp4",
-    };
+    const candidates = ["audio/mp4", "audio/aac", ""];
+    for (const mime of candidates) {
+      try {
+        const recorder = mime
+          ? new MediaRecorder(stream, { mimeType: mime })
+          : new MediaRecorder(stream);
+        return {
+          recorder,
+          mimeType: recorder.mimeType || mime || "audio/mp4",
+        };
+      } catch {
+        continue;
+      }
+    }
   }
 
   const mimeType = getSupportedAudioMimeType();
@@ -120,9 +129,25 @@ export function getMicrophoneErrorMessage(error: unknown): string {
   return "Не вдалося почати запис. Спробуйте завантажити готовий аудіофайл.";
 }
 
-export function isAudioFile(file: File): boolean {
+export function isAcceptableVoiceFile(file: File): boolean {
   if (file.type.startsWith("audio/")) return true;
-  return /\.(m4a|mp3|wav|aac|ogg|webm|mp4|caf)$/i.test(file.name);
+  // iOS інколи повертає video/mp4 з камери або Диктофона
+  if (file.type.startsWith("video/") && file.size > 0) return true;
+  return /\.(m4a|mp3|wav|aac|ogg|webm|mp4|caf|mov)$/i.test(file.name);
+}
+
+export function isAudioFile(file: File): boolean {
+  return isAcceptableVoiceFile(file);
+}
+
+export function getVoiceFileMimeType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (ext === "m4a" || ext === "caf") return "audio/mp4";
+  if (ext === "mp3") return "audio/mpeg";
+  if (ext === "wav") return "audio/wav";
+  if (ext === "mov" || ext === "mp4") return "video/mp4";
+  return isIOSDevice() ? "audio/mp4" : "audio/webm";
 }
 
 export function formatAudioDuration(seconds: number): string {
