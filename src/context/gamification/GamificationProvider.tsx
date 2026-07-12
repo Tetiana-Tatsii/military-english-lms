@@ -69,7 +69,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       }
 
       const streakResult = await processDailyStreak(supabase, id);
-      if (streakResult.wasStreakBroken) setInstructorMood("angry");
+      setInstructorMood(streakResult.wasStreakBroken ? "angry" : "happy");
 
       const profile = await fetchGamificationProfile(supabase, id);
       const base = profile ?? DEFAULT_GAMIFICATION_PROFILE;

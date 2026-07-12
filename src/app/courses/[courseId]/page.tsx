@@ -15,6 +15,8 @@ import {
 import { normalizeLessonHtml } from "../../../lib/lessonHtml";
 import DashboardHeader from "../../../components/dashboard/DashboardHeader";
 import LessonCollapsibleSection from "../../../components/courses/LessonCollapsibleSection";
+import VoiceHomeworkRecorder from "../../../components/courses/VoiceHomeworkRecorder";
+import { isUrlUnplayableOnIOS } from "../../../lib/voiceRecording";
 import {
   ArrowLeft,
   PlayCircle,
@@ -26,7 +28,6 @@ import {
   BookOpen,
   Headphones,
   ClipboardList,
-  StopCircle,
   Paperclip,
   X,
   Menu,
@@ -59,11 +60,8 @@ export default function CoursePage() {
   const [quizAnswers, setQuizAnswers] = useState<{ [key: string]: string }>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioResetKey, setAudioResetKey] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -73,25 +71,34 @@ export default function CoursePage() {
     }
   }, [user, router, isInitialized]);
 
-  // Відлік часу під час аудіозапису
+  // Quiz state — має бути до early return (Rules of Hooks)
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingTime(0);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
+    setQuizSubmitted(false);
+    setQuizScore(null);
+    setQuizAnswers({});
 
-  // Форматування часу у форматі MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
+    if (!user || !course) return;
+
+    const mod = course.modules.find((m) => m.id === activeModuleId);
+    const lesson = mod?.lessons.find((l) => l.id === activeLessonId);
+    if (!lesson?.quiz?.length) return;
+
+    const loadQuizResult = async () => {
+      const { data, error } = await supabase
+        .from("quiz_results")
+        .select("id, score, answers")
+        .eq("user_id", user.id)
+        .eq("lesson_id", lesson.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        setQuizSubmitted(true);
+        setQuizScore(data.score);
+        setQuizAnswers(data.answers ?? {});
+      }
+    };
+    loadQuizResult();
+  }, [user, course, activeModuleId, activeLessonId]);
 
   if (!isInitialized || !user || !course) {
     return (
@@ -115,32 +122,6 @@ export default function CoursePage() {
   const activeLesson = activeModule?.lessons.find(
     (l) => l.id === activeLessonId,
   );
-
-  // Перевірка чи тест вже був зданий при завантаженні уроку
-  useEffect(() => {
-    // Скидаємо стан тесту при кожній зміні уроку
-    setQuizSubmitted(false);
-    setQuizScore(null);
-    setQuizAnswers({});
-
-    if (!user || !activeLesson?.quiz?.length) return;
-
-    const loadQuizResult = async () => {
-      const { data, error } = await supabase
-        .from("quiz_results")
-        .select("id, score, answers")
-        .eq("user_id", user.id)
-        .eq("lesson_id", activeLesson.id)
-        .maybeSingle();
-
-      if (!error && data) {
-        setQuizSubmitted(true);
-        setQuizScore(data.score);
-        setQuizAnswers(data.answers ?? {});
-      }
-    };
-    loadQuizResult();
-  }, [user, activeLesson?.id]);
 
   const existingAnswer = answers.find(
     (a) => a.lessonId === activeLessonId && a.studentName === user.name,
@@ -213,46 +194,6 @@ export default function CoursePage() {
     await recalculateSlp(supabase, user.id, courses);
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
-
-      recorder.ondataavailable = (e) => {
-        chunks.push(e.data);
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
-        setAudioBlob(blob);
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Помилка доступу до мікрофона:", error);
-      alert("Не вдалося отримати доступ до мікрофона. Перевірте налаштування браузера.");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const handleRerecord = () => {
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setMediaRecorder(null);
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachedFiles(files);
@@ -269,6 +210,11 @@ export default function CoursePage() {
       alert("Будь ласка, додайте текст, аудіо або файли перед відправкою.");
       return;
     }
+
+    if (audioBlob && audioBlob.size === 0) {
+      alert("Аудіозапис порожній. Запишіть ще раз або завантажте файл.");
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -283,14 +229,14 @@ export default function CoursePage() {
         lessonId: activeLesson.id,
         courseId: course.id,
         text: homeworkText,
-        voiceRecorded: false,
+        voiceRecorded: !!audioBlob,
         attachments: [],
         audioBlob,
         files: attachedFiles,
       } as any);
       setHomeworkText("");
       setAudioBlob(null);
-      setAudioUrl(null);
+      setAudioResetKey((key) => key + 1);
       setAttachedFiles([]);
       setIsSubmitted(true);
       setTimeout(() => setIsSubmitted(false), 3000);
@@ -1137,13 +1083,33 @@ export default function CoursePage() {
                       >
                         <Headphones size={16} /> Голосова відповідь
                       </p>
-                      <audio
-                        controls
-                        style={{ width: "100%", height: 40 }}
-                        src={existingAnswer.audioUrl}
-                      >
-                        Ваш браузер не підтримує аудіо.
-                      </audio>
+                      {isUrlUnplayableOnIOS(existingAnswer.audioUrl) ? (
+                        <p
+                          style={{
+                            margin: 0,
+                            padding: "10px 12px",
+                            borderRadius: 6,
+                            background: isDarkMode ? "rgba(138, 138, 69, 0.15)" : "#eef0df",
+                            border: "1px solid #8a8a45",
+                            color: isDarkMode ? "#d8cdb4" : "#6b6b3a",
+                            fontSize: 13,
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          Файл збережено. На iPhone цей формат не відтворюється — це нормально.
+                          Викладач прослухає на комп&apos;ютері.
+                        </p>
+                      ) : (
+                        <audio
+                          controls
+                          playsInline
+                          preload="metadata"
+                          style={{ width: "100%", height: 40 }}
+                          src={existingAnswer.audioUrl}
+                        >
+                          Ваш браузер не підтримує аудіо.
+                        </audio>
+                      )}
                     </div>
                   )}
                   {existingAnswer.teacherFeedbackText && (
@@ -1229,97 +1195,11 @@ export default function CoursePage() {
                   }}
                 />
 
-                {/* АУДІОЗАПИС */}
-                <div
-                  style={{
-                    background: isDarkMode ? "#2d2f2a" : "#fff",
-                    padding: 16,
-                    borderRadius: 8,
-                    border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
-                    marginBottom: 16,
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: "0 0 12px",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: isDarkMode ? "rgb(250, 249, 246)" : "#5c574a",
-                    }}
-                  >
-                    <Headphones size={16} style={{ display: "inline", marginRight: 6 }} />
-                    Голосова відповідь
-                  </p>
-                  {!audioUrl ? (
-                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      {!isRecording ? (
-                        <button
-                          onClick={startRecording}
-                          style={{
-                            background: "#8a8a45",
-                            color: "#fff",
-                            border: "none",
-                            padding: "10px 20px",
-                            borderRadius: 6,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
-                          <Volume2 size={16} /> Почати запис
-                        </button>
-                      ) : (
-                        <button
-                          onClick={stopRecording}
-                          style={{
-                            background: "#c97a4a",
-                            color: "#fff",
-                            border: "none",
-                            padding: "10px 20px",
-                            borderRadius: 6,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
-                          <StopCircle size={16} /> Зупинити запис ({formatTime(recordingTime)})
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <audio
-                        controls
-                        style={{ width: "100%", height: "40px" }}
-                        src={audioUrl}
-                      >
-                        Ваш браузер не підтримує аудіо елемент.
-                      </audio>
-                      <button
-                        onClick={handleRerecord}
-                        style={{
-                          background: "#f0ede5",
-                          color: "#8a8a45",
-                          border: "1px solid #8a8a45",
-                          padding: "8px 16px",
-                          borderRadius: 6,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          alignSelf: "flex-start",
-                        }}
-                      >
-                        <Volume2 size={14} /> Перезаписати
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <VoiceHomeworkRecorder
+                  isDarkMode={isDarkMode}
+                  onAudioChange={setAudioBlob}
+                  resetKey={audioResetKey}
+                />
 
                 {/* ПРИКРІПЛЕННЯ ФАЙЛІВ */}
                 <div

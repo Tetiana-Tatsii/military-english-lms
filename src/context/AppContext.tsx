@@ -66,7 +66,10 @@ interface AppState {
 
   approveUser: (userId: string) => Promise<void>;
   rejectUser: (userId: string) => Promise<void>;
-  changeUserPassword: (userId: string, newPassword: string) => Promise<void>;
+  changeUserPassword: (
+    userId: string,
+    newPassword: string,
+  ) => Promise<{ ok: boolean; message: string }>;
 
   submitAnswer: (
     answerData: Omit<

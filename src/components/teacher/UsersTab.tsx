@@ -17,7 +17,10 @@ interface UsersTabProps {
   isDarkMode: boolean;
   approveUser: (userId: string) => Promise<void>;
   rejectUser: (userId: string) => Promise<void>;
-  changeUserPassword: (userId: string, newPassword: string) => Promise<void>;
+  changeUserPassword: (
+    userId: string,
+    newPassword: string,
+  ) => Promise<{ ok: boolean; message: string }>;
 }
 
 export default function UsersTab({
@@ -204,9 +207,12 @@ export default function UsersTab({
           <button
             onClick={async () => {
               if (newPasswordValue.trim()) {
-                await changeUserPassword(u.id, newPasswordValue);
-                setEditingPasswordId(null);
-                setNewPasswordValue("");
+                const result = await changeUserPassword(u.id, newPasswordValue);
+                alert(result.message);
+                if (result.ok) {
+                  setEditingPasswordId(null);
+                  setNewPasswordValue("");
+                }
               }
             }}
             style={{

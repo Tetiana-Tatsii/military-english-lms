@@ -16,6 +16,7 @@ import {
   awardHomeworkCoins,
   checkAndCompleteCourse,
 } from "@/lib/gamification";
+import { getAudioExtension, isIOSDevice } from "@/lib/voiceRecording";
 import { useAuth } from "@/context/auth";
 import { useGamification } from "@/context/gamification";
 import type {
@@ -397,13 +398,19 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
       try {
         if (answerData.audioBlob) {
           try {
-            const fileExt = "webm";
+            const audioMime =
+              answerData.audioBlob.type ||
+              (isIOSDevice() ? "audio/mp4" : "audio/webm");
+            const fileExt = getAudioExtension(audioMime);
             const fileName = `audio-${Date.now()}.${fileExt}`;
             const filePath = `student-answers/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
               .from("lesson-media")
-              .upload(filePath, answerData.audioBlob);
+              .upload(filePath, answerData.audioBlob, {
+                contentType: audioMime,
+                upsert: false,
+              });
 
             if (!uploadError) {
               const { data } = supabase.storage

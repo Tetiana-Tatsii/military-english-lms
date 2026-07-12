@@ -94,12 +94,9 @@ export async function fetchGamificationProfile(
   };
 }
 
-// ─── Date helpers (local timezone, not UTC) ───────────────────────────────────
+// ─── Date helpers (UTC — збігається з CURRENT_DATE у Supabase RPC) ─────────────
 function toLocalDateStr(d = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return d.toISOString().slice(0, 10);
 }
 
 function normalizeDate(value: string | null | undefined): string | null {

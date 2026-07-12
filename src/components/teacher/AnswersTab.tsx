@@ -360,7 +360,7 @@ export default function AnswersTab({
                       marginBottom: 16,
                     }}
                   >
-                    {ans.voiceRecorded && (
+                    {ans.audioUrl && (
                       <div style={{ marginBottom: 12 }}>
                         <p
                           style={{
@@ -377,6 +377,8 @@ export default function AnswersTab({
                         </p>
                         <audio
                           controls
+                          playsInline
+                          preload="metadata"
                           style={{ width: "100%", height: 40 }}
                           src={ans.audioUrl}
                         >

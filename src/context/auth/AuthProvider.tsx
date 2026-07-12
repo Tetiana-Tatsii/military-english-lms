@@ -38,7 +38,10 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   approveUser: (userId: string) => Promise<void>;
   rejectUser: (userId: string) => Promise<void>;
-  changeUserPassword: (userId: string, newPassword: string) => Promise<void>;
+  changeUserPassword: (
+    userId: string,
+    newPassword: string,
+  ) => Promise<{ ok: boolean; message: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -398,7 +401,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from("profiles")
         .update({ password: hashedPassword })
         .eq("id", userId);
-      if (error) console.error("Помилка зміни пароля:", error.message);
+      if (error) {
+        console.error("Помилка зміни пароля:", error.message);
+        return {
+          ok: false,
+          message: `Помилка profiles: ${error.message}`,
+        };
+      }
+
+      const { data: syncData, error: syncError } = await supabase.rpc(
+        "admin_sync_auth_password",
+        {
+          p_target_user_id: userId,
+          p_new_password: newPassword,
+        },
+      );
+
+      if (syncError) {
+        const hint =
+          "Пароль у profiles збережено, але Auth не оновлено. Запустіть admin_sync_auth_password.sql у Supabase SQL Editor, або скиньте пароль вручну (див. docs/RESET_PASSWORD.md).";
+        console.error(hint, syncError.message);
+        return { ok: false, message: hint };
+      }
+
+      const payload = syncData as {
+        error?: string;
+        ok?: boolean;
+        auth_email?: string;
+        hint?: string;
+      } | null;
+
+      if (payload?.error) {
+        const msg =
+          payload.hint ??
+          `Auth не синхронізовано: ${payload.error}` +
+            (payload.auth_email ? ` (email: ${payload.auth_email})` : "");
+        console.error("admin_sync_auth_password:", payload);
+        return { ok: false, message: msg };
+      }
+
+      return {
+        ok: true,
+        message: "Пароль оновлено в profiles і Supabase Auth.",
+      };
     },
     [],
   );
