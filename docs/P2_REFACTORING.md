@@ -40,7 +40,43 @@ AuthProvider → GamificationProvider → CoursesProvider → AppProviderInner
 
 ### Далі (P3)
 - ~~PR3a: hook + підкомпоненти EditorTab~~ ✅
-- PR3b: розбити `LessonEditorPanel` (quiz, media, quizlet секції)
+- ~~PR3b: розбити `LessonEditorPanel` (media, content, quizlet, quiz)~~ ✅
+
+---
+
+## P3 PR3b: LessonEditorPanel split ✅
+
+- `LessonEditorMediaSection.tsx` — фото, аудіо, документи
+- `LessonEditorContentSection.tsx` — reading, граматика, інструкція ДЗ
+- `LessonEditorQuizletSection.tsx` — картки словника
+- `LessonEditorQuizSection.tsx` — інтерактивний тест
+- `LessonEditorPanel.tsx` — заголовок, skill/YouTube, save (~220 рядків)
+- `types.ts` — `LessonEditorSectionProps`
+
+### Smoke після deploy
+- [ ] Teacher → Editor → відкрити урок
+- [ ] Завантажити фото / аудіо / документ
+- [ ] Редагувати текст, quizlet, quiz
+- [ ] Зберегти урок → refresh → дані на місці
+
+---
+
+## P3 PR3c: Course lesson page split ✅
+
+- `lesson-page/useCourseLessonPage.ts` — стан, effects, handlers
+- `CourseLessonSidebar.tsx` — навігація модулів/уроків
+- `CourseLessonMobileBar.tsx` — mobile header
+- `CourseLessonTheorySection.tsx` — skill, title, теорія, аудіо
+- `CourseLessonMaterialsSection.tsx` — граматика, фото, відео, документи, quizlet
+- `CourseLessonQuizPanel.tsx` — практичний тест
+- `CourseLessonHomeworkPanel.tsx` — інструкція ДЗ + відправка/фідбек
+- `CourseLessonMainContent.tsx` — композиція секцій
+- `courses/[courseId]/page.tsx` — thin wrapper (~120 рядків)
+
+### Smoke після deploy
+- [ ] Student → курс → теорія → аудіо → quiz → голосове ДЗ
+- [ ] Sidebar mobile (hamburger) + desktop
+- [ ] Quiz результат зберігається після refresh
 
 ---
 

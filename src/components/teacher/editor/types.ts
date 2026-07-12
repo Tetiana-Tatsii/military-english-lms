@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import type { Course, Lesson } from "@/types";
 
 export interface EditorTabProps {
@@ -35,4 +36,10 @@ export interface CourseFormData {
 export interface EditingLessonState {
   moduleId: string;
   lesson: Lesson;
+}
+
+export interface LessonEditorSectionProps {
+  editingLesson: EditingLessonState;
+  setEditingLesson: Dispatch<SetStateAction<EditingLessonState | null>>;
+  isDarkMode: boolean;
 }
