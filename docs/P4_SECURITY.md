@@ -32,7 +32,8 @@ SQL і frontend для login hardening — **done**.
 4. ~~REVOKE INSERT/UPDATE на `profiles.password`~~ → `p4_revoke_password_write.sql` + AuthProvider
 5. ~~Middleware / Proxy + `@supabase/ssr`~~ → cookie session + route guards (`src/proxy.ts`)
 6. ~~Dual auth: DROP `profiles.password`~~ → `p4_drop_profiles_password.sql`
-7. CI + README (nice-to-have)
+7. ~~CI + README~~ → `.github/workflows/ci.yml`, `npm run typecheck`
+8. React Query / контексти; Supabase CLI (коли знадобиться)
 
 ---
 

@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Military English LMS
 
-## Getting Started
+Закрита платформа вивчення військової англійської (STANAG-орієнтована): курси, тести, домашні завдання, гейміфікація.
 
-First, run the development server:
+**Стек:** Next.js 16 (App Router) · React 19 · Supabase (Auth, Postgres, Storage) · Tailwind 4
+
+---
+
+## Швидкий старт
 
 ```bash
+npm install
+cp .env.example .env.local
+# заповніть URL і anon key з Supabase → Project Settings → API
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Відкрийте [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Скрипти
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Команда | Що робить |
+|---------|-----------|
+| `npm run dev` | Локальний сервер |
+| `npm run build` | Production build |
+| `npm run start` | Запуск після build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript (`tsc --noEmit`) |
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Ролі
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Роль | Куди потрапляє | Можливості |
+|------|----------------|------------|
+| **student** | `/dashboard` | Курси, тести, ДЗ, PX store |
+| **teacher** | `/teacher` | Редактор уроків, перевірка відповідей |
+| **admin** | `/teacher` | + користувачі, паролі, support |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Реєстрація створює акаунт зі статусом `pending` — адмін має схвалити в Users.
 
-## Deploy on Vercel
+Паролі зберігаються **лише в Supabase Auth** (колонки `profiles.password` немає).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Архітектура (коротко)
+
+- UI майже весь client-side; сесія — **cookies** через `@supabase/ssr`
+- Захист маршрутів: `src/proxy.ts` (Next.js 16 proxy)
+- Дані: Supabase RLS + RPC (`buy_shop_item`, `admin_sync_auth_password`, module edits, …)
+- HTML уроків (Quill) санітизується в `normalizeLessonHtml` (DOMPurify)
+
+---
+
+## База даних / міграції
+
+SQL-скрипти лежать у `supabase/migrations/`. Застосовуйте їх **вручну** в Supabase SQL Editor (порядок і статус — у `docs/P4_SECURITY.md` та `docs/data-baseline.txt`).
+
+Корисні доки:
+
+- `docs/P4_SECURITY.md` — auth / security кроки
+- `docs/RESET_PASSWORD.md` — скидання пароля
+- `docs/data-baseline.txt` — counts і прогрес P4
+
+Після чутливих SQL завжди:
+
+```sql
+SELECT 'lms_courses' AS t, count(*) FROM public.lms_courses
+UNION ALL SELECT 'lms_lessons', count(*) FROM public.lms_lessons
+UNION ALL SELECT 'profiles', count(*) FROM public.profiles;
+```
+
++ smoke: login teacher → save lesson → student quiz / shop.
+
+---
+
+## Smoke-чеклист
+
+1. Без сесії `/dashboard` і `/teacher` → редірект на `/login`
+2. Student → dashboard; `/teacher` недоступний
+3. Teacher/admin → teacher panel
+4. Практичний тест: не здається порожнім; одна спроба
+5. PX store: ціна списується коректно
+6. Адмін змінює пароль → login з новим паролем
+
+---
+
+## Деплой
+
+Типово: **Vercel** + той самий Supabase project.  
+У Vercel додайте `NEXT_PUBLIC_SUPABASE_URL` і `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+CI на GitHub: `.github/workflows/ci.yml` (`lint` + `typecheck` на `push`/`PR` до `main`).
