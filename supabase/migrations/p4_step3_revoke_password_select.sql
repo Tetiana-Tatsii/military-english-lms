@@ -1,6 +1,11 @@
 -- =============================================================
 -- P4 — КРОК 3: Закрити SELECT на profiles.password
 --
+-- ⚠️  ЗАСТАРІЛИЙ ПІДХІД — не використовуйте на проді.
+--     Column-level REVOKE НЕ знімає table-level SELECT у PostgreSQL.
+--     Запускайте замість цього:
+--       p4_step3b_revoke_password_select_fix.sql
+--
 -- Без втрати даних: паролі лишаються в БД, лише прибираємо
 -- читання hash через REST API (anon / authenticated).
 --
@@ -12,6 +17,7 @@
 -- 2. Smoke: login teacher + student
 -- =============================================================
 
+-- НЕДОСТАТНЬО (залишено для історії / пояснення):
 REVOKE SELECT (password) ON public.profiles FROM anon;
 REVOKE SELECT (password) ON public.profiles FROM authenticated;
 

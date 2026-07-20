@@ -113,7 +113,6 @@ export interface Question {
 export interface UserAccount {
   id: string;
   name: string;
-  password: string;
   role: UserRole;
   squadId?: string;
   status: AccountStatus;

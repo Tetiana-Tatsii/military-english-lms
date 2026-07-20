@@ -1,6 +1,6 @@
 # Скидання пароля викладача / курсанта
 
-Якщо після зміни пароля в адмін-панелі вхід не працює і з’являється повідомлення про синхронізацію Supabase Auth — оновіть пароль **вручну в SQL Editor**.
+Паролі зберігаються **лише в Supabase Auth** (`auth.users`). Колонки `profiles.password` більше немає.
 
 ## Крок 1. Перевірка зв’язку profile ↔ auth
 
@@ -17,9 +17,9 @@ LEFT JOIN auth.users u ON u.id::text = p.id
 WHERE p.name ILIKE '%ВАШЕ ІМ%Я%';
 ```
 
-Якщо `status = NO_AUTH_USER` — у **Authentication → Users** потрібно створити користувача з **тим самим UUID**, що `profile_id`.
+Якщо `status = NO_AUTH_USER` — у **Authentication → Users** створіть користувача з **тим самим UUID**, що `profile_id`.
 
-## Крок 2. Синхронізація пароля (замініть ім’я і пароль)
+## Крок 2. Скидання пароля в SQL (замініть ім’я і пароль)
 
 ```sql
 UPDATE auth.users u
@@ -31,19 +31,14 @@ WHERE u.id::text = p.id
   AND p.name ILIKE 'Точне Ім%я З Профілю';
 ```
 
-## Крок 3. Оновити hash у profiles (опційно, якщо адмін-панель не спрацювала)
+## Крок 3. Через адмін-панель
 
-Після кроку 2 увійдіть з новим паролем. Якщо profiles ще зі старим hash — змініть пароль ще раз через **Users** у teacher panel після успішного входу.
+Адмін → Users → зміна пароля викликає RPC `admin_sync_auth_password` (оновлює лише Auth).
 
-## Крок 4. RPC для адмін-панелі (один раз)
-
-Запустіть у SQL Editor файл:
-
-`supabase/migrations/admin_sync_auth_password.sql`
-
-Після цього зміна пароля в **UsersTab** має оновлювати і `profiles`, і `auth.users` автоматично.
+Якщо RPC ще не застосовано — запустіть у SQL Editor актуальну версію з  
+`supabase/migrations/p4_drop_profiles_password.sql` (або попередній `admin_sync_auth_password.sql`).
 
 ## Важливо
 
 - Входити треба **тим самим іменем**, що в `profiles.name` (регістр не важливий).
-- Якщо в профілі кирилиця («Тетяна Тацій»), а в Auth email латиницею — це нормально; login використовує `auth_email` з RPC.
+- Якщо в профілі кирилиця, а в Auth email латиницею — login використовує `auth_email` з `get_profile_for_login`.

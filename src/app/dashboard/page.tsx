@@ -7,9 +7,11 @@ import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import CourseList from "../../components/dashboard/CourseList";
 import ProfileStats from "../../components/dashboard/ProfileStats";
 import InstructorCard from "../../components/dashboard/InstructorCard";
+import InstructorSpeechBubble from "../../components/dashboard/InstructorSpeechBubble";
 import Voentorg from "../../components/dashboard/Voentorg";
 import Achievements from "../../components/dashboard/Achievements";
 import { DEFAULT_GAMIFICATION_PROFILE } from "@/lib/gamification";
+import { getInstructorSpeechMessage } from "@/lib/instructorQuotes";
 
 export default function DashboardPage() {
   const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem, refreshGamification } = useAppContext();
@@ -90,6 +92,16 @@ export default function DashboardPage() {
   };
 
   const activeGamification = gamification ?? DEFAULT_GAMIFICATION_PROFILE;
+  const instructorSpeech = getInstructorSpeechMessage(
+    instructorMood,
+    activeGamification.activeInstructorItem,
+  );
+  const speechVariant =
+    instructorMood === "angry"
+      ? "angry"
+      : instructorMood === "proud"
+        ? "proud"
+        : "item";
 
   return (
     <div
@@ -123,7 +135,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-6 items-start xl:grid-cols-[1fr_300px]">
 
         {/* ЛІВА КОЛОНКА */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 overflow-visible">
           <CourseList
             courses={courses}
             answers={myAnswers}
@@ -133,13 +145,27 @@ export default function DashboardPage() {
             isDarkMode={isDarkMode}
           />
 
-          <InstructorCard
-            gamification={activeGamification}
-            mood={instructorMood}
-            isDarkMode={isDarkMode}
-            isPxStoreOpen={showPxStore}
-            onPxStoreToggle={() => setShowPxStore((v) => !v)}
-          />
+          {/* Between courses & instructor — offset right so it sits above the card content, not over the figure */}
+          {instructorSpeech && (
+            <div className="relative z-20 pl-[100px] sm:pl-[120px] md:pl-[150px] lg:pl-[180px] -mb-1">
+              <InstructorSpeechBubble
+                message={instructorSpeech}
+                variant={speechVariant}
+                isDarkMode={isDarkMode}
+                className="w-full max-w-xl"
+              />
+            </div>
+          )}
+
+          <div className="relative z-10 overflow-visible">
+            <InstructorCard
+              gamification={activeGamification}
+              mood={instructorMood}
+              isDarkMode={isDarkMode}
+              isPxStoreOpen={showPxStore}
+              onPxStoreToggle={() => setShowPxStore((v) => !v)}
+            />
+          </div>
 
           {showPxStore && (
             <Voentorg

@@ -304,11 +304,15 @@ export async function awardCoins(
 }
 
 // ─── Buy or activate shop item ────────────────────────────────────────────────
+export function getShopItemPrice(itemId: string): number | null {
+  const item = SHOP_ITEMS.find((i) => i.id === itemId);
+  return item ? item.price : null;
+}
+
 export async function buyShopItemInDb(
   supabase: SupabaseClient,
   userId: string,
   itemId: string,
-  price: number,
 ): Promise<BuyShopResult> {
   const fail = (error: string, partial?: Partial<BuyShopResult>): BuyShopResult => ({
     error,
@@ -318,12 +322,17 @@ export async function buyShopItemInDb(
     activeInstructorItem: partial?.activeInstructorItem ?? "coffee",
   });
 
+  const catalogPrice = getShopItemPrice(itemId);
+  if (catalogPrice === null) {
+    return fail("Невідомий товар.");
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
 
   if (session?.user?.id === userId) {
+    // Price is resolved server-side — never trust client price
     const { data, error } = await supabase.rpc("buy_shop_item", {
       p_item_id: itemId,
-      p_price: price,
     });
 
     if (!error && data && typeof data === "object") {
@@ -336,6 +345,9 @@ export async function buyShopItemInDb(
       }
       if (payload.error === "profile_not_found") {
         return fail("Профіль не знайдено.");
+      }
+      if (payload.error === "unknown_item") {
+        return fail("Невідомий товар.");
       }
       if (payload.error) {
         return fail(String(payload.error));
@@ -355,6 +367,9 @@ export async function buyShopItemInDb(
   } else {
     console.warn("buyShopItemInDb: no Supabase auth session for", userId);
   }
+
+  // Fallback (legacy): still use catalogue price, never a caller-supplied price
+  const price = catalogPrice;
 
   const { data: profile, error: readError } = await supabase
     .from("profiles")

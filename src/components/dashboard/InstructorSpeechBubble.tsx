@@ -30,7 +30,7 @@ export default function InstructorSpeechBubble({
   return (
     <div className={className} aria-label={`Instructor Kava says: ${message}`}>
       <div
-        className="rounded-xl border px-3 py-2 text-[11px] sm:text-xs font-semibold leading-snug shadow-sm"
+        className="rounded-xl border px-3 py-2.5 text-center text-[11px] sm:text-xs font-semibold leading-snug shadow-sm break-words hyphens-auto"
         style={{
           background: fill,
           color: isDarkMode ? "#e6e4dc" : "#3a3528",

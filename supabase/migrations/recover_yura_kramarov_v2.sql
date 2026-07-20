@@ -51,8 +51,8 @@ BEGIN
   LIMIT 1;
 
   IF v_old_id IS NULL OR v_old_id = v_auth_id::text THEN
-    INSERT INTO public.profiles (id, name, password, role, status, squad_id)
-    VALUES (v_auth_id::text, 'Yura Kramarov', '', 'admin', 'approved', NULL)
+    INSERT INTO public.profiles (id, name, role, status, squad_id)
+    VALUES (v_auth_id::text, 'Yura Kramarov', 'admin', 'approved', NULL)
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name,
       role = EXCLUDED.role,

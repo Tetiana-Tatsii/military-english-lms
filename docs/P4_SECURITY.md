@@ -1,44 +1,44 @@
 # P4 — Auth & Security (покроково)
 
-**Правило:** без `DROP TABLE`, без масових `DELETE`. Baseline: **2 / 20 / 7 / 3 / 4 / 5**.
+**Правило:** без `DROP TABLE`, без масових `DELETE`.  
+**Baseline (2026-07-20):** courses **2** / lessons **20** / profiles **7** / answers **10** / quiz **9** / tickets **5**.
 
 ---
 
 ## Дорожня карта
 
-| Крок | Файл | Що робить | Ризик |
-|------|------|-----------|-------|
-| **1** | `p4_step1_audit.sql` | Лише читання, звіт | **Нуль** |
-| **2** | `p4_step2_private_schema.sql` | GRANT private + helpers | Низький |
-| **3** | `p4_step3_revoke_password_select.sql` | REVOKE SELECT на `profiles.password` | Низький |
-| **3b** | `p4_step3_student_rls_fix.sql` | Відновити student quiz/answers RLS якщо бракує | Низький |
-| **4** | `p4_step4_login_rpc_hardening.sql` | Login без password_hash на клієnt* | Середній — потрібен deploy коду |
-| **5** | `p4_step5_revoke_legacy_policies.sql` | Прибрати `Allow all` / `lms_lessons_all` | Низький |
-
-\* Крок 4 — після оновлення frontend (окрема сесія).
+| Крок | Файл | Статус | Ризик |
+|------|------|--------|-------|
+| **1** | `p4_step1_audit.sql` | ✅ done | Нуль |
+| **2** | `p4_step2_private_schema.sql` | ✅ done | Низький |
+| **3** | `p4_step3_revoke_password_select.sql` | ⚠️ недостатньо (PG table-level) | — |
+| **3b** | `p4_step3b_revoke_password_select_fix.sql` | ✅ done 2026-07-20 | Низький |
+| **4a** | student RLS verify | ✅ done earlier | — |
+| **4** | `p4_step4_login_rpc_hardening.sql` + frontend | ✅ done 2026-07-20 | Середній |
+| **5** | legacy policies | ✅ audit: 0 risk rows — skip | — |
 
 ---
 
-## Зараз: виконайте лише КРОК 1
+## Зараз: після кроку 4
 
-1. SQL Editor → **+ New query**
-2. Вставте **`supabase/migrations/p4_step1_audit.sql`**
-3. **Run**
-4. Перевірте секцію **BASELINE** — має збігатися з baseline
-5. Надішліть результати (скрін або текст) для секцій:
-   - **RISK_POLICY** (має бути 0 rows)
-   - **PRIVATE** (usage = true)
-   - **STUDENT_RLS**
-   - **RPC** (get_profile_for_login)
+SQL і frontend для login hardening — **done**.
 
-Після review — скажемо, чи запускати крок 2.
+**Обов’язковий smoke:** login teacher + student на актуальному коді.
+
+Далі (критична безпека поза P4 roadmap):
+1. ~~`buy_shop_item` — ціна з сервера~~ → `p4_shop_server_price.sql` + frontend
+2. ~~Quiz UX / empty submit / stale 0% results~~
+3. ~~XSS — санітизація Quill HTML~~ → `isomorphic-dompurify` у `normalizeLessonHtml`
+4. ~~REVOKE INSERT/UPDATE на `profiles.password`~~ → `p4_revoke_password_write.sql` + AuthProvider
+5. ~~Middleware / Proxy + `@supabase/ssr`~~ → cookie session + route guards (`src/proxy.ts`)
+6. ~~Dual auth: DROP `profiles.password`~~ → `p4_drop_profiles_password.sql`
+7. CI + README (nice-to-have)
 
 ---
 
 ## Після кожного кроку
 
 ```sql
--- counts (швидко)
 SELECT 'lms_courses' AS t, count(*) FROM public.lms_courses
 UNION ALL SELECT 'lms_lessons', count(*) FROM public.lms_lessons;
 ```

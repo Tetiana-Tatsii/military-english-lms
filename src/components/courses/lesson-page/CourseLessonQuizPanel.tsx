@@ -29,6 +29,10 @@ export default function CourseLessonQuizPanel({
 }: CourseLessonQuizPanelProps) {
   if (!lesson.quiz?.length) return null;
 
+  const allAnswered = lesson.quiz.every(
+    (q) => quizAnswers[q.id] != null && String(quizAnswers[q.id]).length > 0,
+  );
+
   return (
     <div
       style={{
@@ -96,6 +100,7 @@ export default function CourseLessonQuizPanel({
                     ? "rgb(250, 249, 246)"
                     : "#4a4a4a";
 
+                  // Feedback: selected wrong = red; correct option = green (even if not selected)
                   if (showFeedback) {
                     if (isSelected && isCorrect) {
                       optionStyle = {
@@ -174,24 +179,38 @@ export default function CourseLessonQuizPanel({
         })}
       </div>
       {!quizSubmitted ? (
-        <button
-          onClick={onSubmit}
-          style={{
-            marginTop: 24,
-            background: "#8a8a45",
-            color: "#fff",
-            border: "none",
-            padding: "12px 24px",
-            borderRadius: 8,
-            fontWeight: 700,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          Завершити тест
-        </button>
+        <div style={{ marginTop: 24 }}>
+          <button
+            onClick={onSubmit}
+            disabled={!allAnswered}
+            style={{
+              background: allAnswered ? "#8a8a45" : isDarkMode ? "#3e403a" : "#d8cdb4",
+              color: allAnswered ? "#fff" : isDarkMode ? "#6b6860" : "#9a8f70",
+              border: "none",
+              padding: "12px 24px",
+              borderRadius: 8,
+              fontWeight: 700,
+              cursor: allAnswered ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              opacity: allAnswered ? 1 : 0.85,
+            }}
+          >
+            Завершити тест
+          </button>
+          {!allAnswered && (
+            <p
+              style={{
+                margin: "8px 0 0",
+                fontSize: 13,
+                color: isDarkMode ? "#6b6860" : "#9a8f70",
+              }}
+            >
+              Дайте відповідь на всі питання, щоб завершити тест (одна спроба).
+            </p>
+          )}
+        </div>
       ) : (
         <div
           style={{
@@ -210,7 +229,7 @@ export default function CourseLessonQuizPanel({
               color: "#8a8a45",
             }}
           >
-            Практичний тест пройдено
+            Практичний тест завершено
           </p>
           <p
             style={{

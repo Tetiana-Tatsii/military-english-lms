@@ -5,8 +5,6 @@ import { ShoppingCart } from "lucide-react";
 import type { GamificationProfile } from "@/context/AppContext";
 import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 import StreakCoinIcon from "@/components/ui/StreakCoinIcon";
-import InstructorSpeechBubble from "@/components/dashboard/InstructorSpeechBubble";
-import { getInstructorSpeechMessage } from "@/lib/instructorQuotes";
 
 interface InstructorCardProps {
   gamification: GamificationProfile;
@@ -38,14 +36,6 @@ function getInstructorImage(mood: "happy" | "angry" | "proud", activeItem: strin
   return HAPPY_ITEM_IMAGES[activeItem] ?? HAPPY_ITEM_IMAGES.coffee;
 }
 
-function getBubbleVariant(
-  mood: "happy" | "angry" | "proud",
-): "happy" | "angry" | "proud" | "item" {
-  if (mood === "angry") return "angry";
-  if (mood === "proud") return "proud";
-  return "item";
-}
-
 export default function InstructorCard({
   gamification,
   mood,
@@ -57,7 +47,6 @@ export default function InstructorCard({
   const filledCups = streakCount === 0 ? 0 : ((streakCount - 1) % 7) + 1;
   const equippedEmoji = mood === "happy" ? (EQUIPPED_EMOJI[activeInstructorItem] ?? "☕") : null;
   const imageSrc = getInstructorImage(mood, activeInstructorItem);
-  const speechMessage = getInstructorSpeechMessage(mood, activeInstructorItem);
   const showStreak = mood === "happy";
 
   return (
@@ -77,30 +66,18 @@ export default function InstructorCard({
       <img
         src={imageSrc}
         alt={`Instructor — ${mood}`}
-        className="absolute bottom-0 left-2 sm:left-4 h-[112%] sm:h-[115%] w-auto object-contain object-bottom z-10 pointer-events-none"
+        className="absolute bottom-0 left-2 sm:left-4 z-10 pointer-events-none
+          h-[calc(100%+56px)] w-auto
+          object-contain object-bottom"
         onError={(e) => {
-          const t = e.currentTarget;
-          t.style.display = "none";
+          e.currentTarget.style.display = "none";
         }}
       />
 
-      <div
-        className={`flex flex-col flex-1 px-2 sm:px-4 md:px-5 gap-2 sm:gap-3 min-w-0 ${
-          speechMessage ? "pt-2 pb-4" : "py-4"
-        }`}
-      >
-        {speechMessage && (
-          <InstructorSpeechBubble
-            message={speechMessage}
-            variant={getBubbleVariant(mood)}
-            isDarkMode={isDarkMode}
-            className="-ml-2 sm:-ml-1 max-w-full"
-          />
-        )}
-
+      <div className="flex flex-col flex-1 min-w-0 px-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3">
         <div className="flex items-center justify-center">
           <span
-            className="text-xl font-bold text-center"
+            className="text-lg sm:text-xl font-bold text-center"
             style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
           >
             🪖 Your Instructor Kava{equippedEmoji ? ` ${equippedEmoji}` : ""}
@@ -121,7 +98,7 @@ export default function InstructorCard({
               ))}
             </div>
 
-            <div className="flex flex-col items-center w-full mt-6 gap-3">
+            <div className="flex flex-col items-center w-full mt-4 sm:mt-6 gap-3">
               <div className="text-center">
                 <p
                   className="text-xs font-bold"

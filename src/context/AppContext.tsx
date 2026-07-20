@@ -88,7 +88,7 @@ interface AppState {
   gamification: GamificationProfile | null;
   instructorMood: "happy" | "angry" | "proud";
   refreshGamification: () => Promise<void>;
-  buyShopItem: (itemId: string, price: number) => Promise<BuyShopResult>;
+  buyShopItem: (itemId: string) => Promise<BuyShopResult>;
 
   addSupportTicket: (type: "bug" | "improvement", message: string) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: "open" | "closed") => Promise<void>;

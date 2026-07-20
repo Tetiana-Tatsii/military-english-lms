@@ -1,9 +1,14 @@
--- DEPRECATED: use p4_drop_profiles_password.sql (Auth-only, no profiles.password).
--- Kept for history. Do not run on production after P4 drop-password.
+-- =============================================================
+-- P4 — Прибрати dual auth: DROP profiles.password
+--
+-- Паролі лише в auth.users (Supabase Auth).
+-- admin_sync_auth_password оновлює ТІЛЬКИ Auth.
+--
+-- Ризик: низький. Auth-паролі не чіпаються.
+-- Baseline counts мають лишитись 2/20/7.
+-- =============================================================
 
--- Admin: sync Supabase Auth password after changing profile password in the app.
--- Run in Supabase SQL Editor. Requires extensions schema (pgcrypto).
-
+-- 1) RPC: лише Auth (без запису в profiles)
 CREATE OR REPLACE FUNCTION public.admin_sync_auth_password(
   p_target_user_id text,
   p_new_password text
@@ -51,7 +56,7 @@ BEGIN
       'error', 'auth_user_not_found',
       'profile_id', p_target_user_id,
       'profile_name', v_profile_name,
-      'hint', 'У Authentication → Users немає користувача з таким UUID. Створіть його з тим самим id, що в profiles, або виконайте SQL з docs/RESET_PASSWORD.md'
+      'hint', 'У Authentication → Users немає користувача з таким UUID.'
     );
   END IF;
 
@@ -68,5 +73,21 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_sync_auth_password(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.admin_sync_auth_password(text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_sync_auth_password(text, text) TO authenticated;
+
+-- 2) Прибрати колонку (hash більше не потрібен)
+ALTER TABLE public.profiles DROP COLUMN IF EXISTS password;
+
+-- 3) Перевірка: колонки password немає
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'profiles'
+  AND column_name = 'password';
+-- Очікування: 0 rows
+
+-- 4) Baseline
+SELECT 'lms_courses' AS t, count(*) FROM public.lms_courses
+UNION ALL SELECT 'lms_lessons', count(*) FROM public.lms_lessons
+UNION ALL SELECT 'profiles', count(*) FROM public.profiles;

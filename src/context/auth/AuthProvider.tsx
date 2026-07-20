@@ -11,7 +11,6 @@ import React, {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { nameToEmail } from "@/lib/authEmail";
-import { hashPassword, verifyPassword } from "@/lib/password";
 import type {
   AccountStatus,
   SessionUser,
@@ -78,7 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data.map((u) => ({
           id: u.id,
           name: u.name,
-          password: "",
           role: u.role as UserRole,
           status: u.status as AccountStatus,
           squadId: u.squad_id,
@@ -232,8 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return "Користувач з таким іменем вже існує.";
       }
 
-      const hashedPassword = await hashPassword(password);
-
+      // Пароль лише в Supabase Auth — не пишемо в profiles.password
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: nameToEmail(name),
         password,
@@ -244,21 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (authError) {
         console.error("Supabase Auth error:", authError);
-        const uid = `usr-${Date.now()}`;
-        const { error } = await supabase.from("profiles").insert([
-          {
-            id: uid,
-            name,
-            password: hashedPassword,
-            role,
-            status: "pending",
-            squad_id: role === "student" ? "Alpha Squad" : null,
-          },
-        ]);
-
-        if (error) return "Помилка реєстрації на сервері.";
-        await fetchUsersFromSupabase();
-        return null;
+        return "Помилка реєстрації. Спробуйте інше ім'я або пізніше.";
       }
 
       if (authData.user) {
@@ -266,7 +249,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           {
             id: authData.user.id,
             name,
-            password: hashedPassword,
             role,
             status: "pending",
             squad_id: role === "student" ? "Alpha Squad" : null,
@@ -284,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (name: string, password: string): Promise<string | null> => {
+      // 1) Швидкий шлях: synthetic email з імені
       const { data: authData, error: authError } =
         await supabase.auth.signInWithPassword({
           email: nameToEmail(name),
@@ -294,6 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return finishLogin(authData.user.id);
       }
 
+      // 2) RPC лише для status + реального auth_email (БЕЗ password_hash)
       const { data: rpcData, error: rpcError } = await supabase.rpc(
         "get_profile_for_login",
         { p_name: name },
@@ -305,23 +289,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : "Користувача не знайдено.";
       }
 
-      const data = {
-        id: rpcData.id as string,
-        name: rpcData.name as string,
-        password: rpcData.password_hash as string,
-        role: rpcData.role as string,
-        status: rpcData.status as string,
-        auth_email: (rpcData.auth_email as string | null) ?? null,
-      };
+      const status = rpcData.status as string;
+      const authEmail = (rpcData.auth_email as string | null) ?? null;
 
-      if (data.status === "pending") {
+      if (status === "pending") {
         return "Ваш акаунт ще не активовано адміністрацією.";
       }
 
-      if (data.auth_email) {
+      // 3) Кирилиця / інший email у Auth — спроба з реальним email
+      if (authEmail) {
         const { data: authByRealEmail, error: realEmailError } =
           await supabase.auth.signInWithPassword({
-            email: data.auth_email,
+            email: authEmail,
             password,
           });
         if (!realEmailError && authByRealEmail?.user) {
@@ -329,33 +308,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (!data.password) return "Користувача не знайдено.";
-
-      const isHashed =
-        data.password.startsWith("$2b$") || data.password.startsWith("$2a$");
-      let isPasswordValid: boolean;
-
-      if (isHashed) {
-        isPasswordValid = await verifyPassword(password, data.password);
-      } else {
-        isPasswordValid = password === data.password;
-        if (isPasswordValid) {
-          const hashedPassword = await hashPassword(password);
-          await supabase
-            .from("profiles")
-            .update({ password: hashedPassword })
-            .eq("id", data.id);
-        }
-      }
-
-      if (!isPasswordValid) return "Невірний пароль.";
-
-      const authEmailHint = data.auth_email ?? nameToEmail(data.name);
-      return (
-        `Пароль у профілі правильний, але Supabase Auth не приймає його. ` +
-        `Синхронізуйте пароль для email: ${authEmailHint} ` +
-        `(Supabase → Authentication → Users, або SQL UPDATE auth.users за profile id).`
-      );
+      // Пароль перевіряє лише Supabase Auth (не клієнтський bcrypt)
+      return "Невірне ім'я або пароль.";
     },
     [finishLogin],
   );
@@ -396,19 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const changeUserPassword = useCallback(
     async (userId: string, newPassword: string) => {
-      const hashedPassword = await hashPassword(newPassword);
-      const { error } = await supabase
-        .from("profiles")
-        .update({ password: hashedPassword })
-        .eq("id", userId);
-      if (error) {
-        console.error("Помилка зміни пароля:", error.message);
-        return {
-          ok: false,
-          message: `Помилка profiles: ${error.message}`,
-        };
-      }
-
+      // Пароль лише через SECURITY DEFINER RPC → auth.users
       const { data: syncData, error: syncError } = await supabase.rpc(
         "admin_sync_auth_password",
         {
@@ -419,7 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (syncError) {
         const hint =
-          "Пароль у profiles збережено, але Auth не оновлено. Запустіть admin_sync_auth_password.sql у Supabase SQL Editor, або скиньте пароль вручну (див. docs/RESET_PASSWORD.md).";
+          "Не вдалося оновити пароль у Supabase Auth. Див. docs/RESET_PASSWORD.md.";
         console.error(hint, syncError.message);
         return { ok: false, message: hint };
       }
@@ -434,7 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (payload?.error) {
         const msg =
           payload.hint ??
-          `Auth не синхронізовано: ${payload.error}` +
+          `Auth не оновлено: ${payload.error}` +
             (payload.auth_email ? ` (email: ${payload.auth_email})` : "");
         console.error("admin_sync_auth_password:", payload);
         return { ok: false, message: msg };
@@ -442,7 +384,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return {
         ok: true,
-        message: "Пароль оновлено в profiles і Supabase Auth.",
+        message: "Пароль оновлено в Supabase Auth.",
       };
     },
     [],

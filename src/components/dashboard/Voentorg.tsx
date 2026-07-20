@@ -9,7 +9,7 @@ import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 interface VoentorgProps {
   gamification: GamificationProfile;
   isDarkMode: boolean;
-  onBuy: (itemId: string, price: number) => Promise<BuyShopResult>;
+  onBuy: (itemId: string) => Promise<BuyShopResult>;
   defaultOpen?: boolean;
 }
 
@@ -47,7 +47,7 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
 
     setBuying(itemId);
     try {
-      const result = await onBuy(itemId, price);
+      const result = await onBuy(itemId);
       if (result.error) {
         showToast(result.error, false);
       } else {
@@ -127,7 +127,7 @@ export default function Voentorg({ gamification, isDarkMode, onBuy, defaultOpen 
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-cover"
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.style.display = "none";

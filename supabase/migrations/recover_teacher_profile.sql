@@ -38,8 +38,8 @@ BEGIN
   LIMIT 1;
 
   IF v_old_id IS NULL THEN
-    INSERT INTO public.profiles (id, name, password, role, status, squad_id)
-    VALUES (v_auth_id::text, trim(v_teacher_name), '', 'teacher', 'approved', NULL);
+    INSERT INTO public.profiles (id, name, role, status, squad_id)
+    VALUES (v_auth_id::text, trim(v_teacher_name), 'teacher', 'approved', NULL);
     RAISE NOTICE 'Created profile for %', v_teacher_name;
   ELSIF v_old_id = v_auth_id::text THEN
     UPDATE public.profiles

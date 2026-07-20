@@ -12,7 +12,7 @@ export const INSTRUCTOR_ITEM_QUOTES: Record<string, string> = {
   energy:
     "Whoa, I can feel the turbines spooling up! I think I'm about to start seeing sounds!",
   boots:
-    "Perfect grip, zero blisters. Let's see how fast these bad boys can get me to the mess hall!",
+    "Perfect grip, zero blisters — straight to the mess hall!",
 };
 
 export function getInstructorSpeechMessage(

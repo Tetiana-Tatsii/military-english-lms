@@ -56,8 +56,8 @@ BEGIN
 
   IF v_old_id IS NULL THEN
     -- Профілю немає — створюємо
-    INSERT INTO public.profiles (id, name, password, role, status, squad_id)
-    VALUES (v_auth_id::text, 'Yura Kramarov', '', 'admin', 'approved', NULL);
+    INSERT INTO public.profiles (id, name, role, status, squad_id)
+    VALUES (v_auth_id::text, 'Yura Kramarov', 'admin', 'approved', NULL);
     RAISE NOTICE 'Created profile for Yura Kramarov';
   ELSE
     -- Оновлюємо role/name

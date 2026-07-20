@@ -120,6 +120,11 @@ export function useCourseLessonPage() {
   const handleQuizSubmit = useCallback(async () => {
     if (!activeLesson?.quiz?.length || !user) return;
 
+    const allAnswered = activeLesson.quiz.every(
+      (q) => quizAnswers[q.id] != null && String(quizAnswers[q.id]).length > 0,
+    );
+    if (!allAnswered) return;
+
     const { data: existing } = await supabase
       .from("quiz_results")
       .select("id, score")

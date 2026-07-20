@@ -15,3 +15,10 @@
 # P4 progress:
 # 2026-07-01 | p4_step3_revoke_password_select | OK | login OK, lesson save OK, counts 2/20
 # 2026-07-01 | p4_step4a student RLS | OK | answers 5 policies, quiz_results 4 policies — 4b skip
+# 2026-07-20 | audit | OK | 2/20/7/10/9/5 | RISK_POLICY 0 | PASSWORD SELECT still open (table-level)
+# 2026-07-20 | p4_step3b_revoke_password_select_fix | OK | no SELECT on password for anon/auth | smoke OK
+# 2026-07-20 | p4_step4 login hardening | OK | has_password_hash=false, has_auth_email=true, counts 2/20
+# 2026-07-20 | p4_shop_server_price | OK | buy_shop_item(p_item_id text) DEFINER | boots purchase charged correctly
+# 2026-07-20 | XSS sanitize | OK | isomorphic-dompurify in normalizeLessonHtml
+# 2026-07-20 | p4_revoke_password_write | OK | password col: only REFERENCES for anon/auth | smoke OK
+# 2026-07-20 | middleware + @supabase/ssr | OK | cookie session + route guards | smoke OK

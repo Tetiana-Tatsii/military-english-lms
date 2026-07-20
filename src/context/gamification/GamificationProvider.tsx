@@ -26,7 +26,7 @@ interface GamificationContextValue {
   instructorMood: InstructorMood;
   setInstructorMood: React.Dispatch<React.SetStateAction<InstructorMood>>;
   refreshGamification: (uid?: string) => Promise<void>;
-  buyShopItem: (itemId: string, price: number) => Promise<BuyShopResult>;
+  buyShopItem: (itemId: string) => Promise<BuyShopResult>;
 }
 
 const GamificationContext = createContext<GamificationContextValue | undefined>(
@@ -89,7 +89,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   );
 
   const buyShopItem = useCallback(
-    async (itemId: string, price: number): Promise<BuyShopResult> => {
+    async (itemId: string): Promise<BuyShopResult> => {
       if (!user) {
         return {
           error: "Не авторизований",
@@ -100,7 +100,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      const result = await buyShopItemInDb(supabase, user.id, itemId, price);
+      const result = await buyShopItemInDb(supabase, user.id, itemId);
 
       if (!result.error) {
         setGamification((prev) => ({
