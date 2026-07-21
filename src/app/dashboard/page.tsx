@@ -147,9 +147,9 @@ export default function DashboardPage() {
             isDarkMode={isDarkMode}
           />
 
-          {/* Between courses & instructor — offset right so it sits above the card content, not over the figure */}
+          {/* Offset right + gap above card so bubble clears the instructor head on mobile */}
           {instructorSpeech && (
-            <div className="relative z-20 pl-[100px] sm:pl-[120px] md:pl-[150px] lg:pl-[180px] -mb-1">
+            <div className="relative z-20 pl-[132px] sm:pl-[140px] md:pl-[150px] lg:pl-[180px] mb-3 sm:mb-2">
               <InstructorSpeechBubble
                 message={instructorSpeech}
                 variant={speechVariant}
@@ -159,7 +159,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="relative z-10 overflow-visible">
+          <div className="relative z-10 overflow-visible mt-1 sm:mt-0">
             <InstructorCard
               gamification={activeGamification}
               mood={instructorMood}

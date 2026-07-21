@@ -58,15 +58,16 @@ export default function InstructorCard({
         minHeight: 210,
       }}
     >
+      {/* Mobile gutter wider so figure does not cover the title; size of figure unchanged */}
       <div
-        className="flex-shrink-0 w-[100px] sm:w-[120px] md:w-[150px] lg:w-[180px]"
+        className="flex-shrink-0 w-[132px] sm:w-[140px] md:w-[150px] lg:w-[180px]"
         aria-hidden
       />
 
       <img
         src={imageSrc}
         alt={`Instructor — ${mood}`}
-        className="absolute bottom-0 left-2 sm:left-4 z-10 pointer-events-none
+        className="absolute bottom-0 left-1 sm:left-4 z-10 pointer-events-none
           h-[calc(100%+56px)] w-auto
           object-contain object-bottom"
         onError={(e) => {
@@ -74,10 +75,10 @@ export default function InstructorCard({
         }}
       />
 
-      <div className="flex flex-col flex-1 min-w-0 px-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3">
-        <div className="flex items-center justify-center">
+      <div className="flex flex-col flex-1 min-w-0 pl-1 pr-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3">
+        <div className="flex items-center justify-center sm:justify-center">
           <span
-            className="text-lg sm:text-xl font-bold text-center"
+            className="text-base sm:text-xl font-bold text-center leading-tight max-w-[11rem] sm:max-w-none"
             style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
           >
             🪖 Your Instructor Kava{equippedEmoji ? ` ${equippedEmoji}` : ""}
