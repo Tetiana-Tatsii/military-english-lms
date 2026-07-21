@@ -308,11 +308,22 @@ export default function CourseLessonHomeworkPanel({
               />
               Прикріпити файли (PDF, Word, фото)
             </p>
+            <p
+              style={{
+                margin: "0 0 12px",
+                fontSize: 12,
+                color: isDarkMode ? "#a3a198" : "#7a7568",
+                lineHeight: 1.4,
+              }}
+            >
+              Фото автоматично стискаються для економії місця, але лишаються
+              читабельними.
+            </p>
             <input
               type="file"
               id="file-input"
               multiple
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*"
               onChange={onFileChange}
               style={{ display: "none" }}
             />
@@ -371,6 +382,9 @@ export default function CourseLessonHomeworkPanel({
                       >
                         <FileText size={12} />
                         {file.name}
+                        <span style={{ opacity: 0.7 }}>
+                          ({Math.max(1, Math.round(file.size / 1024))} КБ)
+                        </span>
                       </div>
                       <button
                         onClick={() => onRemoveFile(idx)}

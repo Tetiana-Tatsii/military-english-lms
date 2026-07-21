@@ -11,11 +11,39 @@ import {
   isIOSDevice,
   isVoiceRecordingSupported,
 } from "@/lib/voiceRecording";
+import {
+  MAX_GALLERY_AUDIO_BYTES,
+  MAX_GALLERY_AUDIO_SECONDS,
+  MAX_VOICE_RECORDING_SECONDS,
+} from "@/lib/mediaLimits";
 
 const IOS_MIN_RECORD_MS = 2000;
 const IOS_FINALIZE_DELAY_MS = 600;
 const DESKTOP_FINALIZE_DELAY_MS = 50;
 const RECORDING_TIMESLICE_MS = 500;
+
+function readAudioDurationSeconds(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const audio = document.createElement("audio");
+    audio.preload = "metadata";
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      audio.removeAttribute("src");
+      audio.load();
+    };
+    audio.onloadedmetadata = () => {
+      const duration = audio.duration;
+      cleanup();
+      resolve(Number.isFinite(duration) ? duration : null);
+    };
+    audio.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+    audio.src = url;
+  });
+}
 
 export function useVoiceRecorder() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -34,6 +62,7 @@ export function useVoiceRecorder() {
   const previewUrlRef = useRef<string | null>(null);
   const recordingStartedAtRef = useRef(0);
   const recordingTimeRef = useRef(0);
+  const stopRecordingRef = useRef<() => void>(() => {});
 
   const revokePreviewUrl = useCallback(() => {
     if (previewUrlRef.current) {
@@ -96,8 +125,11 @@ export function useVoiceRecorder() {
     if (isRecording) {
       interval = setInterval(() => {
         setRecordingTime((prev) => {
-          const next = prev + 1;
+          const next = Math.min(prev + 1, MAX_VOICE_RECORDING_SECONDS);
           recordingTimeRef.current = next;
+          if (next >= MAX_VOICE_RECORDING_SECONDS) {
+            queueMicrotask(() => stopRecordingRef.current());
+          }
           return next;
         });
       }, 1000);
@@ -215,7 +247,7 @@ export function useVoiceRecorder() {
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = useCallback(() => {
     const recorder = recorderRef.current;
     if (!recorder || recorder.state !== "recording") {
       setIsRecording(false);
@@ -223,7 +255,11 @@ export function useVoiceRecorder() {
     }
 
     const elapsed = Date.now() - recordingStartedAtRef.current;
-    if (isIOSDevice() && elapsed < IOS_MIN_RECORD_MS) {
+    const hitMax =
+      recordingTimeRef.current >= MAX_VOICE_RECORDING_SECONDS ||
+      elapsed >= MAX_VOICE_RECORDING_SECONDS * 1000;
+
+    if (isIOSDevice() && !hitMax && elapsed < IOS_MIN_RECORD_MS) {
       setError("Зачекайте щонайменше 2 секунди перед зупинкою запису.");
       return;
     }
@@ -252,9 +288,11 @@ export function useVoiceRecorder() {
         stopStream();
       }
     }, isIOSDevice() ? 100 : 0);
-  };
+  }, []);
 
-  const loadAudioFile = (file: File) => {
+  stopRecordingRef.current = stopRecording;
+
+  const loadAudioFile = async (file: File) => {
     if (!isAcceptableVoiceFile(file)) {
       setError("Оберіть аудіофайл (m4a, mp3, wav) або запис з Диктофона.");
       return;
@@ -265,12 +303,28 @@ export function useVoiceRecorder() {
       return;
     }
 
+    if (file.size > MAX_GALLERY_AUDIO_BYTES) {
+      setError(
+        "Аудіофайл занадто великий. Запишіть у застосунку (до 3 хв) або скоротіть запис у Диктофоні.",
+      );
+      return;
+    }
+
+    const duration = await readAudioDurationSeconds(file);
+    if (duration != null && duration > MAX_GALLERY_AUDIO_SECONDS + 1) {
+      setError(
+        `Аудіо довше за 3 хвилини (${Math.ceil(duration)} с). Скоротіть запис і спробуйте знову.`,
+      );
+      return;
+    }
+
     const mime = getVoiceFileMimeType(file);
     const blob =
       file.type && file.type.length > 0
         ? file
         : new Blob([file], { type: mime });
-    const fromVideo = file.type.startsWith("video/") || /\.(mov|mp4)$/i.test(file.name);
+    const fromVideo =
+      file.type.startsWith("video/") || /\.(mov|mp4)$/i.test(file.name);
 
     setError(null);
     setPreviewFromBlob(blob, { fromVideo });
@@ -290,6 +344,7 @@ export function useVoiceRecorder() {
     audioUrl,
     isRecording,
     recordingTime,
+    maxRecordingSeconds: MAX_VOICE_RECORDING_SECONDS,
     error,
     previewWarning,
     canPreview,

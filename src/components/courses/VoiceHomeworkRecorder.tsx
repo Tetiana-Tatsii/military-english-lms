@@ -24,6 +24,7 @@ export default function VoiceHomeworkRecorder({
     audioBlob,
     isRecording,
     recordingTime,
+    maxRecordingSeconds,
     error,
     previewWarning,
     canPreview,
@@ -46,9 +47,9 @@ export default function VoiceHomeworkRecorder({
     }
   }, [resetKey, clearRecording]);
 
-  const handleFilePick = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilePick = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) loadAudioFile(file);
+    if (file) await loadAudioFile(file);
     event.target.value = "";
   };
 
@@ -77,6 +78,16 @@ export default function VoiceHomeworkRecorder({
       >
         <Headphones size={16} style={{ display: "inline", marginRight: 6 }} />
         Голосова відповідь
+        <span
+          style={{
+            marginLeft: 8,
+            fontWeight: 500,
+            fontSize: 12,
+            color: isDarkMode ? "#a3a198" : "#7a7568",
+          }}
+        >
+          (до {formatTime(maxRecordingSeconds)})
+        </span>
       </p>
 
       {error && !hasRecording && (
@@ -154,9 +165,24 @@ export default function VoiceHomeworkRecorder({
                 >
                   <StopCircle size={18} />
                   {canStopRecording
-                    ? `Зупинити запис (${formatTime(recordingTime)})`
+                    ? recordingTime >= maxRecordingSeconds
+                      ? `Ліміт ${formatTime(maxRecordingSeconds)} — зупиняємо…`
+                      : `Зупинити запис (${formatTime(recordingTime)} / ${formatTime(maxRecordingSeconds)})`
                     : `Записуйте… (${formatTime(recordingTime)}, ще ${Math.max(0, 2 - recordingTime)} с)`}
                 </button>
+              )}
+              {canRecord && !isRecording && (
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: 12,
+                    color: isDarkMode ? "#a3a198" : "#7a7568",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Максимум {formatTime(maxRecordingSeconds)}. Після ліміту запис
+                  зупиниться автоматично.
+                </p>
               )}
               {isIOS && !isRecording && (
                 <p

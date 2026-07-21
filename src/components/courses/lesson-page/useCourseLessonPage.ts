@@ -162,8 +162,38 @@ export function useCourseLessonPage() {
   }, [activeLesson, user, quizAnswers, courses]);
 
   const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setAttachedFiles(Array.from(e.target.files || []));
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const picked = Array.from(e.target.files || []);
+      e.target.value = "";
+      if (picked.length === 0) return;
+
+      const { compressImageFile, isCompressibleImage } = await import(
+        "@/lib/compressImage"
+      );
+      const { MAX_DOCUMENT_BYTES } = await import("@/lib/mediaLimits");
+
+      const processed: File[] = [];
+      for (const file of picked) {
+        if (isCompressibleImage(file)) {
+          try {
+            processed.push(await compressImageFile(file));
+          } catch (err) {
+            console.error("Не вдалося стиснути фото:", err);
+            processed.push(file);
+          }
+          continue;
+        }
+
+        if (file.size > MAX_DOCUMENT_BYTES) {
+          alert(
+            `Файл «${file.name}» занадто великий (макс. ${Math.round(MAX_DOCUMENT_BYTES / (1024 * 1024))} МБ).`,
+          );
+          continue;
+        }
+        processed.push(file);
+      }
+
+      setAttachedFiles(processed);
     },
     [],
   );

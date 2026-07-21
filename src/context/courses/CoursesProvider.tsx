@@ -426,15 +426,25 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
         }
 
         if (answerData.files && answerData.files.length > 0) {
-          for (const file of answerData.files) {
+          const { compressImageFile, isCompressibleImage } = await import(
+            "@/lib/compressImage"
+          );
+
+          for (const rawFile of answerData.files) {
             try {
-              const fileExt = file.name.split(".").pop();
+              const file = isCompressibleImage(rawFile)
+                ? await compressImageFile(rawFile)
+                : rawFile;
+              const fileExt = file.name.split(".").pop() || "bin";
               const fileName = `file-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
               const filePath = `student-answers/${fileName}`;
 
               const { error: uploadError } = await supabase.storage
                 .from("lesson-media")
-                .upload(filePath, file);
+                .upload(filePath, file, {
+                  contentType: file.type || undefined,
+                  upsert: false,
+                });
 
               if (!uploadError) {
                 const { data } = supabase.storage
