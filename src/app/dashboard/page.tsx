@@ -139,6 +139,8 @@ export default function DashboardPage() {
           <CourseList
             courses={courses}
             answers={myAnswers}
+            userId={user.id}
+            studentName={user.name}
             getCourseProgress={getCourseProgress}
             getLessonTitle={getLessonTitle}
             onCourseClick={(courseId) => router.push(`/courses/${courseId}`)}

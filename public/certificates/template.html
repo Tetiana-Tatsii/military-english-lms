@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Certificate — {{STUDENT_NAME}}</title>
+    <!--
+      TEMPLATE FOR IT DESIGNER
+      Replace layout/styles freely. Keep these placeholders:
+        {{STUDENT_NAME}}
+        {{COURSE_TITLE}}
+        {{COMPLETED_AT}}
+        {{ISSUED_AT}}
+        {{CERTIFICATE_NUMBER}}
+    -->
+    <style>
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #e8e4d8;
+        font-family: "Georgia", "Times New Roman", serif;
+        color: #3a3528;
+      }
+      .sheet {
+        width: min(1000px, 96vw);
+        aspect-ratio: 1.414 / 1;
+        background: #faf9f6;
+        border: 12px solid #8a8a45;
+        padding: 48px 56px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 12px 40px rgba(58, 53, 40, 0.18);
+      }
+      .eyebrow {
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        font-size: 12px;
+        color: #8a8a45;
+        font-family: system-ui, sans-serif;
+      }
+      h1 {
+        margin: 12px 0 0;
+        font-size: clamp(28px, 4vw, 42px);
+        font-weight: 700;
+      }
+      .subtitle {
+        margin-top: 8px;
+        font-size: 16px;
+        color: #5c574a;
+        font-family: system-ui, sans-serif;
+      }
+      .name {
+        margin: 36px 0 8px;
+        font-size: clamp(32px, 5vw, 48px);
+        color: #8a8a45;
+        border-bottom: 2px solid #d8cdb4;
+        padding-bottom: 8px;
+        display: inline-block;
+        min-width: 60%;
+      }
+      .course {
+        margin: 20px 0 0;
+        font-size: 20px;
+        line-height: 1.4;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px 40px;
+        margin-top: 40px;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        color: #5c574a;
+      }
+      .meta strong {
+        display: block;
+        color: #3a3528;
+        font-size: 15px;
+        margin-top: 4px;
+      }
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        color: #9a8f70;
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        .sheet {
+          box-shadow: none;
+          width: 100%;
+          min-height: 100vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <article class="sheet">
+      <header>
+        <p class="eyebrow">Military English LMS</p>
+        <h1>Certificate of Completion</h1>
+        <p class="subtitle">Підтвердження успішного завершення курсу</p>
+      </header>
+
+      <section>
+        <p class="eyebrow">This certifies that</p>
+        <p class="name">{{STUDENT_NAME}}</p>
+        <p class="course">
+          has successfully completed the course<br />
+          <strong>{{COURSE_TITLE}}</strong>
+        </p>
+        <div class="meta">
+          <div>
+            Дата завершення
+            <strong>{{COMPLETED_AT}}</strong>
+          </div>
+          <div>
+            Дата видачі
+            <strong>{{ISSUED_AT}}</strong>
+          </div>
+          <div>
+            Номер сертифіката
+            <strong>{{CERTIFICATE_NUMBER}}</strong>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>STANAG-oriented military English training</span>
+        <span>Print / Save as PDF from the browser</span>
+      </footer>
+    </article>
+  </body>
+</html>

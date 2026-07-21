@@ -4,10 +4,13 @@ import React, { useState } from "react";
 import { ChevronDown, ChevronUp, Award, CheckCircle, Clock } from "lucide-react";
 import { Course, Answer } from "@/context/AppContext";
 import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
+import CertificateDownloadButton from "@/components/dashboard/CertificateDownloadButton";
 
 interface CourseListProps {
   courses: Course[];
   answers: Answer[];
+  userId: string;
+  studentName: string;
   getCourseProgress: (courseId: string) => number;
   getLessonTitle: (courseId: string, lessonId: string) => string;
   onCourseClick: (courseId: string) => void;
@@ -17,6 +20,8 @@ interface CourseListProps {
 export default function CourseList({
   courses,
   answers,
+  userId,
+  studentName,
   getCourseProgress,
   getLessonTitle,
   onCourseClick,
@@ -117,6 +122,13 @@ export default function CourseList({
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
+                  <CertificateDownloadButton
+                    course={course}
+                    userId={userId}
+                    studentName={studentName}
+                    answers={answers}
+                    isDarkMode={isDarkMode}
+                  />
                 </div>
               )}
 
