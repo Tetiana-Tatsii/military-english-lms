@@ -178,6 +178,11 @@ export default function DashboardPage() {
             />
           )}
 
+          {/* Mobile/tablet: SLP before Achievements */}
+          <div className="xl:hidden">
+            <ProfileStats isDarkMode={isDarkMode} />
+          </div>
+
           <Achievements
             gamification={activeGamification}
             courses={courses}
@@ -185,8 +190,8 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* ПРАВА КОЛОНКА: SLP профіль */}
-        <div className="flex flex-col gap-6">
+        {/* Desktop: SLP in right column */}
+        <div className="hidden xl:flex flex-col gap-6">
           <ProfileStats isDarkMode={isDarkMode} />
         </div>
 
