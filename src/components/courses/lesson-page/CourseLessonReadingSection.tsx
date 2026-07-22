@@ -2,11 +2,17 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 import { BookOpen, CheckCircle } from "lucide-react";
+import { useAppContext } from "@/context/AppContext";
 import {
   getCorrectOptionIndex,
   getSelectedOptionIndex,
   isQuizAnswerCorrect,
 } from "@/lib/quiz";
+import {
+  clearReadingCheck,
+  loadReadingCheck,
+  saveReadingCheck,
+} from "@/lib/readingCheckStorage";
 import type { Lesson } from "@/types";
 
 interface CourseLessonReadingSectionProps {
@@ -22,17 +28,55 @@ export default function CourseLessonReadingSection({
   lesson,
   isDarkMode,
 }: CourseLessonReadingSectionProps) {
+  const { user } = useAppContext();
   const hasReading = hasText(lesson.readingEn) || hasText(lesson.readingUk);
   const questions = (lesson.readingQuiz ?? []).slice(0, 3);
   const hasQuiz = questions.length > 0;
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    setHydrated(false);
     setAnswers({});
     setSubmitted(false);
-  }, [lesson.id]);
+
+    if (!user?.id || !lesson.id) {
+      setHydrated(true);
+      return;
+    }
+
+    const stored = loadReadingCheck(user.id, lesson.id);
+    if (stored) {
+      setAnswers(stored.answers);
+      setSubmitted(true);
+    }
+    setHydrated(true);
+  }, [lesson.id, user?.id]);
+
+  const persistResult = (nextAnswers: Record<string, string>) => {
+    if (!user?.id) return;
+    const nextScore = questions.filter((q) =>
+      isQuizAnswerCorrect(q, nextAnswers[q.id]),
+    ).length;
+    saveReadingCheck(user.id, lesson.id, {
+      answers: nextAnswers,
+      score: nextScore,
+      total: questions.length,
+    });
+  };
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    persistResult(answers);
+  };
+
+  const handleTryAgain = () => {
+    if (user?.id) clearReadingCheck(user.id, lesson.id);
+    setAnswers({});
+    setSubmitted(false);
+  };
 
   if (!hasReading && !hasQuiz) return null;
 
@@ -160,8 +204,8 @@ export default function CourseLessonReadingSection({
             Reading check
           </h3>
           <p style={{ margin: "0 0 20px", fontSize: 13, color: muted }}>
-            Перевірте розуміння прочитаного. Результат лише для вас — у журнал
-            не зберігається.
+            Перевірте розуміння прочитаного. У журнал викладача не потрапляє;
+            ваш результат зберігається в браузері.
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -293,12 +337,12 @@ export default function CourseLessonReadingSection({
             })}
           </div>
 
-          {!submitted ? (
+          {!hydrated ? null : !submitted ? (
             <div style={{ marginTop: 24 }}>
               <button
                 type="button"
                 disabled={!allAnswered}
-                onClick={() => setSubmitted(true)}
+                onClick={handleSubmit}
                 style={{
                   background: allAnswered
                     ? "#8a8a45"
@@ -326,9 +370,26 @@ export default function CourseLessonReadingSection({
                 marginTop: 24,
                 padding: "12px 14px",
                 borderRadius: 8,
-                background: isDarkMode ? "rgba(34, 197, 94, 0.15)" : "#dcfce7",
-                border: "1px solid #22c55e",
-                color: isDarkMode ? "#dcfce7" : "#14532d",
+                background:
+                  score === questions.length
+                    ? isDarkMode
+                      ? "rgba(34, 197, 94, 0.15)"
+                      : "#dcfce7"
+                    : isDarkMode
+                      ? "rgba(201, 122, 74, 0.15)"
+                      : "#fdf8f5",
+                border:
+                  score === questions.length
+                    ? "1px solid #22c55e"
+                    : "1px solid #c97a4a",
+                color:
+                  score === questions.length
+                    ? isDarkMode
+                      ? "#dcfce7"
+                      : "#14532d"
+                    : isDarkMode
+                      ? "#facbce"
+                      : "#9a4a2a",
                 fontWeight: 700,
                 display: "flex",
                 alignItems: "center",
@@ -337,25 +398,26 @@ export default function CourseLessonReadingSection({
               }}
             >
               <span>
-                Результат: {score}/{questions.length}
+                {score === questions.length
+                  ? "Completed"
+                  : `Результат: ${score}/${questions.length}`}
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setAnswers({});
-                  setSubmitted(false);
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: muted,
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  textDecoration: "underline",
-                }}
-              >
-                Спробувати ще
-              </button>
+              {score !== null && score < questions.length && (
+                <button
+                  type="button"
+                  onClick={handleTryAgain}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: muted,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    textDecoration: "underline",
+                  }}
+                >
+                  Try again
+                </button>
+              )}
             </div>
           )}
         </div>
