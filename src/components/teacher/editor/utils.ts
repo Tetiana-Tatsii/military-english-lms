@@ -23,9 +23,18 @@ export async function uploadLessonMedia(
   folder: "photos" | "audio" | "documents",
 ): Promise<string | null> {
   try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("not_authenticated");
+    }
+
     const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${folder}/${fileName}`;
+    // H3: own folder so Storage RLS can scope INSERT/UPDATE to auth.uid()
+    const filePath = `${folder}/${user.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("lesson-media")

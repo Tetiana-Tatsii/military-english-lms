@@ -403,7 +403,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
               (isIOSDevice() ? "audio/mp4" : "audio/webm");
             const fileExt = getAudioExtension(audioMime);
             const fileName = `audio-${Date.now()}.${fileExt}`;
-            const filePath = `student-answers/${fileName}`;
+            const filePath = `student-answers/${user.id}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
               .from("lesson-media")
@@ -437,7 +437,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
                 : rawFile;
               const fileExt = file.name.split(".").pop() || "bin";
               const fileName = `file-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-              const filePath = `student-answers/${fileName}`;
+              const filePath = `student-answers/${user.id}/${fileName}`;
 
               const { error: uploadError } = await supabase.storage
                 .from("lesson-media")
