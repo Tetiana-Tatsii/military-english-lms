@@ -147,13 +147,6 @@ export async function fetchSlpAverage(
   });
 }
 
-function buildCertificateNumber(courseId: string): string {
-  const year = new Date().getFullYear();
-  const short = courseId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase() || "COURSE";
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `MEL-${short}-${year}-${rand}`;
-}
-
 function formatUaDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -164,6 +157,44 @@ function formatUaDate(iso: string): string {
   });
 }
 
+function mapCertificateRow(row: Record<string, unknown>): CertificateRecord {
+  return {
+    id: String(row.id),
+    user_id: String(row.user_id),
+    course_id: String(row.course_id),
+    student_name: String(row.student_name),
+    course_title: String(row.course_title),
+    certificate_number: String(row.certificate_number),
+    completed_at: String(row.completed_at),
+    issued_at: String(row.issued_at),
+  };
+}
+
+function issueCertificateErrorMessage(code: string, payload: Record<string, unknown>): string {
+  switch (code) {
+    case "not_authenticated":
+      return "Потрібно перелогінитись.";
+    case "course_not_found":
+      return "Курс не знайдено.";
+    case "course_not_active":
+      return "Сертифікат доступний лише для активних курсів.";
+    case "slp_too_low":
+      return `Середній SLP ${payload.slpAverage ?? 0}% — потрібно не нижче ${CERTIFICATE_SLP_MIN}%.`;
+    case "homework_incomplete":
+      return `ДЗ здано ${payload.homeworkDone ?? 0}/${payload.totalLessons ?? 0} уроків — потрібні всі.`;
+    case "quizzes_incomplete":
+      return `Практичні тести: ${payload.quizzesDone ?? 0}/${payload.quizzesRequired ?? 0} — потрібні всі.`;
+    case "no_lessons":
+      return "У курсі ще немає уроків.";
+    default:
+      return "Не вдалося видати сертифікат.";
+  }
+}
+
+/**
+ * Returns existing certificate or issues via RPC (H2).
+ * Eligibility is enforced server-side — client insert is blocked by RLS.
+ */
 export async function getOrIssueCertificate(
   supabase: SupabaseClient,
   params: {
@@ -189,30 +220,31 @@ export async function getOrIssueCertificate(
     return existing as CertificateRecord;
   }
 
-  const now = new Date().toISOString();
-  const row = {
-    user_id: params.userId,
-    course_id: params.course.id,
-    student_name: params.studentName,
-    course_title: params.course.title,
-    certificate_number: buildCertificateNumber(params.course.id),
-    completed_at: params.completedAt ?? now,
-    issued_at: now,
-  };
+  const { data, error } = await supabase.rpc("issue_certificate", {
+    p_course_id: params.course.id,
+  });
 
-  const { data, error } = await supabase
-    .from("certificates")
-    .insert(row)
-    .select(
-      "id, user_id, course_id, student_name, course_title, certificate_number, completed_at, issued_at",
-    )
-    .single();
-
-  if (error || !data) {
-    throw new Error(error?.message || "Не вдалося видати сертифікат.");
+  if (error) {
+    throw new Error(error.message);
   }
 
-  return data as CertificateRecord;
+  const payload = data as Record<string, unknown> | null;
+  if (!payload) {
+    throw new Error("Не вдалося видати сертифікат.");
+  }
+
+  if (payload.error) {
+    throw new Error(
+      issueCertificateErrorMessage(String(payload.error), payload),
+    );
+  }
+
+  const cert = payload.certificate;
+  if (!cert || typeof cert !== "object") {
+    throw new Error("Не вдалося видати сертифікат.");
+  }
+
+  return mapCertificateRow(cert as Record<string, unknown>);
 }
 
 export async function downloadCertificateHtml(
