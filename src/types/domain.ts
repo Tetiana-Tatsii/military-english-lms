@@ -39,6 +39,12 @@ export type Lesson = {
   quizlet?: { term: string; translation: string }[];
   skill?: SkillType;
   audioUrl?: string;
+  /** Bilingual reading passage (EN column) */
+  readingEn?: string;
+  /** Bilingual reading passage (UK column) */
+  readingUk?: string;
+  /** Short comprehension quiz for the reading (typically up to 3 questions) */
+  readingQuiz?: QuizQuestion[];
   grammarContent?: string;
   imageUrl?: string;
   quiz?: QuizQuestion[];

@@ -2,6 +2,7 @@
 
 import type { CourseLessonPageState } from "./useCourseLessonPage";
 import CourseLessonTheorySection from "./CourseLessonTheorySection";
+import CourseLessonReadingSection from "./CourseLessonReadingSection";
 import CourseLessonMaterialsSection from "./CourseLessonMaterialsSection";
 import CourseLessonQuizPanel from "./CourseLessonQuizPanel";
 import CourseLessonHomeworkPanel from "./CourseLessonHomeworkPanel";
@@ -78,6 +79,10 @@ export default function CourseLessonMainContent({
       }}
     >
       <CourseLessonTheorySection lesson={activeLesson} isDarkMode={isDarkMode} />
+      <CourseLessonReadingSection
+        lesson={activeLesson}
+        isDarkMode={isDarkMode}
+      />
       <CourseLessonMaterialsSection
         lesson={activeLesson}
         isDarkMode={isDarkMode}

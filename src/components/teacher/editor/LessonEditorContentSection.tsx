@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { BookOpen, FileText, ClipboardList } from "lucide-react";
 import { quillModules } from "./utils";
 import type { LessonEditorSectionProps } from "./types";
+import LessonEditorReadingSection from "./LessonEditorReadingSection";
 import "react-quill-new/dist/quill.snow.css";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
@@ -28,7 +29,7 @@ export default function LessonEditorContentSection({
             gap: "8px",
           }}
         >
-          <FileText size={18} /> Основний текст / Reading
+          <FileText size={18} /> Основний текст / Theory
         </label>
         <div
           className={`editor-quill editor-quill--reading ${isDarkMode ? "dark-quill" : ""}`}
@@ -46,6 +47,12 @@ export default function LessonEditorContentSection({
           />
         </div>
       </div>
+
+      <LessonEditorReadingSection
+        editingLesson={editingLesson}
+        setEditingLesson={setEditingLesson}
+        isDarkMode={isDarkMode}
+      />
 
       <div className="lesson-editor-section">
         <label

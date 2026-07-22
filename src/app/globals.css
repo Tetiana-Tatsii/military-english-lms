@@ -223,6 +223,29 @@ body {
   border-radius: 12px;
 }
 
+.lesson-reading-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.lesson-reading-col {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .lesson-reading-columns {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 24px;
+  }
+
+  .lesson-reading-col--uk {
+    border-left: 1px solid #e0dcd0;
+    padding-left: 24px;
+  }
+}
+
 /* ─── Teacher lesson editor sections ─── */
 .lesson-editor-sections {
   display: flex;
