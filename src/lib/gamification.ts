@@ -1,12 +1,53 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Course } from "@/context/AppContext";
 
+export type ShopItemKind = "refreshment" | "equipment";
+
+/** Visual layer key for CharacterStage (bottom → top order in CHARACTER_LAYER_ORDER). */
+export type CharacterLayerKey =
+  | "base"
+  | "boots"
+  | "kneepads"
+  | "belt"
+  | "vest"
+  | "backpack"
+  | "gloves"
+  | "watch"
+  | "radio"
+  | "patch"
+  | "glasses"
+  | "headset"
+  | "helmet"
+  | "hand"
+  | "companion"
+  | "victory";
+
+export type EquipmentArtStub = {
+  id: string;
+  name: string;
+  /** Short UA hint for designer */
+  nameUk: string;
+  emoji: string;
+  layer: CharacterLayerKey;
+  /** Shop card icon ~300×300 */
+  artShop: string;
+  /** Overlay on Kava ~600×900, transparent PNG/WebP */
+  artLayer: string;
+};
+
+export interface InventoryItem {
+  itemId: string;
+  kind: string;
+  equipped: boolean;
+}
+
 export interface GamificationProfile {
   coffeeCoins: number;
   streakCount: number;
   activeInstructorItem: string;
   purchasedItems: string[];
   completedCourses: string[];
+  inventory: InventoryItem[];
 }
 
 export const DEFAULT_GAMIFICATION_PROFILE: GamificationProfile = {
@@ -15,16 +56,161 @@ export const DEFAULT_GAMIFICATION_PROFILE: GamificationProfile = {
   activeInstructorItem: "coffee",
   purchasedItems: [],
   completedCourses: [],
+  inventory: [],
 };
 
-// Shop catalogue — add new items here anytime without touching business logic
-export const SHOP_ITEMS = [
-  { id: "coffee",   name: "Coffee",         price: 0,  emoji: "☕", image: "/shop/coffee.webp"   },
-  { id: "snickers", name: "Energy Bar",     price: 30, emoji: "🍫", image: "/shop/snickers.webp" },
-  { id: "energy",   name: "Energy Drink",   price: 40, emoji: "🥤", image: "/shop/energy.webp"   },
-  { id: "thermos",  name: "Thermo Cup",     price: 50, emoji: "🫖", image: "/shop/thermos.webp"  },
-  { id: "boots",    name: "Tactical Boots", price: 60, emoji: "🥾", image: "/shop/boots.webp"    },
+export type ShopCatalogItem = {
+  id: string;
+  name: string;
+  price: number;
+  emoji: string;
+  image: string;
+  kind: ShopItemKind;
+  layer: CharacterLayerKey;
+};
+
+// Purchasable catalogue (prices must match buy_shop_item RPC)
+export const SHOP_ITEMS: readonly ShopCatalogItem[] = [
+  { id: "coffee",   name: "Coffee",         price: 0,  emoji: "☕", image: "/shop/coffee.webp",   kind: "refreshment", layer: "hand" },
+  { id: "snickers", name: "Energy Bar",     price: 30, emoji: "🍫", image: "/shop/snickers.webp", kind: "refreshment", layer: "hand" },
+  { id: "energy",   name: "Energy Drink",   price: 40, emoji: "🥤", image: "/shop/energy.webp",   kind: "refreshment", layer: "hand" },
+  { id: "thermos",  name: "Thermo Cup",     price: 50, emoji: "🫖", image: "/shop/thermos.webp",  kind: "refreshment", layer: "hand" },
+  { id: "boots",    name: "Tactical Boots", price: 60, emoji: "🥾", image: "/shop/boots.webp",    kind: "equipment",   layer: "boots" },
 ] as const;
+
+/** Full equipment roadmap for art (Locked in UI until priced + assets ready). Boots already live in SHOP_ITEMS. */
+export const EQUIPMENT_COMING_SOON: readonly EquipmentArtStub[] = [
+  {
+    id: "glasses",
+    name: "Ballistic Glasses",
+    nameUk: "Тактичні окуляри",
+    emoji: "🕶️",
+    layer: "glasses",
+    artShop: "/shop/glasses.webp",
+    artLayer: "/layers/glasses.webp",
+  },
+  {
+    id: "gloves",
+    name: "Tactical Gloves",
+    nameUk: "Рукавички",
+    emoji: "🧤",
+    layer: "gloves",
+    artShop: "/shop/gloves.webp",
+    artLayer: "/layers/gloves.webp",
+  },
+  {
+    id: "helmet",
+    name: "Combat Helmet",
+    nameUk: "Шолом",
+    emoji: "⛑️",
+    layer: "helmet",
+    artShop: "/shop/helmet.webp",
+    artLayer: "/layers/helmet.webp",
+  },
+  {
+    id: "vest",
+    name: "Plate Carrier",
+    nameUk: "Бронежилет / розгрузка",
+    emoji: "🦺",
+    layer: "vest",
+    artShop: "/shop/vest.webp",
+    artLayer: "/layers/vest.webp",
+  },
+  {
+    id: "radio",
+    name: "Field Radio",
+    nameUk: "Рація",
+    emoji: "📻",
+    layer: "radio",
+    artShop: "/shop/radio.webp",
+    artLayer: "/layers/radio.webp",
+  },
+  {
+    id: "kneepads",
+    name: "Knee Pads",
+    nameUk: "Наколінники",
+    emoji: "🦵",
+    layer: "kneepads",
+    artShop: "/shop/kneepads.webp",
+    artLayer: "/layers/kneepads.webp",
+  },
+  {
+    id: "belt",
+    name: "Tactical Belt",
+    nameUk: "Тактичний ремінь",
+    emoji: "⛓️",
+    layer: "belt",
+    artShop: "/shop/belt.webp",
+    artLayer: "/layers/belt.webp",
+  },
+  {
+    id: "backpack",
+    name: "Assault Pack",
+    nameUk: "Рюкзак",
+    emoji: "🎒",
+    layer: "backpack",
+    artShop: "/shop/backpack.webp",
+    artLayer: "/layers/backpack.webp",
+  },
+  {
+    id: "patch",
+    name: "Unit Patch",
+    nameUk: "Шеврон / патч",
+    emoji: "🎖️",
+    layer: "patch",
+    artShop: "/shop/patch.webp",
+    artLayer: "/layers/patch.webp",
+  },
+  {
+    id: "headset",
+    name: "Comms Headset",
+    nameUk: "Гарнітура",
+    emoji: "🎧",
+    layer: "headset",
+    artShop: "/shop/headset.webp",
+    artLayer: "/layers/headset.webp",
+  },
+  {
+    id: "watch",
+    name: "Field Watch",
+    nameUk: "Годинник",
+    emoji: "⌚",
+    layer: "watch",
+    artShop: "/shop/watch.webp",
+    artLayer: "/layers/watch.webp",
+  },
+];
+
+/** Suggested paint order for layered character (bottom → top). */
+export const CHARACTER_LAYER_ORDER: readonly CharacterLayerKey[] = [
+  "base",
+  "boots",
+  "kneepads",
+  "belt",
+  "vest",
+  "backpack",
+  "gloves",
+  "watch",
+  "radio",
+  "patch",
+  "glasses",
+  "headset",
+  "helmet",
+  "hand",
+  "companion",
+  "victory",
+] as const;
+
+/** Non-shop prestige art (module rewards) — also needed from designer later. */
+export const PRESTIGE_ART_STUBS = [
+  { id: "cat", name: "Tactical Cat", nameUk: "Тактичний кіт", emoji: "🐱", art: "/layers/companion-cat.webp", unlock: "Module 1" },
+  { id: "dog", name: "Tactical Dog", nameUk: "Тактичний пес", emoji: "🐕", art: "/layers/companion-dog.webp", unlock: "Module 3" },
+  { id: "drone", name: "Recon Drone", nameUk: "Дрон", emoji: "🛸", art: "/layers/companion-drone.webp", unlock: "Module 4" },
+  { id: "victory", name: "Victory Cup", nameUk: "Кубок / proud Кава", emoji: "🏆", art: "/instructor/proud-victory.webp", unlock: "Module 5" },
+] as const;
+
+export const REFRESHMENT_ITEMS = SHOP_ITEMS.filter((i) => i.kind === "refreshment");
+export const EQUIPMENT_ITEMS = SHOP_ITEMS.filter((i) => i.kind === "equipment");
 
 export type ShopItemId = (typeof SHOP_ITEMS)[number]["id"];
 
@@ -34,6 +220,26 @@ export interface BuyShopResult {
   coffeeCoins: number;
   purchasedItems: string[];
   activeInstructorItem: string;
+}
+
+export function getShopItem(itemId: string): ShopCatalogItem | undefined {
+  return SHOP_ITEMS.find((i) => i.id === itemId);
+}
+
+export function getEquippedInventory(profile: GamificationProfile): InventoryItem[] {
+  return profile.inventory.filter((i) => i.equipped);
+}
+
+/** Active refreshment in hand (fallback to legacy activeInstructorItem). */
+export function getActiveRefreshmentId(profile: GamificationProfile): string {
+  const fromInv = profile.inventory.find(
+    (i) => i.kind === "refreshment" && i.equipped,
+  );
+  if (fromInv) return fromInv.itemId;
+
+  const legacy = getShopItem(profile.activeInstructorItem);
+  if (legacy?.kind === "refreshment") return legacy.id;
+  return "coffee";
 }
 
 /** JSONB from Supabase may not be a plain string[] — normalize safely. */
@@ -71,6 +277,27 @@ export const COURSE_BADGES: Record<
   },
 };
 
+export async function fetchUserInventory(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<InventoryItem[]> {
+  const { data, error } = await supabase
+    .from("user_inventory")
+    .select("item_id, kind, equipped")
+    .eq("user_id", userId);
+
+  if (error || !data) {
+    if (error) console.error("fetchUserInventory:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    itemId: String(row.item_id),
+    kind: String(row.kind ?? "equipment"),
+    equipped: Boolean(row.equipped),
+  }));
+}
+
 // ─── Fetch gamification profile ───────────────────────────────────────────────
 export async function fetchGamificationProfile(
   supabase: SupabaseClient,
@@ -86,12 +313,15 @@ export async function fetchGamificationProfile(
 
   if (error || !data) return null;
 
+  const inventory = await fetchUserInventory(supabase, userId);
+
   return {
     coffeeCoins:          data.coffee_coins          ?? 0,
     streakCount:          data.streak_count           ?? 0,
     activeInstructorItem: data.active_instructor_item ?? "coffee",
     purchasedItems:       normalizePurchasedItems(data.purchased_items),
     completedCourses:     normalizeStringArray(data.completed_courses),
+    inventory,
   };
 }
 

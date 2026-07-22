@@ -5,6 +5,10 @@ import { ShoppingCart } from "lucide-react";
 import type { GamificationProfile } from "@/context/AppContext";
 import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 import StreakCoinIcon from "@/components/ui/StreakCoinIcon";
+import CharacterStage, {
+  EquippedLayersSummary,
+} from "@/components/dashboard/CharacterStage";
+import { getActiveRefreshmentId, getShopItem } from "@/lib/gamification";
 
 interface InstructorCardProps {
   gamification: GamificationProfile;
@@ -14,28 +18,6 @@ interface InstructorCardProps {
   onPxStoreToggle: () => void;
 }
 
-const HAPPY_ITEM_IMAGES: Record<string, string> = {
-  coffee: "/instructor/happy.webp",
-  snickers: "/instructor/happy-snickers.webp",
-  energy: "/instructor/happy-energy.webp",
-  thermos: "/instructor/happy-thermos.webp",
-  boots: "/instructor/happy-boots.webp",
-};
-
-const EQUIPPED_EMOJI: Record<string, string> = {
-  coffee: "☕",
-  snickers: "🍫",
-  energy: "🥤",
-  thermos: "🫖",
-  boots: "🥾",
-};
-
-function getInstructorImage(mood: "happy" | "angry" | "proud", activeItem: string): string {
-  if (mood === "angry") return "/instructor/angry.webp";
-  if (mood === "proud") return "/instructor/proud.webp";
-  return HAPPY_ITEM_IMAGES[activeItem] ?? HAPPY_ITEM_IMAGES.coffee;
-}
-
 export default function InstructorCard({
   gamification,
   mood,
@@ -43,10 +25,10 @@ export default function InstructorCard({
   isPxStoreOpen,
   onPxStoreToggle,
 }: InstructorCardProps) {
-  const { streakCount, activeInstructorItem, coffeeCoins } = gamification;
+  const { streakCount, coffeeCoins } = gamification;
   const filledCups = streakCount === 0 ? 0 : ((streakCount - 1) % 7) + 1;
-  const equippedEmoji = mood === "happy" ? (EQUIPPED_EMOJI[activeInstructorItem] ?? "☕") : null;
-  const imageSrc = getInstructorImage(mood, activeInstructorItem);
+  const handId = getActiveRefreshmentId(gamification);
+  const handEmoji = mood === "happy" ? (getShopItem(handId)?.emoji ?? "☕") : null;
   const showStreak = mood === "happy";
 
   return (
@@ -60,29 +42,26 @@ export default function InstructorCard({
     >
       {/* Mobile gutter wider so figure does not cover the title; size of figure unchanged */}
       <div
-        className="flex-shrink-0 w-[132px] sm:w-[140px] md:w-[150px] lg:w-[180px]"
+        className="relative flex-shrink-0 w-[132px] sm:w-[140px] md:w-[150px] lg:w-[180px] self-stretch"
         aria-hidden
-      />
-
-      <img
-        src={imageSrc}
-        alt={`Instructor — ${mood}`}
-        className="absolute bottom-0 left-1 sm:left-4 z-10 pointer-events-none
-          h-[calc(100%+56px)] w-auto
-          object-contain object-bottom"
-        onError={(e) => {
-          e.currentTarget.style.display = "none";
-        }}
-      />
+      >
+        <div className="absolute bottom-0 left-1 sm:left-4 z-10 h-[calc(100%+56px)] w-[calc(100%-4px)] sm:w-[calc(100%-8px)]">
+          <CharacterStage gamification={gamification} mood={mood} />
+        </div>
+      </div>
 
       <div className="flex flex-col flex-1 min-w-0 pl-1 pr-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3">
-        <div className="flex items-center justify-center sm:justify-center">
+        <div className="flex flex-col items-center justify-center sm:justify-center gap-1.5">
           <span
             className="text-base sm:text-xl font-bold text-center leading-tight max-w-[11rem] sm:max-w-none"
             style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
           >
-            🪖 Your Instructor Kava{equippedEmoji ? ` ${equippedEmoji}` : ""}
+            🪖 Your Instructor Kava{handEmoji ? ` ${handEmoji}` : ""}
           </span>
+          <EquippedLayersSummary
+            gamification={gamification}
+            isDarkMode={isDarkMode}
+          />
         </div>
 
         {showStreak ? (

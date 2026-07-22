@@ -10,7 +10,7 @@ import InstructorCard from "../../components/dashboard/InstructorCard";
 import InstructorSpeechBubble from "../../components/dashboard/InstructorSpeechBubble";
 import Voentorg from "../../components/dashboard/Voentorg";
 import Achievements from "../../components/dashboard/Achievements";
-import { DEFAULT_GAMIFICATION_PROFILE } from "@/lib/gamification";
+import { DEFAULT_GAMIFICATION_PROFILE, getActiveRefreshmentId } from "@/lib/gamification";
 import { getInstructorSpeechMessage } from "@/lib/instructorQuotes";
 
 export default function DashboardPage() {
@@ -94,7 +94,7 @@ export default function DashboardPage() {
   const activeGamification = gamification ?? DEFAULT_GAMIFICATION_PROFILE;
   const instructorSpeech = getInstructorSpeechMessage(
     instructorMood,
-    activeGamification.activeInstructorItem,
+    getActiveRefreshmentId(activeGamification),
   );
   const speechVariant =
     instructorMood === "angry"

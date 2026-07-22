@@ -103,12 +103,18 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       const result = await buyShopItemInDb(supabase, user.id, itemId);
 
       if (!result.error) {
-        setGamification((prev) => ({
-          ...(prev ?? DEFAULT_GAMIFICATION_PROFILE),
-          coffeeCoins: result.coffeeCoins,
-          purchasedItems: result.purchasedItems,
-          activeInstructorItem: result.activeInstructorItem,
-        }));
+        // Reload inventory + profile so CharacterStage sees layered equip
+        const profile = await fetchGamificationProfile(supabase, user.id);
+        if (profile) {
+          setGamification(profile);
+        } else {
+          setGamification((prev) => ({
+            ...(prev ?? DEFAULT_GAMIFICATION_PROFILE),
+            coffeeCoins: result.coffeeCoins,
+            purchasedItems: result.purchasedItems,
+            activeInstructorItem: result.activeInstructorItem,
+          }));
+        }
       }
 
       return result;
