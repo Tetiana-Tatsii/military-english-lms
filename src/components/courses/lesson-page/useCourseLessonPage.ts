@@ -6,8 +6,7 @@ import { useAppContext } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { recalculateSlp } from "@/lib/slp";
-import { awardQuizCoins } from "@/lib/gamification";
-import { isQuizAnswerCorrect } from "@/lib/quiz";
+import { submitLessonQuiz } from "@/lib/quiz";
 import type { Answer, Course, Lesson, Module } from "@/types";
 
 export function useCourseLessonPage() {
@@ -132,50 +131,31 @@ export function useCourseLessonPage() {
     );
     if (!allAnswered) return;
 
-    const { data: existing } = await supabase
-      .from("quiz_results")
-      .select("id, score")
-      .eq("user_id", user.id)
-      .eq("lesson_id", activeLesson.id)
-      .maybeSingle();
+    // H1: grade + persist + award only via submit_lesson_quiz RPC
+    const result = await submitLessonQuiz(
+      supabase,
+      activeLesson.id,
+      quizAnswers,
+    );
 
-    if (existing) {
-      setQuizScore(existing.score);
-      setQuizSubmitted(true);
-      // Idempotent: covers insert-ok / award-failed edge case
-      const retry = await awardQuizCoins(supabase, activeLesson.id);
-      if (!retry.error && retry.coinsAwarded > 0) {
-        await refreshGamification();
-      }
+    if (result.error && !result.alreadySubmitted && result.totalQuestions === 0) {
+      console.error("Помилка при збереженні результату тесту:", result.error);
+      alert(result.error);
       return;
     }
 
-    const correctCount = activeLesson.quiz.filter((q) =>
-      isQuizAnswerCorrect(q, quizAnswers[q.id]),
-    ).length;
-    const score = Math.round((correctCount / activeLesson.quiz.length) * 100);
-
-    const { error } = await supabase.from("quiz_results").insert({
-      user_id: user.id,
-      lesson_id: activeLesson.id,
-      score,
-      correct_count: correctCount,
-      answers: quizAnswers,
-    });
-
-    if (error) {
-      console.error("Помилка при збереженні результату тесту:", error);
-    } else {
-      const award = await awardQuizCoins(supabase, activeLesson.id);
-      if (award.error) {
-        console.error("Помилка нарахування коїнів за тест:", award.error);
-      } else if (award.coinsAwarded > 0) {
-        await refreshGamification();
-      }
+    if (result.error) {
+      console.error("Помилка нарахування коїнів за тест:", result.error);
     }
 
-    setQuizScore(score);
+    setQuizScore(result.score);
+    setQuizAnswers(result.answers);
     setQuizSubmitted(true);
+
+    if (result.coinsAwarded > 0) {
+      await refreshGamification();
+    }
+
     await recalculateSlp(supabase, user.id, courses);
   }, [activeLesson, user, quizAnswers, courses, refreshGamification]);
 
