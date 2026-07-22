@@ -284,7 +284,56 @@ export async function awardHomeworkCoins(
   };
 }
 
-/** @deprecated Use awardHomeworkCoins — direct profile update blocked by RLS for teachers */
+export type AwardQuizCoinsResult = {
+  error: string | null;
+  alreadyAwarded: boolean;
+  coinsAwarded: number;
+  correctCount: number;
+  newCoffeeCoins: number;
+};
+
+/** Award coffee coins for a lesson quiz (1 correct answer = 1 coin). Idempotent via coin_ledger. */
+export async function awardQuizCoins(
+  supabase: SupabaseClient,
+  lessonId: string,
+): Promise<AwardQuizCoinsResult> {
+  const empty: AwardQuizCoinsResult = {
+    error: null,
+    alreadyAwarded: false,
+    coinsAwarded: 0,
+    correctCount: 0,
+    newCoffeeCoins: 0,
+  };
+
+  const { data, error } = await supabase.rpc("award_quiz_coins", {
+    p_lesson_id: lessonId,
+  });
+
+  if (error) {
+    console.error("award_quiz_coins RPC failed:", error.message);
+    return { ...empty, error: error.message };
+  }
+
+  const payload = data as Record<string, unknown> | null;
+  if (!payload) {
+    return { ...empty, error: "empty_response" };
+  }
+
+  if (payload.error) {
+    console.error("award_quiz_coins:", payload.error);
+    return { ...empty, error: String(payload.error) };
+  }
+
+  return {
+    error: null,
+    alreadyAwarded: Boolean(payload.alreadyAwarded),
+    coinsAwarded: Number(payload.coinsAwarded ?? 0),
+    correctCount: Number(payload.correctCount ?? 0),
+    newCoffeeCoins: Number(payload.newCoffeeCoins ?? 0),
+  };
+}
+
+/** @deprecated Prefer awardQuizCoins / awardHomeworkCoins — direct profile update is fragile under RLS */
 export async function awardCoins(
   supabase: SupabaseClient,
   userId: string,

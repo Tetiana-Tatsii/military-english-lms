@@ -6,15 +6,22 @@ import { useAppContext } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { recalculateSlp } from "@/lib/slp";
-import { awardCoins } from "@/lib/gamification";
+import { awardQuizCoins } from "@/lib/gamification";
 import { isQuizAnswerCorrect } from "@/lib/quiz";
 import type { Answer, Course, Lesson, Module } from "@/types";
 
 export function useCourseLessonPage() {
   const params = useParams();
   const router = useRouter();
-  const { courses, user, submitAnswer, answers, isInitialized, logout } =
-    useAppContext();
+  const {
+    courses,
+    user,
+    submitAnswer,
+    answers,
+    isInitialized,
+    logout,
+    refreshGamification,
+  } = useAppContext();
 
   const courseId = params.courseId as string;
   const course = courses.find((c) => c.id === courseId);
@@ -135,6 +142,11 @@ export function useCourseLessonPage() {
     if (existing) {
       setQuizScore(existing.score);
       setQuizSubmitted(true);
+      // Idempotent: covers insert-ok / award-failed edge case
+      const retry = await awardQuizCoins(supabase, activeLesson.id);
+      if (!retry.error && retry.coinsAwarded > 0) {
+        await refreshGamification();
+      }
       return;
     }
 
@@ -147,19 +159,25 @@ export function useCourseLessonPage() {
       user_id: user.id,
       lesson_id: activeLesson.id,
       score,
+      correct_count: correctCount,
       answers: quizAnswers,
     });
 
     if (error) {
       console.error("Помилка при збереженні результату тесту:", error);
-    } else if (correctCount > 0) {
-      await awardCoins(supabase, user.id, correctCount);
+    } else {
+      const award = await awardQuizCoins(supabase, activeLesson.id);
+      if (award.error) {
+        console.error("Помилка нарахування коїнів за тест:", award.error);
+      } else if (award.coinsAwarded > 0) {
+        await refreshGamification();
+      }
     }
 
     setQuizScore(score);
     setQuizSubmitted(true);
     await recalculateSlp(supabase, user.id, courses);
-  }, [activeLesson, user, quizAnswers, courses]);
+  }, [activeLesson, user, quizAnswers, courses, refreshGamification]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
