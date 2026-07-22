@@ -325,16 +325,7 @@ export async function fetchGamificationProfile(
   };
 }
 
-// ─── Date helpers (UTC — збігається з CURRENT_DATE у Supabase RPC) ─────────────
-function toLocalDateStr(d = new Date()): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function normalizeDate(value: string | null | undefined): string | null {
-  if (!value) return null;
-  return value.slice(0, 10);
-}
-
+// ─── Streak helpers ───────────────────────────────────────────────────────────
 type StreakResult = {
   coinsEarned: number;
   newStreak: number;
@@ -371,96 +362,33 @@ export async function processDailyStreak(
 ): Promise<StreakResult> {
   const { data: { session } } = await supabase.auth.getSession();
 
-  // Prefer server RPC — atomic, bypasses RLS, uses auth.uid()
-  if (session?.user?.id === userId) {
-    const { data, error } = await supabase.rpc("process_daily_streak");
-
-    if (!error && data && typeof data === "object") {
-      const payload = data as Record<string, unknown>;
-      if (payload.error) {
-        console.error("processDailyStreak RPC:", payload.error);
-      } else {
-        return parseStreakRpc(payload);
-      }
-    }
-
-    if (error?.code !== "PGRST202") {
-      // PGRST202 = function not found (migration not applied yet) → fallback below
-      console.error("processDailyStreak RPC failed:", error);
-    }
-  } else {
+  // Server RPC only (C1) — no client profiles.update fallback
+  if (session?.user?.id !== userId) {
     console.warn(
       "processDailyStreak: no Supabase auth session for user",
       userId,
       "— streak not processed. Re-login required.",
     );
-  }
-
-  // Client fallback (requires RLS UPDATE on profiles)
-  const { data: profile, error: readError } = await supabase
-    .from("profiles")
-    .select("last_login_date, streak_count, coffee_coins")
-    .eq("id", userId)
-    .single();
-
-  const currentCoins = profile?.coffee_coins ?? 0;
-  const currentStreak = profile?.streak_count ?? 0;
-
-  if (readError || !profile) {
-    console.error("processDailyStreak: failed to read profile:", readError);
     return emptyStreakResult();
   }
 
-  const today = toLocalDateStr();
-  const lastLogin = normalizeDate(profile.last_login_date as string | null);
+  const { data, error } = await supabase.rpc("process_daily_streak");
 
-  if (lastLogin === today) {
-    return emptyStreakResult({
-      newStreak: currentStreak,
-      newCoffeeCoins: currentCoins,
-      isMilestone: currentStreak > 0 && currentStreak % 7 === 0,
-    });
+  if (error) {
+    console.error("processDailyStreak RPC failed:", error);
+    return emptyStreakResult();
   }
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = toLocalDateStr(yesterday);
-
-  const isConsecutive = lastLogin === yesterdayStr;
-  const newStreak = isConsecutive ? currentStreak + 1 : 1;
-  const isMilestone = newStreak % 7 === 0;
-  const coinsEarned = isMilestone ? 7 : 1;
-  const newCoffeeCoins = currentCoins + coinsEarned;
-
-  const { data: updated, error: updateError } = await supabase
-    .from("profiles")
-    .update({
-      last_login_date: today,
-      streak_count: newStreak,
-      coffee_coins: newCoffeeCoins,
-    })
-    .eq("id", userId)
-    .select("coffee_coins, streak_count")
-    .single();
-
-  if (updateError || !updated) {
-    console.error(
-      "processDailyStreak: update blocked or failed (check RLS / auth session):",
-      updateError,
-    );
-    return emptyStreakResult({
-      newStreak: currentStreak,
-      newCoffeeCoins: currentCoins,
-    });
+  if (data && typeof data === "object") {
+    const payload = data as Record<string, unknown>;
+    if (payload.error) {
+      console.error("processDailyStreak RPC:", payload.error);
+      return emptyStreakResult();
+    }
+    return parseStreakRpc(payload);
   }
 
-  return {
-    coinsEarned,
-    newStreak: updated.streak_count ?? newStreak,
-    newCoffeeCoins: updated.coffee_coins ?? newCoffeeCoins,
-    isMilestone,
-    wasStreakBroken: !isConsecutive && !!lastLogin,
-  };
+  return emptyStreakResult();
 }
 
 // ─── Award coins (atomic-safe for low-concurrency apps) ───────────────────────
@@ -563,23 +491,18 @@ export async function awardQuizCoins(
   };
 }
 
-/** @deprecated Prefer awardQuizCoins / awardHomeworkCoins — direct profile update is fragile under RLS */
+/**
+ * @deprecated Removed under C1 — direct profiles.coffee_coins UPDATE is blocked.
+ * Use awardQuizCoins / awardHomeworkCoins RPCs.
+ */
 export async function awardCoins(
-  supabase: SupabaseClient,
-  userId: string,
-  amount: number,
+  _supabase: SupabaseClient,
+  _userId: string,
+  _amount: number,
 ): Promise<void> {
-  if (amount <= 0) return;
-  const { data } = await supabase
-    .from("profiles")
-    .select("coffee_coins")
-    .eq("id", userId)
-    .single();
-  if (!data) return;
-  await supabase
-    .from("profiles")
-    .update({ coffee_coins: (data.coffee_coins ?? 0) + amount })
-    .eq("id", userId);
+  console.warn(
+    "awardCoins is disabled (C1). Use awardQuizCoins / awardHomeworkCoins.",
+  );
 }
 
 // ─── Buy or activate shop item ────────────────────────────────────────────────
@@ -601,111 +524,59 @@ export async function buyShopItemInDb(
     activeInstructorItem: partial?.activeInstructorItem ?? "coffee",
   });
 
-  const catalogPrice = getShopItemPrice(itemId);
-  if (catalogPrice === null) {
+  if (getShopItemPrice(itemId) === null) {
     return fail("Невідомий товар.");
   }
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  if (session?.user?.id === userId) {
-    // Price is resolved server-side — never trust client price
-    const { data, error } = await supabase.rpc("buy_shop_item", {
-      p_item_id: itemId,
-    });
-
-    if (!error && data && typeof data === "object") {
-      const payload = data as Record<string, unknown>;
-      if (payload.error === "not_authenticated") {
-        return fail("Потрібно перелогінитись (немає Supabase Auth сесії).");
-      }
-      if (payload.error === "insufficient_coins") {
-        return fail("Недостатньо Кава-коїнів ☕");
-      }
-      if (payload.error === "profile_not_found") {
-        return fail("Профіль не знайдено.");
-      }
-      if (payload.error === "unknown_item") {
-        return fail("Невідомий товар.");
-      }
-      if (payload.error) {
-        return fail(String(payload.error));
-      }
-      return {
-        error: null,
-        charged: Boolean(payload.charged),
-        coffeeCoins: Number(payload.coffeeCoins ?? 0),
-        purchasedItems: normalizePurchasedItems(payload.purchasedItems),
-        activeInstructorItem: String(payload.activeInstructorItem ?? itemId),
-      };
-    }
-
-    if (error?.code !== "PGRST202") {
-      console.error("buy_shop_item RPC failed:", error);
-    }
-  } else {
+  if (session?.user?.id !== userId) {
     console.warn("buyShopItemInDb: no Supabase auth session for", userId);
+    return fail("Потрібно перелогінитись (немає Supabase Auth сесії).");
   }
 
-  // Fallback (legacy): still use catalogue price, never a caller-supplied price
-  const price = catalogPrice;
+  // Price is resolved server-side — never trust client price; no client fallback (C1)
+  const { data, error } = await supabase.rpc("buy_shop_item", {
+    p_item_id: itemId,
+  });
 
-  const { data: profile, error: readError } = await supabase
-    .from("profiles")
-    .select("coffee_coins, purchased_items, active_instructor_item")
-    .eq("id", userId)
-    .single();
-
-  if (readError || !profile) {
-    return fail("Профіль не знайдено.");
+  if (error) {
+    console.error("buy_shop_item RPC failed:", error);
+    return fail("Не вдалося здійснити покупку. Спробуйте перелогінитись.");
   }
 
-  const purchased = normalizePurchasedItems(profile.purchased_items);
-  const alreadyOwned = price === 0 || purchased.includes(itemId);
-  const currentCoins = profile.coffee_coins ?? 0;
-
-  if (!alreadyOwned && currentCoins < price) {
-    return fail("Недостатньо Кава-коїнів ☕", {
-      coffeeCoins: currentCoins,
-      purchasedItems: purchased,
-      activeInstructorItem: profile.active_instructor_item ?? "coffee",
-    });
+  if (data && typeof data === "object") {
+    const payload = data as Record<string, unknown>;
+    if (payload.error === "not_authenticated") {
+      return fail("Потрібно перелогінитись (немає Supabase Auth сесії).");
+    }
+    if (payload.error === "insufficient_coins") {
+      return fail("Недостатньо Кава-коїнів ☕");
+    }
+    if (payload.error === "profile_not_found") {
+      return fail("Профіль не знайдено.");
+    }
+    if (payload.error === "unknown_item") {
+      return fail("Невідомий товар.");
+    }
+    if (payload.error) {
+      return fail(String(payload.error));
+    }
+    return {
+      error: null,
+      charged: Boolean(payload.charged),
+      coffeeCoins: Number(payload.coffeeCoins ?? 0),
+      purchasedItems: normalizePurchasedItems(payload.purchasedItems),
+      activeInstructorItem: String(payload.activeInstructorItem ?? itemId),
+    };
   }
 
-  const newCoins = alreadyOwned ? currentCoins : currentCoins - price;
-  const newPurchased = alreadyOwned ? purchased : [...purchased, itemId];
-
-  const { data: updated, error: updateError } = await supabase
-    .from("profiles")
-    .update({
-      coffee_coins: newCoins,
-      purchased_items: newPurchased,
-      active_instructor_item: itemId,
-    })
-    .eq("id", userId)
-    .select("coffee_coins, purchased_items, active_instructor_item")
-    .single();
-
-  if (updateError || !updated) {
-    console.error("buyShopItemInDb: update blocked (check RLS / auth session):", updateError);
-    return fail("Не вдалося здійснити покупку. Спробуйте перелогінитись.", {
-      coffeeCoins: currentCoins,
-      purchasedItems: purchased,
-      activeInstructorItem: profile.active_instructor_item ?? "coffee",
-    });
-  }
-
-  return {
-    error: null,
-    charged: !alreadyOwned && price > 0,
-    coffeeCoins: updated.coffee_coins ?? newCoins,
-    purchasedItems: normalizePurchasedItems(updated.purchased_items),
-    activeInstructorItem: updated.active_instructor_item ?? itemId,
-  };
+  return fail("Не вдалося здійснити покупку. Спробуйте перелогінитись.");
 }
 
 // ─── Check & mark course as completed ────────────────────────────────────────
 // Completion = every lesson has a reviewed answer with score, avg ≥ 60%
+// Write path: mark_course_completed RPC only (C1)
 export async function checkAndCompleteCourse(
   supabase: SupabaseClient,
   studentId: string,
@@ -718,39 +589,33 @@ export async function checkAndCompleteCourse(
   const allLessonIds = course.modules.flatMap((m) => m.lessons.map((l) => l.id));
   if (allLessonIds.length === 0) return false;
 
-  const { data: reviewedAnswers } = await supabase
-    .from("answers")
-    .select("lesson_id, score")
-    .eq("user_id", studentId)
-    .eq("course_id", courseId)
-    .eq("status", "reviewed")
-    .not("score", "is", null);
+  const { data, error } = await supabase.rpc("mark_course_completed", {
+    p_user_id: studentId,
+    p_course_id: courseId,
+    p_lesson_ids: allLessonIds,
+  });
 
-  if (!reviewedAnswers || reviewedAnswers.length === 0) return false;
+  if (error) {
+    console.error("mark_course_completed RPC failed:", error);
+    return false;
+  }
 
-  const reviewedLessonIds = new Set(reviewedAnswers.map((a) => a.lesson_id as string));
-  const allReviewed = allLessonIds.every((id) => reviewedLessonIds.has(id));
-  if (!allReviewed) return false;
+  const payload = data as {
+    error?: string;
+    ok?: boolean;
+    alreadyCompleted?: boolean;
+  } | null;
 
-  const scores = reviewedAnswers.map((a) => a.score as number);
-  const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-  if (avgScore < 60) return false;
+  if (!payload || payload.error) {
+    if (
+      payload?.error &&
+      payload.error !== "incomplete" &&
+      payload.error !== "avg_too_low"
+    ) {
+      console.error("mark_course_completed:", payload.error);
+    }
+    return false;
+  }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("completed_courses")
-    .eq("id", studentId)
-    .single();
-
-  if (!profile) return false;
-
-  const completed = (profile.completed_courses as string[]) ?? [];
-  if (completed.includes(courseId)) return true;
-
-  await supabase
-    .from("profiles")
-    .update({ completed_courses: [...completed, courseId] })
-    .eq("id", studentId);
-
-  return true;
+  return Boolean(payload.ok);
 }

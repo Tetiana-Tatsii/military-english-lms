@@ -32,7 +32,7 @@ function getLessonIdsBySkill(courses: Course[]): Record<SlpSkill, string[]> {
 /**
  * Перераховує SLP-профіль курсанта як середнє арифметичне
  * всіх результатів quiz_results та перевірених answers.
- * Викликати після кожного нового результату тесту або оцінки ДЗ.
+ * Пише лише через RPC update_profile_slp (C1).
  */
 export async function recalculateSlp(
   supabase: SupabaseClient,
@@ -40,7 +40,7 @@ export async function recalculateSlp(
   courses: Course[],
 ): Promise<void> {
   const lessonsBySkill = getLessonIdsBySkill(courses);
-  const slpUpdate: Record<string, number> = {};
+  const slp: Partial<Record<SlpSkill, number>> = {};
 
   await Promise.all(
     SLP_SKILLS.map(async (skill) => {
@@ -68,21 +68,27 @@ export async function recalculateSlp(
       ].filter((s): s is number => typeof s === "number");
 
       if (allScores.length > 0) {
-        slpUpdate[`slp_${skill}`] = Math.round(
+        slp[skill] = Math.round(
           allScores.reduce((a, b) => a + b, 0) / allScores.length,
         );
       }
     }),
   );
 
-  if (Object.keys(slpUpdate).length === 0) return;
+  if (Object.keys(slp).length === 0) return;
 
-  const { error } = await supabase
-    .from("profiles")
-    .update(slpUpdate)
-    .eq("id", userId);
+  const { data, error } = await supabase.rpc("update_profile_slp", {
+    p_user_id: userId,
+    p_slp: slp,
+  });
 
   if (error) {
     console.error("Помилка при перерахунку SLP:", error);
+    return;
+  }
+
+  const payload = data as { error?: string } | null;
+  if (payload?.error) {
+    console.error("Помилка при перерахунку SLP:", payload.error);
   }
 }

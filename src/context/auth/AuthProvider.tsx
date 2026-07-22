@@ -220,8 +220,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (
       name: string,
       password: string,
-      role: UserRole,
+      _role: UserRole,
     ): Promise<string | null> => {
+      // Public registration is always student+pending (RLS C2).
+      // Teachers/admins are provisioned out-of-band, never via this form.
+      const role: UserRole = "student";
+
       const { data: existing } = await supabase
         .from("profiles")
         .select("name")
@@ -249,9 +253,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           {
             id: authData.user.id,
             name,
-            role,
+            role: "student",
             status: "pending",
-            squad_id: role === "student" ? "Alpha Squad" : null,
+            squad_id: "Alpha Squad",
           },
         ]);
 
