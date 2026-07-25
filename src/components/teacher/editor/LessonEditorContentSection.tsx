@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { BookOpen, FileText, ClipboardList } from "lucide-react";
+import { BookOpen, FileText, ClipboardList, Target } from "lucide-react";
 import { quillModules } from "./utils";
 import type { LessonEditorSectionProps } from "./types";
 import LessonEditorReadingSection from "./LessonEditorReadingSection";
@@ -18,6 +18,52 @@ export default function LessonEditorContentSection({
 
   return (
     <>
+      <div
+        style={{
+          background: isDarkMode ? "#2a2c27" : "#faf9f6",
+          padding: 24,
+          borderRadius: 12,
+          border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+          marginBottom: 24,
+        }}
+      >
+        <label
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#8a8a45",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 8,
+          }}
+        >
+          <Target size={18} /> Цілі уроку
+        </label>
+        <textarea
+          value={lesson.objectives || ""}
+          onChange={(e) =>
+            setEditingLesson({
+              ...editingLesson,
+              lesson: { ...lesson, objectives: e.target.value },
+            })
+          }
+          placeholder="Що курсант має вміти / зрозуміти після уроку..."
+          style={{
+            width: "100%",
+            minHeight: 100,
+            padding: 12,
+            borderRadius: 8,
+            border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
+            fontSize: 14,
+            lineHeight: 1.6,
+            resize: "vertical",
+            background: isDarkMode ? "#2d2f2a" : "#fff",
+            color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
+          }}
+        />
+      </div>
+
       <div className="lesson-editor-section">
         <label
           style={{

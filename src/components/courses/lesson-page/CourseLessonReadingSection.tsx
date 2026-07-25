@@ -13,11 +13,16 @@ import {
   loadReadingCheck,
   saveReadingCheck,
 } from "@/lib/readingCheckStorage";
+import { LESSON_BLOCKS } from "@/lib/lessonBlocks";
 import type { Lesson } from "@/types";
+import LessonBlockCard from "./LessonBlockCard";
 
 interface CourseLessonReadingSectionProps {
   lesson: Lesson;
   isDarkMode: boolean;
+  /** Which parts to render (blocks are separate on student page). */
+  mode?: "reading" | "readingCheck" | "both";
+  estimatedTime?: string;
 }
 
 function hasText(value?: string) {
@@ -27,11 +32,16 @@ function hasText(value?: string) {
 export default function CourseLessonReadingSection({
   lesson,
   isDarkMode,
+  mode = "both",
+  estimatedTime,
 }: CourseLessonReadingSectionProps) {
   const { user } = useAppContext();
-  const hasReading = hasText(lesson.readingEn) || hasText(lesson.readingUk);
+  const hasReading =
+    (mode === "reading" || mode === "both") &&
+    (hasText(lesson.readingEn) || hasText(lesson.readingUk));
   const questions = (lesson.readingQuiz ?? []).slice(0, 3);
-  const hasQuiz = questions.length > 0;
+  const hasQuiz =
+    (mode === "readingCheck" || mode === "both") && questions.length > 0;
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -80,8 +90,6 @@ export default function CourseLessonReadingSection({
 
   if (!hasReading && !hasQuiz) return null;
 
-  const cardBg = isDarkMode ? "#2d2f2a" : "#faf9f6";
-  const cardBorder = isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0";
   const titleColor = isDarkMode ? "rgb(250, 249, 246)" : "#3a3528";
   const bodyColor = isDarkMode ? "#e6e4dc" : "#4a4a4a";
   const muted = isDarkMode ? "#a3a198" : "#7a7568";
@@ -96,33 +104,20 @@ export default function CourseLessonReadingSection({
     ? questions.filter((q) => isQuizAnswerCorrect(q, answers[q.id])).length
     : null;
 
-  return (
-    <div style={{ marginBottom: 24 }}>
-      {hasReading && (
-        <div
-          style={{
-            background: cardBg,
-            padding: 24,
-            borderRadius: 12,
-            border: cardBorder,
-            marginBottom: hasQuiz ? 16 : 0,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 16,
-              color: "#8a8a45",
-              fontWeight: 700,
-              fontSize: 16,
-            }}
-          >
-            <BookOpen size={20} />
-            Reading
-          </div>
+  const readingDef = LESSON_BLOCKS.reading;
+  const checkDef = LESSON_BLOCKS.readingCheck;
 
+  return (
+    <div>
+      {hasReading && (
+        <LessonBlockCard
+          title={readingDef.title}
+          accent={readingDef.accent}
+          icon={<BookOpen size={20} />}
+          estimatedTime={mode === "reading" ? estimatedTime : undefined}
+          isDarkMode={isDarkMode}
+          collapsible={mode === "reading" || mode === "both"}
+        >
           <div className="grid grid-cols-1 items-start gap-5 md:grid-cols-2 md:gap-6">
             <div className="min-w-0">
               <p
@@ -177,32 +172,17 @@ export default function CourseLessonReadingSection({
               </div>
             </div>
           </div>
-        </div>
+        </LessonBlockCard>
       )}
 
       {hasQuiz && (
-        <div
-          style={{
-            background: cardBg,
-            padding: 32,
-            borderRadius: 12,
-            border: cardBorder,
-          }}
+        <LessonBlockCard
+          title={checkDef.title}
+          accent={checkDef.accent}
+          icon={<CheckCircle size={20} />}
+          estimatedTime={mode === "readingCheck" ? estimatedTime : undefined}
+          isDarkMode={isDarkMode}
         >
-          <h3
-            style={{
-              fontSize: 20,
-              color: titleColor,
-              marginBottom: 8,
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <CheckCircle size={22} color="#8a8a45" />
-            Reading check
-          </h3>
           <p style={{ margin: "0 0 20px", fontSize: 13, color: muted }}>
             Перевірте розуміння прочитаного. У журнал викладача не потрапляє;
             ваш результат зберігається в браузері.
@@ -420,7 +400,7 @@ export default function CourseLessonReadingSection({
               )}
             </div>
           )}
-        </div>
+        </LessonBlockCard>
       )}
     </div>
   );

@@ -26,14 +26,62 @@ export interface LessonDocument {
   id: string;
   name: string;
   url: string;
-  type: "pdf" | "doc" | "docx";
+  /** File extension or kind (pdf, doc, docx, pptx, xlsx, link, …) */
+  type: string;
 }
+
+export type LessonImage = {
+  id: string;
+  url: string;
+  caption?: string;
+};
+
+export type LessonResourceLink = {
+  id: string;
+  label: string;
+  url: string;
+};
+
+export type LessonBlockId =
+  | "objectives"
+  | "missionBrief"
+  | "keyInformation"
+  | "usefulPhrases"
+  | "dialogue"
+  | "video"
+  | "vocabulary"
+  | "reading"
+  | "readingCheck"
+  | "grammarFocus"
+  | "visualReference"
+  | "additionalResources"
+  | "interactiveQuiz"
+  | "speakingTask"
+  | "canDoChecklist";
+
+export type LessonBlockMeta = {
+  estimatedTime?: string;
+  /** If true, block is hidden from students even when filled */
+  hidden?: boolean;
+};
 
 export type Lesson = {
   id: string;
   title: string;
   section: string;
+  /** Key Information (legacy field name: content / Theory) */
   content: string;
+  /** Lesson Objectives (rich HTML) */
+  objectives?: string;
+  missionBrief?: string;
+  usefulPhrases?: string;
+  /** Dialogue text (paired with audio in one student block) */
+  dialogue?: string;
+  /** Optional transcript under dialogue audio */
+  listeningTranscript?: string;
+  /** Optional intro text shown before the video block */
+  videoIntro?: string;
+  /** YouTube video id */
   videoLabel?: string;
   duration: string;
   quizlet?: { term: string; translation: string }[];
@@ -45,11 +93,21 @@ export type Lesson = {
   readingUk?: string;
   /** Short comprehension quiz for the reading (typically up to 3 questions) */
   readingQuiz?: QuizQuestion[];
+  /** Grammar Focus (legacy: Grammar Reference) */
   grammarContent?: string;
+  /** Legacy single image — prefer `images` */
   imageUrl?: string;
+  /** Visual Reference gallery */
+  images?: LessonImage[];
   quiz?: QuizQuestion[];
   documents?: LessonDocument[];
+  resourceLinks?: LessonResourceLink[];
+  /** Speaking Task instructions (rich HTML; legacy homework field) */
   homeworkInstruction?: string;
+  /** Self-assessment checklist items (plain text) */
+  canDoItems?: string[];
+  /** Per-block estimated time + visibility */
+  blockMeta?: Partial<Record<LessonBlockId, LessonBlockMeta>>;
 };
 
 export interface Module {

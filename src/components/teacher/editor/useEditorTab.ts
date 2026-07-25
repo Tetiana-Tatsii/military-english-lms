@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Lesson } from "@/types";
+import type { Lesson, LessonBlockId, LessonBlockMeta, LessonImage } from "@/types";
+import { getLessonImages } from "@/lib/lessonBlocks";
 import type { CourseFormData, EditingLessonState, EditorTabProps } from "./types";
 import { parseYouTubeVideoId, uploadLessonMedia } from "./utils";
 
@@ -238,24 +239,110 @@ export function useEditorTab({
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await handleAddImage(e);
+  };
+
+  const handleAddImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editingLesson) return;
     setIsUploadingPhoto(true);
     const publicUrl = await uploadLessonMedia(file, "photos");
     setIsUploadingPhoto(false);
-    if (publicUrl) {
-      setEditingLesson({
-        ...editingLesson,
-        lesson: { ...editingLesson.lesson, imageUrl: publicUrl },
-      });
-    }
+    e.target.value = "";
+    if (!publicUrl) return;
+
+    const current = getLessonImages(editingLesson.lesson);
+    const next: LessonImage[] = [
+      ...current.filter((img) => img.id !== "legacy-image"),
+      ...(editingLesson.lesson.imageUrl &&
+      !current.some((img) => img.url === editingLesson.lesson.imageUrl)
+        ? [
+            {
+              id: `img-legacy-${Date.now()}`,
+              url: editingLesson.lesson.imageUrl,
+            },
+          ]
+        : []),
+      { id: `img-${Date.now()}`, url: publicUrl },
+    ];
+
+    // Deduplicate by url
+    const seen = new Set<string>();
+    const unique = next.filter((img) => {
+      if (seen.has(img.url)) return false;
+      seen.add(img.url);
+      return true;
+    });
+
+    setEditingLesson({
+      ...editingLesson,
+      lesson: {
+        ...editingLesson.lesson,
+        images: unique,
+        imageUrl: unique[0]?.url,
+      },
+    });
+  };
+
+  const handleRemoveImage = (imageId: string) => {
+    if (!editingLesson) return;
+    const current = getLessonImages(editingLesson.lesson);
+    const next = current.filter((img) => img.id !== imageId);
+    setEditingLesson({
+      ...editingLesson,
+      lesson: {
+        ...editingLesson.lesson,
+        images: next,
+        imageUrl: next[0]?.url,
+      },
+    });
+  };
+
+  const handleUpdateImageCaption = (imageId: string, caption: string) => {
+    if (!editingLesson) return;
+    const current = getLessonImages(editingLesson.lesson).map((img) =>
+      img.id === imageId ||
+      (imageId === "legacy-image" && img.url === editingLesson.lesson.imageUrl)
+        ? { ...img, id: img.id === "legacy-image" ? `img-${Date.now()}` : img.id, caption }
+        : img,
+    );
+    setEditingLesson({
+      ...editingLesson,
+      lesson: {
+        ...editingLesson.lesson,
+        images: current,
+        imageUrl: current[0]?.url,
+      },
+    });
   };
 
   const handleRemovePhoto = () => {
     if (!editingLesson) return;
     setEditingLesson({
       ...editingLesson,
-      lesson: { ...editingLesson.lesson, imageUrl: undefined },
+      lesson: {
+        ...editingLesson.lesson,
+        imageUrl: undefined,
+        images: [],
+      },
+    });
+  };
+
+  const patchBlockMeta = (
+    blockId: LessonBlockId,
+    partial: Partial<LessonBlockMeta>,
+  ) => {
+    if (!editingLesson) return;
+    const prev = editingLesson.lesson.blockMeta?.[blockId] ?? {};
+    setEditingLesson({
+      ...editingLesson,
+      lesson: {
+        ...editingLesson.lesson,
+        blockMeta: {
+          ...editingLesson.lesson.blockMeta,
+          [blockId]: { ...prev, ...partial },
+        },
+      },
     });
   };
 
@@ -288,13 +375,12 @@ export function useEditorTab({
     const publicUrl = await uploadLessonMedia(file, "documents");
     setIsUploadingDocument(false);
     if (publicUrl) {
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
-      const docType = fileExt === "pdf" ? "pdf" : fileExt === "doc" ? "doc" : "docx";
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "file";
       const newDoc = {
         id: `doc-${Date.now()}`,
         name: file.name,
         url: publicUrl,
-        type: docType as "pdf" | "doc" | "docx",
+        type: fileExt,
       };
       const currentDocs = editingLesson.lesson.documents || [];
       setEditingLesson({
@@ -396,11 +482,15 @@ export function useEditorTab({
     handleSaveDeepLesson,
     handleYouTubeChange,
     handlePhotoUpload,
+    handleAddImage,
+    handleRemoveImage,
+    handleUpdateImageCaption,
     handleRemovePhoto,
     handleAudioUpload,
     handleRemoveAudio,
     handleDocumentUpload,
     handleRemoveDocument,
+    patchBlockMeta,
     handleAddQuizletCard,
     handleUpdateQuizletCard,
     handleRemoveQuizletCard,

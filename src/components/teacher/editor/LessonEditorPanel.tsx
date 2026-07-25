@@ -1,12 +1,9 @@
 "use client";
 
-import { ArrowLeft, Target, Video, Save } from "lucide-react";
+import { ArrowLeft, Target, Save } from "lucide-react";
 import type { SkillType } from "@/types";
 import type { EditorTabState } from "./useEditorTab";
-import LessonEditorMediaSection from "./LessonEditorMediaSection";
-import LessonEditorContentSection from "./LessonEditorContentSection";
-import LessonEditorQuizletSection from "./LessonEditorQuizletSection";
-import LessonEditorQuizSection from "./LessonEditorQuizSection";
+import LessonEditorBlocks from "./LessonEditorBlocks";
 
 interface LessonEditorPanelProps {
   state: EditorTabState;
@@ -20,29 +17,10 @@ export default function LessonEditorPanel({
   const {
     editingLesson,
     setEditingLesson,
-    isUploadingPhoto,
-    isUploadingAudio,
-    isUploadingDocument,
     handleSaveDeepLesson,
-    handleYouTubeChange,
-    handlePhotoUpload,
-    handleRemovePhoto,
-    handleAudioUpload,
-    handleRemoveAudio,
-    handleDocumentUpload,
-    handleRemoveDocument,
-    handleAddQuizletCard,
-    handleUpdateQuizletCard,
-    handleRemoveQuizletCard,
   } = state;
 
   if (!editingLesson) return null;
-
-  const sectionProps = {
-    editingLesson,
-    setEditingLesson,
-    isDarkMode,
-  };
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease" }}>
@@ -108,99 +86,57 @@ export default function LessonEditorPanel({
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-            marginBottom: 32,
-          }}
-        >
-          <div>
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#7a7568",
-                marginBottom: 8,
-                display: "block",
-              }}
-            >
-              <Target size={16} /> Навичка (Skill)
-            </label>
-            <select
-              value={editingLesson.lesson.skill}
-              onChange={(e) =>
-                setEditingLesson({
-                  ...editingLesson,
-                  lesson: {
-                    ...editingLesson.lesson,
-                    skill: e.target.value as SkillType,
-                  },
-                })
-              }
-              style={{
-                width: "100%",
-                padding: "12px",
-                borderRadius: 8,
-                border: "1px solid #d8cdb4",
-              }}
-            >
-              <option value="listening">Listening</option>
-              <option value="reading">Reading</option>
-              <option value="speaking">Speaking</option>
-              <option value="writing">Writing</option>
-              <option value="mixed">Mixed</option>
-            </select>
-          </div>
-          <div>
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#7a7568",
-                marginBottom: 8,
-                display: "block",
-              }}
-            >
-              <Video size={16} /> YouTube Посилання
-            </label>
-            <input
-              placeholder="Вставте повне посилання з YouTube..."
-              value={editingLesson.lesson.videoLabel}
-              onChange={(e) => handleYouTubeChange(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px",
-                borderRadius: 8,
-                border: "1px solid #d8cdb4",
-              }}
-            />
-          </div>
+        <div style={{ marginBottom: 32, maxWidth: 360 }}>
+          <label
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#7a7568",
+              marginBottom: 8,
+              display: "block",
+            }}
+          >
+            <Target size={16} /> Навичка (Skill)
+          </label>
+          <select
+            value={editingLesson.lesson.skill}
+            onChange={(e) =>
+              setEditingLesson({
+                ...editingLesson,
+                lesson: {
+                  ...editingLesson.lesson,
+                  skill: e.target.value as SkillType,
+                },
+              })
+            }
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: 8,
+              border: "1px solid #d8cdb4",
+            }}
+          >
+            <option value="listening">Listening</option>
+            <option value="reading">Reading</option>
+            <option value="speaking">Speaking</option>
+            <option value="writing">Writing</option>
+            <option value="mixed">Mixed</option>
+          </select>
         </div>
 
-        <div className="lesson-editor-sections">
-          <LessonEditorMediaSection
-            {...sectionProps}
-            isUploadingPhoto={isUploadingPhoto}
-            isUploadingAudio={isUploadingAudio}
-            isUploadingDocument={isUploadingDocument}
-            handlePhotoUpload={handlePhotoUpload}
-            handleRemovePhoto={handleRemovePhoto}
-            handleAudioUpload={handleAudioUpload}
-            handleRemoveAudio={handleRemoveAudio}
-            handleDocumentUpload={handleDocumentUpload}
-            handleRemoveDocument={handleRemoveDocument}
-          />
-          <LessonEditorContentSection {...sectionProps} />
-          <LessonEditorQuizletSection
-            {...sectionProps}
-            handleAddQuizletCard={handleAddQuizletCard}
-            handleUpdateQuizletCard={handleUpdateQuizletCard}
-            handleRemoveQuizletCard={handleRemoveQuizletCard}
-          />
-          <LessonEditorQuizSection {...sectionProps} />
-        </div>
+        <p
+          style={{
+            margin: "0 0 8px",
+            fontSize: 13,
+            color: isDarkMode ? "#a3a198" : "#7a7568",
+            lineHeight: 1.5,
+          }}
+        >
+          Заповнюйте блоки зверху вниз. Порожні або Hidden блоки не
+          показуються курсанту. Estimated Time — опційно.
+        </p>
+
+        <LessonEditorBlocks state={state} isDarkMode={isDarkMode} />
 
         <div
           style={{

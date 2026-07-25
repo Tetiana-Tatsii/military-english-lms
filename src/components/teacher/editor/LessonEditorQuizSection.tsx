@@ -5,11 +5,16 @@ import { getCorrectOptionIndex } from "@/lib/quiz";
 import type { QuizQuestion } from "@/types";
 import type { LessonEditorSectionProps } from "./types";
 
+interface Props extends LessonEditorSectionProps {
+  bare?: boolean;
+}
+
 export default function LessonEditorQuizSection({
   editingLesson,
   setEditingLesson,
   isDarkMode,
-}: LessonEditorSectionProps) {
+  bare = false,
+}: Props) {
   const { lesson } = editingLesson;
   const questions = lesson.quiz ?? [];
 
@@ -65,12 +70,16 @@ export default function LessonEditorQuizSection({
 
   return (
     <div
-      style={{
-        background: isDarkMode ? "#2a2c27" : "#faf9f6",
-        padding: 24,
-        borderRadius: 12,
-        border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
-      }}
+      style={
+        bare
+          ? undefined
+          : {
+              background: isDarkMode ? "#2a2c27" : "#faf9f6",
+              padding: 24,
+              borderRadius: 12,
+              border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+            }
+      }
     >
       <div
         style={{
@@ -80,18 +89,22 @@ export default function LessonEditorQuizSection({
           marginBottom: 16,
         }}
       >
-        <label
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#8a8a45",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <Target size={18} /> Інтерактивний тест (Quiz)
-        </label>
+        {!bare ? (
+          <label
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#8a8a45",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Target size={18} /> Інтерактивний тест (Quiz)
+          </label>
+        ) : (
+          <span />
+        )}
         <button
           onClick={handleAddQuestion}
           style={{

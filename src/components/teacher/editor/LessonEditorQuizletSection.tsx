@@ -11,6 +11,7 @@ interface LessonEditorQuizletSectionProps extends LessonEditorSectionProps {
     value: string,
   ) => void;
   handleRemoveQuizletCard: (index: number) => void;
+  bare?: boolean;
 }
 
 export default function LessonEditorQuizletSection({
@@ -19,18 +20,23 @@ export default function LessonEditorQuizletSection({
   handleAddQuizletCard,
   handleUpdateQuizletCard,
   handleRemoveQuizletCard,
+  bare = false,
 }: LessonEditorQuizletSectionProps) {
   const { lesson } = editingLesson;
   const cards = lesson.quizlet ?? [];
 
   return (
     <div
-      style={{
-        background: isDarkMode ? "#2a2c27" : "#faf9f6",
-        padding: 24,
-        borderRadius: 12,
-        border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
-      }}
+      style={
+        bare
+          ? undefined
+          : {
+              background: isDarkMode ? "#2a2c27" : "#faf9f6",
+              padding: 24,
+              borderRadius: 12,
+              border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
+            }
+      }
     >
       <div
         style={{
@@ -40,18 +46,22 @@ export default function LessonEditorQuizletSection({
           marginBottom: 16,
         }}
       >
-        <label
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#8a8a45",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <Layers size={18} /> Словник уроку (Картки)
-        </label>
+        {!bare ? (
+          <label
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#8a8a45",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Layers size={18} /> Словник уроку (Картки)
+          </label>
+        ) : (
+          <span />
+        )}
         <button
           onClick={handleAddQuizletCard}
           style={{

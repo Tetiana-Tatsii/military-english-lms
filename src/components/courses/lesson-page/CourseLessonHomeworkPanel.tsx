@@ -3,17 +3,23 @@
 import {
   CheckCircle,
   Clock,
-  ClipboardList,
+  Mic,
   FileText,
   Headphones,
   Paperclip,
   Send,
   X,
 } from "lucide-react";
-import LessonCollapsibleSection from "@/components/courses/LessonCollapsibleSection";
 import VoiceHomeworkRecorder from "@/components/courses/VoiceHomeworkRecorder";
 import { isUrlUnplayableOnIOS } from "@/lib/voiceRecording";
+import {
+  getBlockEstimatedTime,
+  isEmptyRichText,
+  LESSON_BLOCKS,
+} from "@/lib/lessonBlocks";
 import type { Answer, Lesson } from "@/types";
+import CourseLessonRichHtml from "./CourseLessonRichHtml";
+import LessonBlockCard from "./LessonBlockCard";
 
 interface CourseLessonHomeworkPanelProps {
   lesson: Lesson;
@@ -46,32 +52,41 @@ export default function CourseLessonHomeworkPanel({
   onRemoveFile,
   onSendHomework,
 }: CourseLessonHomeworkPanelProps) {
+  const def = LESSON_BLOCKS.speakingTask;
+  const hasInstruction = !isEmptyRichText(lesson.homeworkInstruction);
+  const looksLikeHtml = Boolean(
+    lesson.homeworkInstruction && /<\/?[a-z][\s\S]*>/i.test(lesson.homeworkInstruction),
+  );
+
   return (
     <>
-      {lesson.homeworkInstruction && (
-        <LessonCollapsibleSection
-          title="Інструкція до домашнього завдання"
-          icon={<ClipboardList size={22} />}
-          defaultOpen
-          headerColor={isDarkMode ? "#dcfce7" : "#c97a4a"}
-          borderColor="#facbce"
-          background={isDarkMode ? "#2d2f2a" : "#fdf8f5"}
+      {(hasInstruction || existingAnswer) && (
+        <LessonBlockCard
+          title={def.title}
+          accent={def.accent}
+          icon={<Mic size={20} />}
+          estimatedTime={getBlockEstimatedTime(lesson, "speakingTask")}
           isDarkMode={isDarkMode}
         >
-          <div
-            style={{
-              fontSize: 16,
-              lineHeight: 1.8,
-              color: isDarkMode ? "rgb(250, 249, 246)" : "#4a4a4a",
-              whiteSpace: "pre-wrap",
-              wordBreak: "normal",
-              overflowWrap: "normal",
-            }}
-          >
-            {lesson.homeworkInstruction}
-          </div>
-        </LessonCollapsibleSection>
-      )}
+          {hasInstruction && lesson.homeworkInstruction ? (
+            looksLikeHtml ? (
+              <CourseLessonRichHtml
+                html={lesson.homeworkInstruction}
+                isDarkMode={isDarkMode}
+              />
+            ) : (
+              <div
+                style={{
+                  fontSize: 15,
+                  lineHeight: 1.75,
+                  whiteSpace: "pre-wrap",
+                  marginBottom: 16,
+                }}
+              >
+                {lesson.homeworkInstruction}
+              </div>
+            )
+          ) : null}
 
       {existingAnswer ? (
         <div style={{ marginBottom: 60 }}>
@@ -447,6 +462,8 @@ export default function CourseLessonHomeworkPanel({
             </button>
           </div>
         </div>
+      )}
+        </LessonBlockCard>
       )}
     </>
   );

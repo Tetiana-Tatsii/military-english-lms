@@ -6,7 +6,12 @@ import {
   getSelectedOptionIndex,
   isQuizAnswerCorrect,
 } from "@/lib/quiz";
+import {
+  getBlockEstimatedTime,
+  LESSON_BLOCKS,
+} from "@/lib/lessonBlocks";
 import type { Lesson } from "@/types";
+import LessonBlockCard from "./LessonBlockCard";
 
 interface CourseLessonQuizPanelProps {
   lesson: Lesson;
@@ -32,30 +37,16 @@ export default function CourseLessonQuizPanel({
   const allAnswered = lesson.quiz.every(
     (q) => quizAnswers[q.id] != null && String(quizAnswers[q.id]).length > 0,
   );
+  const def = LESSON_BLOCKS.interactiveQuiz;
 
   return (
-    <div
-      style={{
-        background: isDarkMode ? "#2d2f2a" : "#faf9f6",
-        padding: 32,
-        borderRadius: 12,
-        border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
-        marginBottom: 40,
-      }}
+    <LessonBlockCard
+      title={def.title}
+      accent={def.accent}
+      icon={<CheckCircle size={20} />}
+      estimatedTime={getBlockEstimatedTime(lesson, "interactiveQuiz")}
+      isDarkMode={isDarkMode}
     >
-      <h3
-        style={{
-          fontSize: 20,
-          color: isDarkMode ? "rgb(250, 249, 246)" : "#3a3528",
-          marginBottom: 20,
-          fontWeight: 700,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <CheckCircle size={22} color="#8a8a45" /> Практичний тест
-      </h3>
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         {lesson.quiz.map((question, index) => {
           const userAnswer = quizAnswers[question.id];
@@ -244,6 +235,6 @@ export default function CourseLessonQuizPanel({
           </p>
         </div>
       )}
-    </div>
+    </LessonBlockCard>
   );
 }

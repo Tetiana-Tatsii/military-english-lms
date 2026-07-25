@@ -216,11 +216,13 @@ body {
 
 .lesson-lesson-image {
   display: block;
-  max-width: 42rem;
+  max-width: 100%;
   width: 100%;
   height: auto;
-  margin: 0 auto 24px;
+  margin: 0 0 40px;
   border-radius: 12px;
+  border: 1px solid #e0dcd0;
+  box-sizing: border-box;
 }
 
 .lesson-reading-columns {
