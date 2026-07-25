@@ -88,12 +88,18 @@ export function stepHasInteractiveQuiz(step: LessonStep): boolean {
   return step.blocks.includes("interactiveQuiz");
 }
 
+export function stepHasSpeakingTask(step: LessonStep): boolean {
+  return step.blocks.includes("speakingTask");
+}
+
 export type NextStepGate =
   | { type: "ok" }
   /** Soft: confirm before leaving language work without Reading Check */
   | { type: "soft-reading-check" }
   /** Hard: cannot open Speaking / finish until quiz submitted */
-  | { type: "hard-quiz" };
+  | { type: "hard-quiz" }
+  /** Hard: cannot complete lesson without homework submission */
+  | { type: "hard-homework" };
 
 /** Evaluate soft/hard gates before advancing from currentStepIndex. */
 export function getNextStepGate(params: {
@@ -103,6 +109,7 @@ export function getNextStepGate(params: {
   readingCheckDone: boolean;
   quizSubmitted: boolean;
   lessonHasQuiz: boolean;
+  homeworkSubmitted: boolean;
 }): NextStepGate {
   const {
     steps,
@@ -111,12 +118,15 @@ export function getNextStepGate(params: {
     readingCheckDone,
     quizSubmitted,
     lessonHasQuiz,
+    homeworkSubmitted,
   } = params;
   const current = steps[currentStepIndex];
   if (!current) return { type: "ok" };
 
   // Free move inside already unlocked steps — no gates
-  if (currentStepIndex < unlockedStepIndex) {
+  // (except completing from the last step still requires homework)
+  const isAtLastStep = currentStepIndex >= steps.length - 1;
+  if (currentStepIndex < unlockedStepIndex && !isAtLastStep) {
     return { type: "ok" };
   }
 
@@ -127,6 +137,15 @@ export function getNextStepGate(params: {
   const next = steps[currentStepIndex + 1];
   if (next?.id === "finish" && lessonHasQuiz && !quizSubmitted) {
     return { type: "hard-quiz" };
+  }
+
+  // Completing the lesson (last step → done) requires homework when present
+  if (
+    isAtLastStep &&
+    stepHasSpeakingTask(current) &&
+    !homeworkSubmitted
+  ) {
+    return { type: "hard-homework" };
   }
 
   return { type: "ok" };

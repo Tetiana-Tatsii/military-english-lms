@@ -30,6 +30,16 @@ export function loadReadingCheck(
   }
 }
 
+/** Passed only when every question is correct. */
+export function isReadingCheckPassed(
+  userId: string,
+  lessonId: string,
+): boolean {
+  const stored = loadReadingCheck(userId, lessonId);
+  if (!stored || stored.total <= 0) return false;
+  return stored.score === stored.total;
+}
+
 export function saveReadingCheck(
   userId: string,
   lessonId: string,

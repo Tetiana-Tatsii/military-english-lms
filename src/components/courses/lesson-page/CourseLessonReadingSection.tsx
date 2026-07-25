@@ -3,13 +3,10 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { BookOpen, CheckCircle } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
-import {
-  getCorrectOptionIndex,
-  getSelectedOptionIndex,
-  isQuizAnswerCorrect,
-} from "@/lib/quiz";
+import { getSelectedOptionIndex, isQuizAnswerCorrect } from "@/lib/quiz";
 import {
   clearReadingCheck,
+  isReadingCheckPassed,
   loadReadingCheck,
   saveReadingCheck,
 } from "@/lib/readingCheckStorage";
@@ -57,29 +54,37 @@ export default function CourseLessonReadingSection({
       return;
     }
 
-    const stored = loadReadingCheck(user.id, lesson.id);
-    if (stored) {
-      setAnswers(stored.answers);
-      setSubmitted(true);
+    // Restore only a perfect pass; failed attempts are not persisted.
+    if (isReadingCheckPassed(user.id, lesson.id)) {
+      const stored = loadReadingCheck(user.id, lesson.id);
+      if (stored) {
+        setAnswers(stored.answers);
+        setSubmitted(true);
+      }
     }
     setHydrated(true);
   }, [lesson.id, user?.id]);
 
-  const persistResult = (nextAnswers: Record<string, string>) => {
+  const persistPassedResult = (nextAnswers: Record<string, string>) => {
     if (!user?.id) return;
-    const nextScore = questions.filter((q) =>
-      isQuizAnswerCorrect(q, nextAnswers[q.id]),
-    ).length;
     saveReadingCheck(user.id, lesson.id, {
       answers: nextAnswers,
-      score: nextScore,
+      score: questions.length,
       total: questions.length,
     });
   };
 
   const handleSubmit = () => {
+    const nextScore = questions.filter((q) =>
+      isQuizAnswerCorrect(q, answers[q.id]),
+    ).length;
     setSubmitted(true);
-    persistResult(answers);
+    // Persist only a perfect pass — wrong attempts must use Try again.
+    if (nextScore === questions.length) {
+      persistPassedResult(answers);
+    } else if (user?.id) {
+      clearReadingCheck(user.id, lesson.id);
+    }
   };
 
   const handleTryAgain = () => {
@@ -214,8 +219,6 @@ export default function CourseLessonReadingSection({
                       if (!option.trim() && !submitted) return null;
 
                       const isSelected = selectedIdx === optIndex;
-                      const isOptionCorrect =
-                        getCorrectOptionIndex(question) === optIndex;
 
                       let optionStyle: CSSProperties = {
                         display: "flex",
@@ -236,6 +239,8 @@ export default function CourseLessonReadingSection({
                         ? "rgb(250, 249, 246)"
                         : "#4a4a4a";
 
+                      // Never reveal the correct option on a failed attempt —
+                      // only highlight the learner's selection; Try again to retry.
                       if (showFeedback) {
                         if (isSelected && isCorrect) {
                           optionStyle = {
@@ -265,20 +270,6 @@ export default function CourseLessonReadingSection({
                             </span>
                           );
                           textColor = isDarkMode ? "#fee2e2" : "#7f1d1d";
-                        } else if (isOptionCorrect) {
-                          optionStyle = {
-                            ...optionStyle,
-                            background: isDarkMode
-                              ? "rgba(34, 197, 94, 0.15)"
-                              : "#dcfce7",
-                            border: "2px solid #22c55e",
-                          };
-                          icon = (
-                            <span style={{ color: "#22c55e", fontSize: 18 }}>
-                              ✅
-                            </span>
-                          );
-                          textColor = isDarkMode ? "#dcfce7" : "#14532d";
                         }
                       }
 
@@ -379,20 +370,21 @@ export default function CourseLessonReadingSection({
             >
               <span>
                 {score === questions.length
-                  ? "Completed"
-                  : `Результат: ${score}/${questions.length}`}
+                  ? "Completed — можна йти далі"
+                  : "Є помилки. Спробуйте ще раз — правильна відповідь не підказується."}
               </span>
               {score !== null && score < questions.length && (
                 <button
                   type="button"
                   onClick={handleTryAgain}
                   style={{
-                    background: "transparent",
+                    background: "#8a8a45",
                     border: "none",
-                    color: muted,
+                    color: "#fff",
                     cursor: "pointer",
-                    fontWeight: 600,
-                    textDecoration: "underline",
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    padding: "8px 14px",
                   }}
                 >
                   Try again

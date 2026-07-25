@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   FileText,
@@ -99,8 +99,14 @@ export default function CourseLessonMainContent({
   handlePrevStep,
   progressTheme,
 }: CourseLessonMainContentProps) {
+  const [gateMessage, setGateMessage] = useState<string | null>(null);
   const [showReadingSkipModal, setShowReadingSkipModal] = useState(false);
-  const [quizGateMessage, setQuizGateMessage] = useState(false);
+
+  // Clear gate hint after homework arrives so "Завершити" can succeed.
+  useEffect(() => {
+    if (existingAnswer || isSubmitted) setGateMessage(null);
+  }, [existingAnswer, isSubmitted]);
+
   if (!activeLesson) {
     return (
       <div
@@ -316,16 +322,24 @@ export default function CourseLessonMainContent({
   const showNav = lessonSteps.length > 0;
 
   const handleNextClick = () => {
-    setQuizGateMessage(false);
     const gate = peekNextStepGate();
     if (gate.type === "soft-reading-check") {
       setShowReadingSkipModal(true);
       return;
     }
     if (gate.type === "hard-quiz") {
-      setQuizGateMessage(true);
+      setGateMessage(
+        "Спочатку пройдіть Interactive Quiz — після цього відкриється Speaking Task.",
+      );
       return;
     }
+    if (gate.type === "hard-homework") {
+      setGateMessage(
+        "Щоб завершити урок, спочатку надішліть домашнє завдання на перевірку.",
+      );
+      return;
+    }
+    setGateMessage(null);
     advanceStep();
   };
 
@@ -378,7 +392,7 @@ export default function CourseLessonMainContent({
             margin: "8px 0 40px",
           }}
         >
-          {quizGateMessage && (
+          {gateMessage && (
             <p
               style={{
                 margin: 0,
@@ -396,8 +410,7 @@ export default function CourseLessonMainContent({
                 border: "1px solid #facbce",
               }}
             >
-              Спочатку пройдіть Interactive Quiz — після цього відкриється
-              Speaking Task.
+              {gateMessage}
             </p>
           )}
 
@@ -508,6 +521,7 @@ export default function CourseLessonMainContent({
           onCancel={() => setShowReadingSkipModal(false)}
           onConfirm={() => {
             setShowReadingSkipModal(false);
+            setGateMessage(null);
             advanceStep();
           }}
         />

@@ -11,13 +11,14 @@ import {
   getLessonSteps,
   getModuleProgressTheme,
   getNextStepGate,
+  stepHasSpeakingTask,
   type NextStepGate,
 } from "@/lib/lessonSteps";
 import {
   loadLessonStepProgress,
   saveLessonStepProgress,
 } from "@/lib/lessonStepStorage";
-import { loadReadingCheck } from "@/lib/readingCheckStorage";
+import { isReadingCheckPassed } from "@/lib/readingCheckStorage";
 import type { Answer, Course, Lesson, Module } from "@/types";
 
 function findLessonLocation(
@@ -184,22 +185,77 @@ export function useCourseLessonPage() {
     }
   }, [user?.id, activeLessonId]);
 
+  // Clamp indexes when step count changes; never downgrade a valid completion.
+  // Completion without required homework is invalid (only after answers hydrate).
   useEffect(() => {
-    if (lessonSteps.length === 0) return;
+    if (lessonSteps.length === 0 || !user?.id || !activeLessonId) return;
     const maxIdx = Math.max(0, lessonSteps.length - 1);
+    const stored = loadLessonStepProgress(user.id, activeLessonId);
+    const finishStep = lessonSteps[maxIdx];
+    const needsHomework = Boolean(
+      finishStep && stepHasSpeakingTask(finishStep),
+    );
+    const hwDone = Boolean(existingAnswer);
+
+    // Wait for answers to load before invalidating a stored completion.
+    if (
+      isInitialized &&
+      stored?.completed &&
+      needsHomework &&
+      !hwDone
+    ) {
+      saveLessonStepProgress(user.id, activeLessonId, {
+        unlockedStepIndex: maxIdx,
+        completed: false,
+      });
+      setLessonStepsCompleted(false);
+      setUnlockedStepIndex(maxIdx);
+      setCurrentStepIndex((prev) => Math.min(prev, maxIdx));
+      return;
+    }
+
+    const completed =
+      Boolean(stored?.completed) &&
+      (!needsHomework || hwDone || !isInitialized);
+
+    if (completed) {
+      setLessonStepsCompleted(true);
+      setUnlockedStepIndex(maxIdx);
+      setCurrentStepIndex((prev) => Math.min(prev, maxIdx));
+      saveLessonStepProgress(user.id, activeLessonId, {
+        unlockedStepIndex: maxIdx,
+        completed: true,
+      });
+      return;
+    }
+
     setUnlockedStepIndex((prev) => Math.min(prev, maxIdx));
     setCurrentStepIndex((prev) => Math.min(prev, maxIdx));
-  }, [lessonSteps.length]);
+  }, [
+    lessonSteps,
+    user?.id,
+    activeLessonId,
+    existingAnswer,
+    isInitialized,
+  ]);
 
   const persistStepProgress = useCallback(
     (nextUnlocked: number, completed: boolean) => {
       if (!user?.id || !activeLessonId) return;
+      const existing = loadLessonStepProgress(user.id, activeLessonId);
+      const mergedCompleted = completed || Boolean(existing?.completed);
+      const maxKnown = Math.max(
+        nextUnlocked,
+        existing?.unlockedStepIndex ?? 0,
+        mergedCompleted ? Math.max(0, lessonSteps.length - 1) : 0,
+      );
       saveLessonStepProgress(user.id, activeLessonId, {
-        unlockedStepIndex: nextUnlocked,
-        completed,
+        unlockedStepIndex: maxKnown,
+        completed: mergedCompleted,
       });
+      if (mergedCompleted) setLessonStepsCompleted(true);
     },
-    [user?.id, activeLessonId],
+    [user?.id, activeLessonId, lessonSteps.length],
   );
 
   const scrollToStep = useCallback((index: number) => {
@@ -211,8 +267,10 @@ export function useCourseLessonPage() {
 
   const isReadingCheckDone = useCallback(() => {
     if (!user?.id || !activeLessonId) return true;
-    return Boolean(loadReadingCheck(user.id, activeLessonId));
+    return isReadingCheckPassed(user.id, activeLessonId);
   }, [user?.id, activeLessonId]);
+
+  const homeworkSubmitted = Boolean(existingAnswer) || isSubmitted;
 
   const peekNextStepGate = useCallback((): NextStepGate => {
     return getNextStepGate({
@@ -222,6 +280,7 @@ export function useCourseLessonPage() {
       readingCheckDone: isReadingCheckDone(),
       quizSubmitted,
       lessonHasQuiz: Boolean(activeLesson?.quiz?.length),
+      homeworkSubmitted,
     });
   }, [
     lessonSteps,
@@ -230,6 +289,7 @@ export function useCourseLessonPage() {
     isReadingCheckDone,
     quizSubmitted,
     activeLesson?.quiz?.length,
+    homeworkSubmitted,
   ]);
 
   /** Advance after gates are cleared (or soft-confirm accepted). */
