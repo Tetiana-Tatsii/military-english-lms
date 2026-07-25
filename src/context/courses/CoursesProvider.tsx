@@ -5,10 +5,10 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState,
+  useRef,
   type ReactNode,
 } from "react";
-import { initialCourses } from "@/data/courses";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { mapDbRowToAnswer } from "@/lib/mappers";
 import { recalculateSlp } from "@/lib/slp";
@@ -17,15 +17,13 @@ import {
   checkAndCompleteCourse,
 } from "@/lib/gamification";
 import { getAudioExtension, isIOSDevice } from "@/lib/voiceRecording";
+import { fetchCourses } from "@/lib/courses/fetchCourses";
+import { fetchAnswers } from "@/lib/courses/fetchAnswers";
+import { seedInitialCoursesIfEmpty } from "@/lib/courses/seedInitialCourses";
 import { useAuth } from "@/context/auth";
 import { useGamification } from "@/context/gamification";
-import type {
-  Answer,
-  Course,
-  Lesson,
-  Module,
-  Question,
-} from "@/types";
+import { answerKeys, courseKeys } from "./queryKeys";
+import type { Answer, Course, Lesson, Module } from "@/types";
 
 interface CoursesContextValue {
   courses: Course[];
@@ -74,66 +72,132 @@ interface CoursesContextValue {
 
 const CoursesContext = createContext<CoursesContextValue | undefined>(undefined);
 
+type CoursesUpdater = Course[] | ((prev: Course[]) => Course[]);
+type AnswersUpdater = Answer[] | ((prev: Answer[]) => Answer[]);
+
 export function CoursesProvider({ children }: { children: ReactNode }) {
   const { user, usersDb, authReady, registerPostLoginHandler } = useAuth();
   const { refreshGamification, setInstructorMood } = useGamification();
+  const queryClient = useQueryClient();
+  const seedAttempted = useRef(false);
 
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [answers, setAnswers] = useState<Answer[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const coursesQueryKey = courseKeys.byUser(user?.id);
+  const answersQueryKey = answerKeys.byUser(user?.id);
 
-  const fetchCoursesFromSupabase = useCallback(async (): Promise<Course[] | null> => {
-    try {
-      const { data: coursesData, error: coursesError } = await supabase
-        .from("lms_courses")
-        .select("*")
-        .order("created_at", { ascending: true });
+  const coursesQuery = useQuery({
+    queryKey: coursesQueryKey,
+    queryFn: async () => {
+      const data = await fetchCourses();
+      if (data === null) throw new Error("Failed to load courses");
+      return data;
+    },
+    enabled: authReady,
+  });
 
-      if (coursesError) {
-        console.error("Помилка завантаження курсів:", coursesError);
-        return null;
-      }
+  const answersQuery = useQuery({
+    queryKey: answersQueryKey,
+    queryFn: fetchAnswers,
+    enabled: authReady,
+  });
 
-      if (!coursesData || coursesData.length === 0) return [];
+  const courses = coursesQuery.data ?? [];
+  const answers = answersQuery.data ?? [];
+  const isInitialized =
+    authReady && coursesQuery.isFetched && answersQuery.isFetched;
 
-      const { data: lessonsData } = await supabase
-        .from("lms_lessons")
-        .select("id, course_id, module_id, order_index, content")
-        .order("order_index", { ascending: true });
-
-      const formattedCourses: Course[] = coursesData.map((c) => {
-        const modules = (c.modules as Module[]).map((mod) => {
-          const fromTable = (lessonsData || [])
-            .filter((l) => l.course_id === c.id && l.module_id === mod.id)
-            .sort((a, b) => a.order_index - b.order_index)
-            .map((l) => ({ ...(l.content as Lesson), id: l.id }));
-
-          const fromJson = (mod.lessons || []) as Lesson[];
-
-          return {
-            ...mod,
-            lessons: fromTable.length > 0 ? fromTable : fromJson,
-          };
-        });
-
-        return {
-          id: c.id,
-          title: c.title,
-          subtitle: c.subtitle || "",
-          description: c.description || "",
-          status: (c.status as "active" | "draft") || "draft",
-          modules,
-          finalTest: c.final_test || { title: "", questions: [] },
-        };
+  const setCourses = useCallback(
+    (updater: CoursesUpdater) => {
+      queryClient.setQueryData<Course[]>(coursesQueryKey, (prev) => {
+        const current = prev ?? [];
+        return typeof updater === "function" ? updater(current) : updater;
       });
+    },
+    [queryClient, coursesQueryKey],
+  );
 
-      setCourses(formattedCourses);
-      return formattedCourses;
-    } catch (error) {
-      console.error("Помилка при завантаженні курсів:", error);
-      return null;
-    }
+  const setAnswers = useCallback(
+    (updater: AnswersUpdater) => {
+      queryClient.setQueryData<Answer[]>(answersQueryKey, (prev) => {
+        const current = prev ?? [];
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [queryClient, answersQueryKey],
+  );
+
+  // One-time cleanup of legacy localStorage caches
+  useEffect(() => {
+    localStorage.removeItem("lanp_courses");
+    localStorage.removeItem("lanp_answers");
   }, []);
+
+  // Seed empty DB once (fresh project / local)
+  useEffect(() => {
+    if (!authReady || !coursesQuery.isFetched || seedAttempted.current) return;
+    if (coursesQuery.isError) return;
+
+    if ((coursesQuery.data?.length ?? 0) > 0) {
+      seedAttempted.current = true;
+      return;
+    }
+
+    seedAttempted.current = true;
+    (async () => {
+      try {
+        await seedInitialCoursesIfEmpty();
+        await queryClient.invalidateQueries({ queryKey: courseKeys.all });
+      } catch (error) {
+        console.error("Помилка seed курсів:", error);
+      }
+    })();
+  }, [
+    authReady,
+    coursesQuery.isFetched,
+    coursesQuery.isError,
+    coursesQuery.data?.length,
+    queryClient,
+  ]);
+
+  useEffect(() => {
+    return registerPostLoginHandler(async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: courseKeys.all }),
+        queryClient.invalidateQueries({ queryKey: answerKeys.all }),
+      ]);
+    });
+  }, [registerPostLoginHandler, queryClient]);
+
+  // Realtime → invalidate (simpler than hand-merging into cache)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const coursesChannel = supabase
+      .channel("lms-courses-changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "lms_courses" },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: courseKeys.all });
+        },
+      )
+      .subscribe();
+
+    const lessonsChannel = supabase
+      .channel("lms-lessons-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "lms_lessons" },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: courseKeys.all });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(coursesChannel);
+      supabase.removeChannel(lessonsChannel);
+    };
+  }, [isInitialized, queryClient]);
 
   const saveCourseToSupabase = useCallback(async (course: Course) => {
     try {
@@ -191,194 +255,8 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
       );
       return newModules;
     },
-    [],
+    [setCourses],
   );
-
-  const fetchAnswersFromSupabase = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("answers")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Помилка завантаження відповідей з Supabase:", error);
-        return;
-      }
-
-      if (data) {
-        setAnswers(data.map(mapDbRowToAnswer));
-      }
-    } catch (error) {
-      console.error("Помилка при завантаженні відповідей:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    return registerPostLoginHandler(async () => {
-      await fetchCoursesFromSupabase();
-      await fetchAnswersFromSupabase();
-    });
-  }, [registerPostLoginHandler, fetchCoursesFromSupabase, fetchAnswersFromSupabase]);
-
-  useEffect(() => {
-    if (!authReady) return;
-
-    const loadAppData = async () => {
-      try {
-        localStorage.removeItem("lanp_courses");
-        localStorage.removeItem("lanp_answers");
-
-        const loadedCourses = await fetchCoursesFromSupabase();
-
-        if (loadedCourses !== null && loadedCourses.length === 0) {
-          for (const course of initialCourses as Course[]) {
-            await supabase.from("lms_courses").upsert({
-              id: course.id,
-              title: course.title,
-              subtitle: course.subtitle,
-              description: course.description,
-              status: course.status || "draft",
-              modules: course.modules.map((mod) => ({
-                id: mod.id,
-                title: mod.title,
-                icon: mod.icon,
-                lessons: [],
-              })),
-              final_test: course.finalTest || { title: "", questions: [] },
-            });
-
-            for (const mod of course.modules) {
-              for (let i = 0; i < mod.lessons.length; i++) {
-                const lesson = mod.lessons[i];
-                await supabase.from("lms_lessons").upsert({
-                  id: lesson.id,
-                  course_id: course.id,
-                  module_id: mod.id,
-                  order_index: i,
-                  content: lesson,
-                });
-              }
-            }
-          }
-          await fetchCoursesFromSupabase();
-        }
-
-        await fetchAnswersFromSupabase();
-      } catch (error) {
-        console.error("Помилка завантаження системи:", error);
-      } finally {
-        setIsInitialized(true);
-      }
-    };
-
-    loadAppData();
-  }, [authReady, fetchAnswersFromSupabase, fetchCoursesFromSupabase]);
-
-  useEffect(() => {
-    if (!isInitialized || !user) return;
-    fetchCoursesFromSupabase();
-    fetchAnswersFromSupabase();
-  }, [isInitialized, user?.id, fetchCoursesFromSupabase, fetchAnswersFromSupabase]);
-
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const channel = supabase
-      .channel("lms-courses-changes")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "lms_courses" },
-        (payload) => {
-          const updated = payload.new as {
-            id: string;
-            title: string;
-            subtitle: string;
-            description: string;
-            status: string;
-            modules: Module[];
-            final_test: { title: string; questions: Question[] };
-          };
-          setCourses((prev) =>
-            prev.map((c) => {
-              if (c.id !== updated.id) return c;
-              const newModules = (updated.modules || []).map((updMod) => {
-                const existingMod = c.modules.find((m) => m.id === updMod.id);
-                return { ...updMod, lessons: existingMod?.lessons || [] };
-              });
-              return {
-                ...c,
-                modules: newModules,
-                finalTest: updated.final_test || c.finalTest,
-                status: (updated.status as "active" | "draft") || c.status,
-              };
-            }),
-          );
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isInitialized]);
-
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const channel = supabase
-      .channel("lms-lessons-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "lms_lessons" },
-        (payload) => {
-          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-            const row = payload.new as {
-              id: string;
-              course_id: string;
-              module_id: string;
-              order_index: number;
-              content: Lesson;
-            };
-            const lesson: Lesson = { ...(row.content as Lesson), id: row.id };
-            setCourses((prev) =>
-              prev.map((c) => {
-                if (c.id !== row.course_id) return c;
-                return {
-                  ...c,
-                  modules: c.modules.map((mod) => {
-                    if (mod.id !== row.module_id) return mod;
-                    const exists = mod.lessons.some((l) => l.id === row.id);
-                    return {
-                      ...mod,
-                      lessons: exists
-                        ? mod.lessons.map((l) => (l.id === row.id ? lesson : l))
-                        : [...mod.lessons, lesson],
-                    };
-                  }),
-                };
-              }),
-            );
-          } else if (payload.eventType === "DELETE") {
-            const row = payload.old as { id: string };
-            setCourses((prev) =>
-              prev.map((c) => ({
-                ...c,
-                modules: c.modules.map((mod) => ({
-                  ...mod,
-                  lessons: mod.lessons.filter((l) => l.id !== row.id),
-                })),
-              })),
-            );
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isInitialized]);
 
   const submitAnswer = useCallback(
     async (
@@ -490,7 +368,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
         setAnswers((prev) => [...prev, mapDbRowToAnswer(data)]);
       }
     },
-    [user],
+    [user, setAnswers],
   );
 
   const provideFeedback = useCallback(
@@ -608,6 +486,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
       answers,
       courses,
       refreshGamification,
+      setAnswers,
       setInstructorMood,
       usersDb,
     ],
@@ -627,7 +506,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
       setCourses((prev) => [...prev, newCourse]);
       await saveCourseToSupabase(newCourse);
     },
-    [saveCourseToSupabase],
+    [saveCourseToSupabase, setCourses],
   );
 
   const updateCourse = useCallback(
@@ -642,17 +521,20 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
       });
       if (updatedCourse) await saveCourseToSupabase(updatedCourse);
     },
-    [saveCourseToSupabase],
+    [saveCourseToSupabase, setCourses],
   );
 
-  const deleteCourse = useCallback(async (courseId: string) => {
-    setCourses((prev) => prev.filter((c) => c.id !== courseId));
-    try {
-      await supabase.from("lms_courses").delete().eq("id", courseId);
-    } catch (error) {
-      console.error("Помилка видалення курсу з Supabase:", error);
-    }
-  }, []);
+  const deleteCourse = useCallback(
+    async (courseId: string) => {
+      setCourses((prev) => prev.filter((c) => c.id !== courseId));
+      try {
+        await supabase.from("lms_courses").delete().eq("id", courseId);
+      } catch (error) {
+        console.error("Помилка видалення курсу з Supabase:", error);
+      }
+    },
+    [setCourses],
+  );
 
   const addModule = useCallback(
     async (courseId: string, title: string, icon: string) => {
@@ -762,7 +644,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [courses],
+    [courses, setCourses],
   );
 
   const updateLesson = useCallback(
@@ -823,7 +705,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [courses],
+    [courses, setCourses],
   );
 
   const deleteLesson = useCallback(
@@ -853,7 +735,7 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [],
+    [setCourses],
   );
 
   return (

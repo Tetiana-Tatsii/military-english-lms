@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { AuthProvider, useAuth } from "./auth";
 import { GamificationProvider, useGamification } from "./gamification";
 import { CoursesProvider, useCourses } from "./courses";
+import { QueryProvider } from "./QueryProvider";
 import type {
   SkillType,
   UserRole,
@@ -133,13 +134,15 @@ const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <GamificationProvider>
-        <CoursesProvider>
-          <AppProviderInner>{children}</AppProviderInner>
-        </CoursesProvider>
-      </GamificationProvider>
-    </AuthProvider>
+    <QueryProvider>
+      <AuthProvider>
+        <GamificationProvider>
+          <CoursesProvider>
+            <AppProviderInner>{children}</AppProviderInner>
+          </CoursesProvider>
+        </GamificationProvider>
+      </AuthProvider>
+    </QueryProvider>
   );
 }
 
