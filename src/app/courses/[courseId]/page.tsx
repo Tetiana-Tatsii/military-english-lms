@@ -114,9 +114,12 @@ export default function CoursePage() {
             handleSendHomework={page.handleSendHomework}
             lessonSteps={page.lessonSteps}
             unlockedStepIndex={page.unlockedStepIndex}
+            currentStepIndex={page.currentStepIndex}
             lessonStepsCompleted={page.lessonStepsCompleted}
             filledSteps={page.filledSteps}
-            handleNextStep={page.handleNextStep}
+            peekNextStepGate={page.peekNextStepGate}
+            advanceStep={page.advanceStep}
+            handlePrevStep={page.handlePrevStep}
             progressTheme={page.progressTheme}
           />
         </div>

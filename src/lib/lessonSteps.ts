@@ -80,6 +80,58 @@ export function getLessonSteps(
   }).filter((step) => step.blocks.length > 0);
 }
 
+export function stepHasReadingCheck(step: LessonStep): boolean {
+  return step.blocks.includes("readingCheck");
+}
+
+export function stepHasInteractiveQuiz(step: LessonStep): boolean {
+  return step.blocks.includes("interactiveQuiz");
+}
+
+export type NextStepGate =
+  | { type: "ok" }
+  /** Soft: confirm before leaving language work without Reading Check */
+  | { type: "soft-reading-check" }
+  /** Hard: cannot open Speaking / finish until quiz submitted */
+  | { type: "hard-quiz" };
+
+/** Evaluate soft/hard gates before advancing from currentStepIndex. */
+export function getNextStepGate(params: {
+  steps: LessonStep[];
+  currentStepIndex: number;
+  unlockedStepIndex: number;
+  readingCheckDone: boolean;
+  quizSubmitted: boolean;
+  lessonHasQuiz: boolean;
+}): NextStepGate {
+  const {
+    steps,
+    currentStepIndex,
+    unlockedStepIndex,
+    readingCheckDone,
+    quizSubmitted,
+    lessonHasQuiz,
+  } = params;
+  const current = steps[currentStepIndex];
+  if (!current) return { type: "ok" };
+
+  // Free move inside already unlocked steps — no gates
+  if (currentStepIndex < unlockedStepIndex) {
+    return { type: "ok" };
+  }
+
+  if (stepHasReadingCheck(current) && !readingCheckDone) {
+    return { type: "soft-reading-check" };
+  }
+
+  const next = steps[currentStepIndex + 1];
+  if (next?.id === "finish" && lessonHasQuiz && !quizSubmitted) {
+    return { type: "hard-quiz" };
+  }
+
+  return { type: "ok" };
+}
+
 /**
  * Theme for progress icons by module index (0-based).
  * 1st module → coffee coins, 2nd → cat, 3rd → dog, 4th → drone, 5th+ → victory.

@@ -10,11 +10,14 @@ import { submitLessonQuiz } from "@/lib/quiz";
 import {
   getLessonSteps,
   getModuleProgressTheme,
+  getNextStepGate,
+  type NextStepGate,
 } from "@/lib/lessonSteps";
 import {
   loadLessonStepProgress,
   saveLessonStepProgress,
 } from "@/lib/lessonStepStorage";
+import { loadReadingCheck } from "@/lib/readingCheckStorage";
 import type { Answer, Course, Lesson, Module } from "@/types";
 
 export function useCourseLessonPage() {
@@ -52,6 +55,7 @@ export function useCourseLessonPage() {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [unlockedStepIndex, setUnlockedStepIndex] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [lessonStepsCompleted, setLessonStepsCompleted] = useState(false);
 
   useEffect(() => {
@@ -124,24 +128,27 @@ export function useCourseLessonPage() {
   useEffect(() => {
     if (!user?.id || !activeLessonId) {
       setUnlockedStepIndex(0);
+      setCurrentStepIndex(0);
       setLessonStepsCompleted(false);
       return;
     }
     const stored = loadLessonStepProgress(user.id, activeLessonId);
     if (stored) {
       setUnlockedStepIndex(stored.unlockedStepIndex);
+      setCurrentStepIndex(stored.unlockedStepIndex);
       setLessonStepsCompleted(stored.completed);
     } else {
       setUnlockedStepIndex(0);
+      setCurrentStepIndex(0);
       setLessonStepsCompleted(false);
     }
   }, [user?.id, activeLessonId]);
 
   useEffect(() => {
     if (lessonSteps.length === 0) return;
-    setUnlockedStepIndex((prev) =>
-      Math.min(prev, Math.max(0, lessonSteps.length - 1)),
-    );
+    const maxIdx = Math.max(0, lessonSteps.length - 1);
+    setUnlockedStepIndex((prev) => Math.min(prev, maxIdx));
+    setCurrentStepIndex((prev) => Math.min(prev, maxIdx));
   }, [lessonSteps.length]);
 
   const persistStepProgress = useCallback(
@@ -155,26 +162,75 @@ export function useCourseLessonPage() {
     [user?.id, activeLessonId],
   );
 
-  const handleNextStep = useCallback(() => {
+  const scrollToStep = useCallback((index: number) => {
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`lesson-step-${index}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
+  const isReadingCheckDone = useCallback(() => {
+    if (!user?.id || !activeLessonId) return true;
+    return Boolean(loadReadingCheck(user.id, activeLessonId));
+  }, [user?.id, activeLessonId]);
+
+  const peekNextStepGate = useCallback((): NextStepGate => {
+    return getNextStepGate({
+      steps: lessonSteps,
+      currentStepIndex,
+      unlockedStepIndex,
+      readingCheckDone: isReadingCheckDone(),
+      quizSubmitted,
+      lessonHasQuiz: Boolean(activeLesson?.quiz?.length),
+    });
+  }, [
+    lessonSteps,
+    currentStepIndex,
+    unlockedStepIndex,
+    isReadingCheckDone,
+    quizSubmitted,
+    activeLesson?.quiz?.length,
+  ]);
+
+  /** Advance after gates are cleared (or soft-confirm accepted). */
+  const advanceStep = useCallback(() => {
     if (lessonSteps.length === 0) return;
     const lastIndex = lessonSteps.length - 1;
 
-    if (unlockedStepIndex >= lastIndex) {
+    // Moving within already unlocked steps (review / free navigation)
+    if (currentStepIndex < unlockedStepIndex) {
+      const next = currentStepIndex + 1;
+      setCurrentStepIndex(next);
+      scrollToStep(next);
+      return;
+    }
+
+    // At the frontier
+    if (currentStepIndex >= lastIndex) {
       setLessonStepsCompleted(true);
       persistStepProgress(lastIndex, true);
       return;
     }
 
-    const next = unlockedStepIndex + 1;
+    const next = currentStepIndex + 1;
     setUnlockedStepIndex(next);
+    setCurrentStepIndex(next);
     persistStepProgress(next, false);
+    scrollToStep(next);
+  }, [
+    lessonSteps.length,
+    currentStepIndex,
+    unlockedStepIndex,
+    persistStepProgress,
+    scrollToStep,
+  ]);
 
-    // Scroll to the newly revealed step after paint
-    requestAnimationFrame(() => {
-      const el = document.getElementById(`lesson-step-${next}`);
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [lessonSteps.length, unlockedStepIndex, persistStepProgress]);
+  const handlePrevStep = useCallback(() => {
+    if (currentStepIndex <= 0) return;
+    const prev = currentStepIndex - 1;
+    setCurrentStepIndex(prev);
+    scrollToStep(prev);
+  }, [currentStepIndex, scrollToStep]);
 
   const filledSteps = lessonStepsCompleted
     ? lessonSteps.length
@@ -358,9 +414,12 @@ export function useCourseLessonPage() {
     progressTheme,
     lessonSteps,
     unlockedStepIndex,
+    currentStepIndex,
     lessonStepsCompleted,
     filledSteps,
-    handleNextStep,
+    peekNextStepGate,
+    advanceStep,
+    handlePrevStep,
     existingAnswer,
     flippedCards,
     selectLesson,

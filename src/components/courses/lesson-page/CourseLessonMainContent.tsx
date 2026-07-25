@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   BookOpen,
   FileText,
@@ -7,6 +8,7 @@ import {
   ClipboardList,
   Languages,
   ChevronRight,
+  ChevronLeft,
   Check,
 } from "lucide-react";
 import type { LessonBlockId } from "@/types";
@@ -24,6 +26,7 @@ import CourseLessonCanDoSection from "./CourseLessonCanDoSection";
 import CourseLessonRichHtml from "./CourseLessonRichHtml";
 import LessonBlockCard from "./LessonBlockCard";
 import LessonProgressBar from "./LessonProgressBar";
+import LessonStepConfirmModal from "./LessonStepConfirmModal";
 import {
   emphasizeObjectiveLabels,
   getBlockEstimatedTime,
@@ -55,9 +58,12 @@ type CourseLessonMainContentProps = Pick<
   | "handleSendHomework"
   | "lessonSteps"
   | "unlockedStepIndex"
+  | "currentStepIndex"
   | "lessonStepsCompleted"
   | "filledSteps"
-  | "handleNextStep"
+  | "peekNextStepGate"
+  | "advanceStep"
+  | "handlePrevStep"
   | "progressTheme"
 >;
 
@@ -85,11 +91,16 @@ export default function CourseLessonMainContent({
   handleSendHomework,
   lessonSteps,
   unlockedStepIndex,
+  currentStepIndex,
   lessonStepsCompleted,
   filledSteps,
-  handleNextStep,
+  peekNextStepGate,
+  advanceStep,
+  handlePrevStep,
   progressTheme,
 }: CourseLessonMainContentProps) {
+  const [showReadingSkipModal, setShowReadingSkipModal] = useState(false);
+  const [quizGateMessage, setQuizGateMessage] = useState(false);
   if (!activeLesson) {
     return (
       <div
@@ -300,8 +311,23 @@ export default function CourseLessonMainContent({
   };
 
   const visibleSteps = lessonSteps.slice(0, unlockedStepIndex + 1);
-  const isLastStep = unlockedStepIndex >= lessonSteps.length - 1;
-  const showNext = lessonSteps.length > 0 && !lessonStepsCompleted;
+  const isLastStep = currentStepIndex >= lessonSteps.length - 1;
+  const canGoBack = currentStepIndex > 0;
+  const showNav = lessonSteps.length > 0;
+
+  const handleNextClick = () => {
+    setQuizGateMessage(false);
+    const gate = peekNextStepGate();
+    if (gate.type === "soft-reading-check") {
+      setShowReadingSkipModal(true);
+      return;
+    }
+    if (gate.type === "hard-quiz") {
+      setQuizGateMessage(true);
+      return;
+    }
+    advanceStep();
+  };
 
   return (
     <div
@@ -314,7 +340,7 @@ export default function CourseLessonMainContent({
       <LessonProgressBar
         totalSteps={lessonSteps.length}
         filledSteps={filledSteps}
-        currentStep={unlockedStepIndex}
+        currentStep={currentStepIndex}
         theme={progressTheme}
         isDarkMode={isDarkMode}
         completed={lessonStepsCompleted}
@@ -326,48 +352,122 @@ export default function CourseLessonMainContent({
         <div
           key={step.id}
           id={`lesson-step-${index}`}
-          style={{ scrollMarginTop: 96 }}
+          style={{
+            scrollMarginTop: 96,
+            outline:
+              index === currentStepIndex
+                ? isDarkMode
+                  ? "1px solid #5a5c48"
+                  : "1px solid #d8cdb4"
+                : "none",
+            outlineOffset: 4,
+            borderRadius: 12,
+          }}
         >
           {step.blocks.map((blockId) => renderBlock(blockId))}
         </div>
       ))}
 
-      {showNext && (
+      {showNav && (
         <div
           style={{
             display: "flex",
-            justifyContent: "center",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
             margin: "8px 0 40px",
           }}
         >
-          <button
-            type="button"
-            onClick={handleNextStep}
+          {quizGateMessage && (
+            <p
+              style={{
+                margin: 0,
+                maxWidth: 420,
+                textAlign: "center",
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: 1.5,
+                color: "#c97a4a",
+                padding: "10px 14px",
+                borderRadius: 8,
+                background: isDarkMode
+                  ? "rgba(201, 122, 74, 0.12)"
+                  : "#fdf8f5",
+                border: "1px solid #facbce",
+              }}
+            >
+              Спочатку пройдіть Interactive Quiz — після цього відкриється
+              Speaking Task.
+            </p>
+          )}
+
+          <div
             style={{
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
-              gap: 8,
-              background: "#8a8a45",
-              color: "#fff",
-              border: "none",
-              padding: "14px 28px",
-              borderRadius: 10,
-              fontWeight: 700,
-              fontSize: 15,
-              cursor: "pointer",
-              boxShadow: "0 4px 14px rgba(138, 138, 69, 0.25)",
+              justifyContent: "center",
+              gap: 12,
+              flexWrap: "wrap",
             }}
           >
-            {isLastStep ? (
-              <>
-                Завершити урок <Check size={18} />
-              </>
-            ) : (
-              <>
-                Далі <ChevronRight size={18} />
-              </>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={handlePrevStep}
+              disabled={!canGoBack}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "transparent",
+                color: canGoBack
+                  ? isDarkMode
+                    ? "#e6e4dc"
+                    : "#3a3528"
+                  : isDarkMode
+                    ? "#5a584e"
+                    : "#c5c0b0",
+                border: isDarkMode ? "1px solid #3e403a" : "1px solid #d8cdb4",
+                padding: "14px 22px",
+                borderRadius: 10,
+                fontWeight: 700,
+                fontSize: 15,
+                cursor: canGoBack ? "pointer" : "not-allowed",
+              }}
+            >
+              <ChevronLeft size={18} /> Назад
+            </button>
+
+            {!lessonStepsCompleted ? (
+              <button
+                type="button"
+                onClick={handleNextClick}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#8a8a45",
+                  color: "#fff",
+                  border: "none",
+                  padding: "14px 28px",
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: 15,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(138, 138, 69, 0.25)",
+                }}
+              >
+                {isLastStep ? (
+                  <>
+                    Завершити урок <Check size={18} />
+                  </>
+                ) : (
+                  <>
+                    Далі <ChevronRight size={18} />
+                  </>
+                )}
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -396,6 +496,21 @@ export default function CourseLessonMainContent({
         >
           У цьому уроці ще немає видимого контенту.
         </p>
+      )}
+
+      {showReadingSkipModal && (
+        <LessonStepConfirmModal
+          isDarkMode={isDarkMode}
+          title="Reading Check"
+          message="Ви ще не пройшли Reading Check. Впевнені, що хочете пропустити цей крок?"
+          cancelLabel="Скасувати"
+          confirmLabel="Пропустити"
+          onCancel={() => setShowReadingSkipModal(false)}
+          onConfirm={() => {
+            setShowReadingSkipModal(false);
+            advanceStep();
+          }}
+        />
       )}
     </div>
   );

@@ -450,44 +450,23 @@ export type AwardQuizCoinsResult = {
   newCoffeeCoins: number;
 };
 
-/** Award coffee coins for a lesson quiz (1 correct answer = 1 coin). Idempotent via coin_ledger. */
+/**
+ * @deprecated Quiz coins are awarded only inside submit_lesson_quiz (server).
+ * Client EXECUTE on award_quiz_coins was revoked (P6 security hygiene).
+ */
 export async function awardQuizCoins(
-  supabase: SupabaseClient,
-  lessonId: string,
+  _supabase: SupabaseClient,
+  _lessonId: string,
 ): Promise<AwardQuizCoinsResult> {
-  const empty: AwardQuizCoinsResult = {
-    error: null,
+  console.warn(
+    "awardQuizCoins is disabled (P6). Use submitLessonQuiz — coins award server-side.",
+  );
+  return {
+    error: "use_submit_lesson_quiz",
     alreadyAwarded: false,
     coinsAwarded: 0,
     correctCount: 0,
     newCoffeeCoins: 0,
-  };
-
-  const { data, error } = await supabase.rpc("award_quiz_coins", {
-    p_lesson_id: lessonId,
-  });
-
-  if (error) {
-    console.error("award_quiz_coins RPC failed:", error.message);
-    return { ...empty, error: error.message };
-  }
-
-  const payload = data as Record<string, unknown> | null;
-  if (!payload) {
-    return { ...empty, error: "empty_response" };
-  }
-
-  if (payload.error) {
-    console.error("award_quiz_coins:", payload.error);
-    return { ...empty, error: String(payload.error) };
-  }
-
-  return {
-    error: null,
-    alreadyAwarded: Boolean(payload.alreadyAwarded),
-    coinsAwarded: Number(payload.coinsAwarded ?? 0),
-    correctCount: Number(payload.correctCount ?? 0),
-    newCoffeeCoins: Number(payload.newCoffeeCoins ?? 0),
   };
 }
 
