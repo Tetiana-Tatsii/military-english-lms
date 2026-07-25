@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 import { useDarkMode } from "@/hooks/useDarkMode";
@@ -20,9 +20,22 @@ import {
 import { loadReadingCheck } from "@/lib/readingCheckStorage";
 import type { Answer, Course, Lesson, Module } from "@/types";
 
+function findLessonLocation(
+  course: Course,
+  lessonId: string,
+): { moduleId: string; lessonId: string } | null {
+  for (const mod of course.modules) {
+    if (mod.lessons.some((l) => l.id === lessonId)) {
+      return { moduleId: mod.id, lessonId };
+    }
+  }
+  return null;
+}
+
 export function useCourseLessonPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     courses,
     user,
@@ -35,6 +48,8 @@ export function useCourseLessonPage() {
 
   const courseId = params.courseId as string;
   const course = courses.find((c) => c.id === courseId);
+  const lessonFromQuery = searchParams.get("lesson");
+  const didApplyLessonQuery = useRef(false);
 
   const initialModuleId = course?.modules?.[0]?.id || "";
   const initialLessonId = course?.modules?.[0]?.lessons?.[0]?.id || "";
@@ -63,6 +78,31 @@ export function useCourseLessonPage() {
       router.push("/login");
     }
   }, [user, router, isInitialized]);
+
+  // Deep-link: /courses/[courseId]?lesson=[lessonId] (also used by legacy redirect).
+  // Bootstrap first lesson when course arrives after empty initial state.
+  useEffect(() => {
+    if (!course) return;
+
+    if (lessonFromQuery && !didApplyLessonQuery.current) {
+      const loc = findLessonLocation(course, lessonFromQuery);
+      if (loc) {
+        didApplyLessonQuery.current = true;
+        setActiveModuleId(loc.moduleId);
+        setActiveLessonId(loc.lessonId);
+        return;
+      }
+    }
+
+    if (!activeModuleId || !activeLessonId) {
+      const firstModule = course.modules[0];
+      const firstLesson = firstModule?.lessons[0];
+      if (firstModule && firstLesson) {
+        setActiveModuleId(firstModule.id);
+        setActiveLessonId(firstLesson.id);
+      }
+    }
+  }, [course, lessonFromQuery, activeModuleId, activeLessonId]);
 
   useEffect(() => {
     setQuizSubmitted(false);

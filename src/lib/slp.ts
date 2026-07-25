@@ -1,85 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Course } from "@/context/AppContext";
 
-const SLP_SKILLS = ["listening", "speaking", "reading", "writing"] as const;
-type SlpSkill = (typeof SLP_SKILLS)[number];
-
 /**
- * Будує словник: навичка → масив lesson_id, які її розвивають.
- * mixed урок потрапляє до всіх 4 навичок.
- */
-function getLessonIdsBySkill(courses: Course[]): Record<SlpSkill, string[]> {
-  const map: Record<SlpSkill, string[]> = {
-    listening: [],
-    speaking: [],
-    reading: [],
-    writing: [],
-  };
-  for (const course of courses) {
-    for (const module of course.modules) {
-      for (const lesson of module.lessons) {
-        if (lesson.skill === "mixed") {
-          SLP_SKILLS.forEach((s) => map[s].push(lesson.id));
-        } else if (lesson.skill && lesson.skill in map) {
-          map[lesson.skill as SlpSkill].push(lesson.id);
-        }
-      }
-    }
-  }
-  return map;
-}
-
-/**
- * Перераховує SLP-профіль курсанта як середнє арифметичне
- * всіх результатів quiz_results та перевірених answers.
- * Пише лише через RPC update_profile_slp (C1).
+ * Перераховує SLP-профіль курсанта на сервері (RPC recalculate_profile_slp).
+ * Клієнт більше не передає оцінки — лише тригерить перерахунок з quiz_results + answers.
+ * Параметр courses збережено для сумісності викликів; у розрахунку не використовується.
  */
 export async function recalculateSlp(
   supabase: SupabaseClient,
   userId: string,
-  courses: Course[],
+  _courses: Course[],
 ): Promise<void> {
-  const lessonsBySkill = getLessonIdsBySkill(courses);
-  const slp: Partial<Record<SlpSkill, number>> = {};
-
-  await Promise.all(
-    SLP_SKILLS.map(async (skill) => {
-      const lessonIds = lessonsBySkill[skill];
-      if (lessonIds.length === 0) return;
-
-      const [{ data: quizData }, { data: hwData }] = await Promise.all([
-        supabase
-          .from("quiz_results")
-          .select("score")
-          .eq("user_id", userId)
-          .in("lesson_id", lessonIds),
-        supabase
-          .from("answers")
-          .select("score")
-          .eq("user_id", userId)
-          .eq("status", "reviewed")
-          .in("lesson_id", lessonIds)
-          .not("score", "is", null),
-      ]);
-
-      const allScores = [
-        ...(quizData?.map((r) => r.score) ?? []),
-        ...(hwData?.map((r) => r.score) ?? []),
-      ].filter((s): s is number => typeof s === "number");
-
-      if (allScores.length > 0) {
-        slp[skill] = Math.round(
-          allScores.reduce((a, b) => a + b, 0) / allScores.length,
-        );
-      }
-    }),
-  );
-
-  if (Object.keys(slp).length === 0) return;
-
-  const { data, error } = await supabase.rpc("update_profile_slp", {
+  const { data, error } = await supabase.rpc("recalculate_profile_slp", {
     p_user_id: userId,
-    p_slp: slp,
   });
 
   if (error) {

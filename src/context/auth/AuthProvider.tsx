@@ -110,6 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
+      // Pending accounts must not keep a JWT / UI session.
+      if (profileData.status === "pending") {
+        await clearBrokenSession();
+        return null;
+      }
+
       return applySessionUser({
         id: profileData.id,
         name: profileData.name,
@@ -150,12 +156,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (!profileError && profileData) {
-        activeUserId = applySessionUser({
-          id: profileData.id,
-          name: profileData.name,
-          role: profileData.role as UserRole,
-          squadId: profileData.squad_id,
-        });
+        if (profileData.status === "pending") {
+          await clearBrokenSession();
+          activeUserId = null;
+        } else {
+          activeUserId = applySessionUser({
+            id: profileData.id,
+            name: profileData.name,
+            role: profileData.role as UserRole,
+            squadId: profileData.squad_id,
+          });
+        }
       } else {
         await clearBrokenSession();
         activeUserId = null;
@@ -196,10 +207,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (profileError || !profileData) {
+        await clearBrokenSession();
         return "Профіль не знайдено.";
       }
 
       if (profileData.status === "pending") {
+        await clearBrokenSession();
         return "Ваш акаунт ще не активовано адміністрацією.";
       }
 
@@ -213,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await runPostLoginHandlers(profileData.id);
       return null;
     },
-    [applySessionUser, runPostLoginHandlers],
+    [applySessionUser, clearBrokenSession, runPostLoginHandlers],
   );
 
   const registerUser = useCallback(
@@ -259,13 +272,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
         ]);
 
+        // Pending users must not keep the session that signUp may create.
+        await clearBrokenSession();
+
         if (error) return "Помилка створення профілю.";
         await fetchUsersFromSupabase();
       }
 
       return null;
     },
-    [fetchUsersFromSupabase],
+    [clearBrokenSession, fetchUsersFromSupabase],
   );
 
   const login = useCallback(

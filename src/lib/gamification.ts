@@ -555,7 +555,8 @@ export async function buyShopItemInDb(
 
 // ─── Check & mark course as completed ────────────────────────────────────────
 // Completion = every lesson has a reviewed answer with score, avg ≥ 60%
-// Write path: mark_course_completed RPC only (C1)
+// Write path: mark_course_completed RPC only (C1 / P7)
+// Server derives lesson ids from lms_lessons; p_lesson_ids kept for RPC signature.
 export async function checkAndCompleteCourse(
   supabase: SupabaseClient,
   studentId: string,
@@ -571,6 +572,7 @@ export async function checkAndCompleteCourse(
   const { data, error } = await supabase.rpc("mark_course_completed", {
     p_user_id: studentId,
     p_course_id: courseId,
+    // Ignored by P7 RPC (DB is source of truth); still sent for signature compat.
     p_lesson_ids: allLessonIds,
   });
 

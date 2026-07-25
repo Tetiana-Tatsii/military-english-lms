@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import CourseLessonMobileBar from "@/components/courses/lesson-page/CourseLessonMobileBar";
 import { CourseLessonSidebarStyles } from "@/components/courses/lesson-page/CourseLessonSidebarStyles";
@@ -7,7 +8,25 @@ import CourseLessonSidebar from "@/components/courses/lesson-page/CourseLessonSi
 import CourseLessonMainContent from "@/components/courses/lesson-page/CourseLessonMainContent";
 import { useCourseLessonPage } from "@/components/courses/lesson-page/useCourseLessonPage";
 
-export default function CoursePage() {
+function CoursePageLoading() {
+  return (
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#faf9f6",
+        color: "#8a8a45",
+        fontWeight: 600,
+      }}
+    >
+      Завантаження курсу...
+    </div>
+  );
+}
+
+function CoursePageInner() {
   const page = useCourseLessonPage();
 
   if (!page.isReady) {
@@ -125,5 +144,13 @@ export default function CoursePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CoursePage() {
+  return (
+    <Suspense fallback={<CoursePageLoading />}>
+      <CoursePageInner />
+    </Suspense>
   );
 }
