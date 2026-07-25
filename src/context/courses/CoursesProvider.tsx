@@ -10,19 +10,12 @@ import React, {
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { mapDbRowToAnswer } from "@/lib/mappers";
-import { recalculateSlp } from "@/lib/slp";
-import {
-  awardHomeworkCoins,
-  checkAndCompleteCourse,
-} from "@/lib/gamification";
-import { getAudioExtension, isIOSDevice } from "@/lib/voiceRecording";
 import { fetchCourses } from "@/lib/courses/fetchCourses";
 import { fetchAnswers } from "@/lib/courses/fetchAnswers";
 import { seedInitialCoursesIfEmpty } from "@/lib/courses/seedInitialCourses";
 import { useAuth } from "@/context/auth";
-import { useGamification } from "@/context/gamification";
 import { answerKeys, courseKeys } from "./queryKeys";
+import { useAnswerMutations } from "./useAnswerMutations";
 import type { Answer, Course, Lesson, Module } from "@/types";
 
 interface CoursesContextValue {
@@ -41,7 +34,7 @@ interface CoursesContextValue {
     feedbackAudio: boolean,
     score?: number,
     coinsToAward?: number,
-  ) => Promise<void>;
+  ) => Promise<{ coinsAwarded: number }>;
   addCourse: (title: string, subtitle: string, description: string) => Promise<void>;
   updateCourse: (courseId: string, updatedData: Partial<Course>) => Promise<void>;
   deleteCourse: (courseId: string) => Promise<void>;
@@ -76,8 +69,7 @@ type CoursesUpdater = Course[] | ((prev: Course[]) => Course[]);
 type AnswersUpdater = Answer[] | ((prev: Answer[]) => Answer[]);
 
 export function CoursesProvider({ children }: { children: ReactNode }) {
-  const { user, usersDb, authReady, registerPostLoginHandler } = useAuth();
-  const { refreshGamification, setInstructorMood } = useGamification();
+  const { user, authReady, registerPostLoginHandler } = useAuth();
   const queryClient = useQueryClient();
   const seedAttempted = useRef(false);
 
@@ -193,9 +185,21 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
       )
       .subscribe();
 
+    const answersChannel = supabase
+      .channel("answers-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "answers" },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: answerKeys.all });
+        },
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(coursesChannel);
       supabase.removeChannel(lessonsChannel);
+      supabase.removeChannel(answersChannel);
     };
   }, [isInitialized, queryClient]);
 
@@ -258,239 +262,11 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
     [setCourses],
   );
 
-  const submitAnswer = useCallback(
-    async (
-      answerData: Omit<
-        Answer,
-        "id" | "submittedAt" | "status" | "studentName" | "squadId"
-      > & { audioBlob?: Blob | null; files?: File[] },
-    ) => {
-      if (!user) {
-        console.error("Користувач не авторизований для відправки відповіді");
-        return;
-      }
-
-      let audioUrl: string | undefined;
-      const fileUrls: string[] = [];
-
-      try {
-        if (answerData.audioBlob) {
-          try {
-            const audioMime =
-              answerData.audioBlob.type ||
-              (isIOSDevice() ? "audio/mp4" : "audio/webm");
-            const fileExt = getAudioExtension(audioMime);
-            const fileName = `audio-${Date.now()}.${fileExt}`;
-            const filePath = `student-answers/${user.id}/${fileName}`;
-
-            const { error: uploadError } = await supabase.storage
-              .from("lesson-media")
-              .upload(filePath, answerData.audioBlob, {
-                contentType: audioMime,
-                upsert: false,
-              });
-
-            if (!uploadError) {
-              const { data } = supabase.storage
-                .from("lesson-media")
-                .getPublicUrl(filePath);
-              audioUrl = data.publicUrl;
-            } else {
-              console.error("Помилка завантаження аудіо:", uploadError);
-            }
-          } catch (error) {
-            console.error("Помилка завантаження аудіо:", error);
-          }
-        }
-
-        if (answerData.files && answerData.files.length > 0) {
-          const { compressImageFile, isCompressibleImage } = await import(
-            "@/lib/compressImage"
-          );
-
-          for (const rawFile of answerData.files) {
-            try {
-              const file = isCompressibleImage(rawFile)
-                ? await compressImageFile(rawFile)
-                : rawFile;
-              const fileExt = file.name.split(".").pop() || "bin";
-              const fileName = `file-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-              const filePath = `student-answers/${user.id}/${fileName}`;
-
-              const { error: uploadError } = await supabase.storage
-                .from("lesson-media")
-                .upload(filePath, file, {
-                  contentType: file.type || undefined,
-                  upsert: false,
-                });
-
-              if (!uploadError) {
-                const { data } = supabase.storage
-                  .from("lesson-media")
-                  .getPublicUrl(filePath);
-                fileUrls.push(data.publicUrl);
-              } else {
-                console.error("Помилка завантаження файлу:", uploadError);
-              }
-            } catch (error) {
-              console.error("Помилка завантаження файлу:", error);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Помилка при обробці відповіді:", error);
-      }
-
-      const { data, error } = await supabase
-        .from("answers")
-        .insert([
-          {
-            user_id: user?.id,
-            course_id: answerData.courseId,
-            lesson_id: answerData.lessonId,
-            text: answerData.text || "",
-            audio_url: audioUrl || null,
-            attachments: [...(answerData.attachments || []), ...fileUrls],
-            status: "pending",
-            student_name: user?.name || "Курсант",
-            squad_id: user?.squadId || "General",
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Помилка Supabase при збереженні:", error);
-        throw error;
-      }
-
-      if (data) {
-        setAnswers((prev) => [...prev, mapDbRowToAnswer(data)]);
-      }
-    },
-    [user, setAnswers],
-  );
-
-  const provideFeedback = useCallback(
-    async (
-      answerId: string,
-      feedbackText: string,
-      feedbackAudio: boolean,
-      score?: number,
-      coinsToAward?: number,
-    ) => {
-      const answer = answers.find((a) => a.id === answerId);
-      const coinAmount = Math.min(20, Math.max(0, coinsToAward ?? 0));
-      const willAwardCoins = coinAmount > 0 && !answer?.coins_awarded;
-
-      setAnswers((prev) =>
-        prev.map((ans) =>
-          ans.id === answerId
-            ? {
-                ...ans,
-                teacherFeedbackText: feedbackText,
-                teacherFeedbackAudio: feedbackAudio,
-                score,
-                status: "reviewed",
-                coins_awarded: willAwardCoins ? true : ans.coins_awarded,
-                coins_awarded_amount: willAwardCoins
-                  ? coinAmount
-                  : ans.coins_awarded_amount,
-              }
-            : ans,
-        ),
-      );
-
-      const { error } = await supabase
-        .from("answers")
-        .update({
-          score,
-          teacher_feedback: feedbackText,
-          teacher_feedback_audio: feedbackAudio,
-          status: "reviewed",
-        })
-        .eq("id", answerId);
-
-      if (error) {
-        console.error("Помилка Supabase при збереженні фідбеку:", error);
-        throw error;
-      }
-
-      let studentId =
-        answer?.user_id ||
-        usersDb.find((u) => u.name === answer?.studentName)?.id;
-
-      if (willAwardCoins) {
-        const coinResult = await awardHomeworkCoins(
-          supabase,
-          answerId,
-          coinAmount,
-        );
-        if (coinResult.error) {
-          setAnswers((prev) =>
-            prev.map((ans) =>
-              ans.id === answerId
-                ? {
-                    ...ans,
-                    coins_awarded: answer?.coins_awarded ?? false,
-                    coins_awarded_amount: answer?.coins_awarded_amount ?? 0,
-                  }
-                : ans,
-            ),
-          );
-          throw new Error(
-            coinResult.error === "forbidden"
-              ? "Немає прав на нарахування коїнів."
-              : coinResult.error === "student_not_found"
-                ? "Не знайдено профіль курсанта для нарахування коїнів."
-                : `Не вдалося нарахувати коїни: ${coinResult.error}`,
-          );
-        }
-        if (coinResult.studentId) {
-          studentId = coinResult.studentId;
-        }
-        setAnswers((prev) =>
-          prev.map((ans) =>
-            ans.id === answerId
-              ? {
-                  ...ans,
-                  coins_awarded: true,
-                  coins_awarded_amount:
-                    coinResult.coinsAwardedAmount ?? coinAmount,
-                }
-              : ans,
-          ),
-        );
-      }
-
-      if (studentId) {
-        if (answer?.courseId) {
-          const justCompleted = await checkAndCompleteCourse(
-            supabase,
-            studentId,
-            answer.courseId,
-            courses,
-          );
-          if (justCompleted) {
-            setInstructorMood("proud");
-            await refreshGamification(studentId);
-          }
-        }
-
-        if (score !== undefined) {
-          await recalculateSlp(supabase, studentId, courses);
-        }
-      }
-    },
-    [
-      answers,
-      courses,
-      refreshGamification,
-      setAnswers,
-      setInstructorMood,
-      usersDb,
-    ],
-  );
+  const { submitAnswer, provideFeedback } = useAnswerMutations({
+    answers,
+    courses,
+    setAnswers,
+  });
 
   const addCourse = useCallback(
     async (title: string, subtitle: string, description: string) => {

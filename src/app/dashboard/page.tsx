@@ -46,6 +46,13 @@ export default function DashboardPage() {
     ? answers.filter((a) => a.studentName === user.name)
     : [];
 
+  // Always re-fetch wallet on dashboard (HW coins may arrive while student is away).
+  useEffect(() => {
+    if (!user?.id) return;
+    void refreshGamification();
+  }, [user?.id, refreshGamification]);
+
+  // Also refresh when homework awards appear in answers cache.
   useEffect(() => {
     if (!user?.id) return;
     const totalAwarded = myAnswers.reduce(
@@ -53,7 +60,7 @@ export default function DashboardPage() {
       0,
     );
     if (totalAwarded > 0) {
-      refreshGamification();
+      void refreshGamification();
     }
   }, [myAnswers, refreshGamification, user?.id]);
 

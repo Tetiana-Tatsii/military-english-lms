@@ -11,6 +11,15 @@ import {
 import { Answer, Course } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 
+function coffeeCoinsPhrase(n: number): string {
+  const abs = Math.abs(n) % 100;
+  const last = abs % 10;
+  if (abs >= 11 && abs <= 14) return `${n} кава-коїнів`;
+  if (last === 1) return `${n} кава-коїн`;
+  if (last >= 2 && last <= 4) return `${n} кава-коїни`;
+  return `${n} кава-коїнів`;
+}
+
 interface AnswersTabProps {
   answers: Answer[];
   courses: Course[];
@@ -22,7 +31,7 @@ interface AnswersTabProps {
     isAudio: boolean,
     score?: number,
     coinsToAward?: number,
-  ) => void;
+  ) => Promise<{ coinsAwarded: number }>;
 }
 
 export default function AnswersTab({
@@ -520,16 +529,29 @@ export default function AnswersTab({
                           type="number"
                           min="0"
                           max="100"
-                          value={scores[ans.id] || ""}
+                          required
+                          value={scores[ans.id] ?? ""}
                           onChange={(e) => {
-                            const value = parseInt(e.target.value) || 0;
-                            setScores({ ...scores, [ans.id]: Math.min(100, Math.max(0, value)) });
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              const next = { ...scores };
+                              delete next[ans.id];
+                              setScores(next);
+                              return;
+                            }
+                            const value = Number.parseInt(raw, 10);
+                            if (Number.isNaN(value)) return;
+                            setScores({
+                              ...scores,
+                              [ans.id]: Math.min(100, Math.max(0, value)),
+                            });
                           }}
                           className="w-full rounded-md border border-[#d8cdb4] p-2 text-sm"
                           style={{
                             background: isDarkMode ? "#2d2f2a" : "#fff",
                             color: isDarkMode ? "#e6e4dc" : "#3a3528",
                           }}
+                          placeholder="Обовʼязково"
                         />
                       </div>
                       <div className="w-full">
@@ -598,17 +620,36 @@ export default function AnswersTab({
                     </div>
                     <button
                       onClick={async () => {
+                        const score = scores[ans.id];
+                        if (
+                          typeof score !== "number" ||
+                          Number.isNaN(score) ||
+                          score < 0 ||
+                          score > 100
+                        ) {
+                          alert("Оцінка обовʼязкова: вкажіть бали від 0 до 100.");
+                          return;
+                        }
                         try {
-                          await provideFeedback(
+                          const result = await provideFeedback(
                             ans.id,
                             feedbackTexts[ans.id] || "",
                             false,
-                            scores[ans.id],
+                            score,
                             coinsMap[ans.id] ?? 0,
                           );
                           setFeedbackTexts({ ...feedbackTexts, [ans.id]: "" });
-                          setScores({ ...scores, [ans.id]: 0 });
+                          const nextScores = { ...scores };
+                          delete nextScores[ans.id];
+                          setScores(nextScores);
                           setCoinsMap({ ...coinsMap, [ans.id]: 0 });
+                          if (result.coinsAwarded > 0) {
+                            alert(
+                              `Оцінку збережено. Нараховано ${coffeeCoinsPhrase(result.coinsAwarded)}.`,
+                            );
+                          } else {
+                            alert("Оцінку збережено.");
+                          }
                         } catch (e) {
                           alert(
                             e instanceof Error
@@ -617,16 +658,32 @@ export default function AnswersTab({
                           );
                         }
                       }}
-                      disabled={!!(lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId)}
+                      disabled={
+                        !!(lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId) ||
+                        typeof scores[ans.id] !== "number"
+                      }
                       className="flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-opacity sm:w-auto sm:justify-start"
                       style={{
-                        background: (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId) ? "#ccc" : "#8a8a45",
+                        background:
+                          (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId) ||
+                          typeof scores[ans.id] !== "number"
+                            ? "#ccc"
+                            : "#8a8a45",
                         color: "#fff",
                         border: "none",
-                        cursor: (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId) ? "not-allowed" : "pointer",
+                        cursor:
+                          (lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId) ||
+                          typeof scores[ans.id] !== "number"
+                            ? "not-allowed"
+                            : "pointer",
                       }}
                     >
-                      <CheckCircle size={16} /> {lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId ? "🔒 Заблоковано" : "Зберегти оцінку"}
+                      <CheckCircle size={16} />{" "}
+                      {lockedAnswers[ans.id] && lockedAnswers[ans.id] !== userId
+                        ? "🔒 Заблоковано"
+                        : typeof scores[ans.id] !== "number"
+                          ? "Вкажіть оцінку"
+                          : "Зберегти оцінку"}
                     </button>
                   </div>
                 ) : (
@@ -664,7 +721,7 @@ export default function AnswersTab({
                           {ans.score || 0}/100
                         </div>
                       </div>
-                      {(ans.coins_awarded || (ans.coins_awarded_amount ?? 0) > 0) && (
+                      {ans.coins_awarded || (ans.coins_awarded_amount ?? 0) > 0 ? (
                         <div className="w-full">
                           <label
                             style={{
@@ -689,6 +746,91 @@ export default function AnswersTab({
                             }}
                           >
                             {ans.coins_awarded_amount ?? "—"}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full">
+                          <label
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: isDarkMode ? "#a3a198" : "#7a7568",
+                              marginBottom: 8,
+                              display: "block",
+                            }}
+                          >
+                            ☕ Донарахувати коїни (1–20)
+                          </label>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={coinsMap[ans.id] ?? ""}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value, 10) || 0;
+                                setCoinsMap({
+                                  ...coinsMap,
+                                  [ans.id]: Math.min(20, Math.max(0, value)),
+                                });
+                              }}
+                              className="w-full rounded-md border border-[#d8cdb4] p-2 text-sm sm:flex-1"
+                              style={{
+                                background: isDarkMode ? "#2d2f2a" : "#fff",
+                                color: isDarkMode ? "#e6e4dc" : "#3a3528",
+                              }}
+                              placeholder="0"
+                            />
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (typeof ans.score !== "number") {
+                                  alert(
+                                    "Спочатку потрібна оцінка 0–100. Перевірте роботу у вкладці «Очікують» або перезбережіть оцінку.",
+                                  );
+                                  return;
+                                }
+                                const coins = coinsMap[ans.id] ?? 0;
+                                if (coins < 1 || coins > 20) {
+                                  alert("Вкажіть кількість коїнів від 1 до 20.");
+                                  return;
+                                }
+                                try {
+                                  const result = await provideFeedback(
+                                    ans.id,
+                                    ans.teacherFeedbackText || "",
+                                    ans.teacherFeedbackAudio === true,
+                                    ans.score,
+                                    coins,
+                                  );
+                                  setCoinsMap({ ...coinsMap, [ans.id]: 0 });
+                                  if (result.coinsAwarded > 0) {
+                                    alert(
+                                      `Нараховано ${coffeeCoinsPhrase(result.coinsAwarded)}.`,
+                                    );
+                                  } else {
+                                    alert(
+                                      "Коїни не нараховано (можливо, вже були нараховані раніше).",
+                                    );
+                                  }
+                                } catch (e) {
+                                  alert(
+                                    e instanceof Error
+                                      ? e.message
+                                      : "Не вдалося нарахувати коїни",
+                                  );
+                                }
+                              }}
+                              className="rounded-md px-4 py-2 text-sm font-semibold text-white"
+                              style={{
+                                background: "#8a8a45",
+                                border: "none",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Нарахувати
+                            </button>
                           </div>
                         </div>
                       )}

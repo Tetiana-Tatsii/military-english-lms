@@ -44,6 +44,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   const refreshGamification = useCallback(async (uid?: string) => {
     const id = uid ?? user?.id;
     if (!id) return;
+    // Never overwrite the logged-in wallet with another user's profile
+    // (e.g. teacher awarding homework coins to a student).
+    if (user?.id && id !== user.id) return;
     const profile = await fetchGamificationProfile(supabase, id);
     setGamification(profile ?? DEFAULT_GAMIFICATION_PROFILE);
   }, [user?.id]);

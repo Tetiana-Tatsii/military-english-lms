@@ -409,11 +409,14 @@ export async function awardHomeworkCoins(
 
   const { data, error } = await supabase.rpc("award_homework_coins", {
     p_answer_id: answerId,
-    p_amount: amount,
+    p_amount: Math.round(amount),
   });
 
   if (error) {
-    console.error("award_homework_coins RPC failed:", error.message);
+    console.error("award_homework_coins RPC failed:", error.message, {
+      answerId,
+      amount,
+    });
     return { error: error.message };
   }
 

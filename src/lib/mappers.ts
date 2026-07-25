@@ -15,7 +15,9 @@ export function mapDbRowToAnswer(a: Record<string, any>): Answer {
     submittedAt: a.created_at,
     status: a.status as "pending" | "reviewed",
     teacherFeedbackText: a.teacher_feedback ?? undefined,
-    teacherFeedbackAudio: a.teacher_feedback_audio ?? false,
+    teacherFeedbackAudio:
+      a.teacher_feedback_audio === true ||
+      a.teacher_feedback_audio === "true",
     score: a.score ?? undefined,
     locked_by_teacher_id: a.locked_by_teacher_id ?? null,
     user_id: a.user_id ?? undefined,
