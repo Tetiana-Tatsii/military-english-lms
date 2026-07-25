@@ -16,7 +16,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          # Match local lockfile generation (Node 24 / npm 11)
+          node-version: "24"
           cache: npm
 
       - name: Install
