@@ -84,7 +84,7 @@ interface AppState {
     feedbackAudio: boolean,
     score?: number,
     coinsToAward?: number,
-  ) => Promise<{ coinsAwarded: number }> | void;
+  ) => Promise<{ coinsAwarded: number }>;
 
   gamification: GamificationProfile | null;
   instructorMood: "happy" | "angry" | "proud";
