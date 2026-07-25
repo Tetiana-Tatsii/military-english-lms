@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAppContext } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { recalculateSlp } from "@/lib/slp";
 import { submitLessonQuiz } from "@/lib/quiz";
+import {
+  getLessonSteps,
+  getModuleProgressTheme,
+} from "@/lib/lessonSteps";
+import {
+  loadLessonStepProgress,
+  saveLessonStepProgress,
+} from "@/lib/lessonStepStorage";
 import type { Answer, Course, Lesson, Module } from "@/types";
 
 export function useCourseLessonPage() {
@@ -43,6 +51,8 @@ export function useCourseLessonPage() {
   const [audioResetKey, setAudioResetKey] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [unlockedStepIndex, setUnlockedStepIndex] = useState(0);
+  const [lessonStepsCompleted, setLessonStepsCompleted] = useState(false);
 
   useEffect(() => {
     if (isInitialized && !user) {
@@ -92,6 +102,83 @@ export function useCourseLessonPage() {
         (a) => a.lessonId === activeLessonId && a.studentName === user.name,
       )
     : undefined;
+
+  const activeModuleIndex = useMemo(() => {
+    if (!course || !activeModuleId) return 0;
+    const idx = course.modules.findIndex((m) => m.id === activeModuleId);
+    return idx >= 0 ? idx : 0;
+  }, [course, activeModuleId]);
+
+  const progressTheme = useMemo(
+    () => getModuleProgressTheme(activeModuleIndex),
+    [activeModuleIndex],
+  );
+
+  const lessonSteps = useMemo(() => {
+    if (!activeLesson) return [];
+    return getLessonSteps(activeLesson, {
+      forceSpeaking: Boolean(existingAnswer),
+    });
+  }, [activeLesson, existingAnswer]);
+
+  useEffect(() => {
+    if (!user?.id || !activeLessonId) {
+      setUnlockedStepIndex(0);
+      setLessonStepsCompleted(false);
+      return;
+    }
+    const stored = loadLessonStepProgress(user.id, activeLessonId);
+    if (stored) {
+      setUnlockedStepIndex(stored.unlockedStepIndex);
+      setLessonStepsCompleted(stored.completed);
+    } else {
+      setUnlockedStepIndex(0);
+      setLessonStepsCompleted(false);
+    }
+  }, [user?.id, activeLessonId]);
+
+  useEffect(() => {
+    if (lessonSteps.length === 0) return;
+    setUnlockedStepIndex((prev) =>
+      Math.min(prev, Math.max(0, lessonSteps.length - 1)),
+    );
+  }, [lessonSteps.length]);
+
+  const persistStepProgress = useCallback(
+    (nextUnlocked: number, completed: boolean) => {
+      if (!user?.id || !activeLessonId) return;
+      saveLessonStepProgress(user.id, activeLessonId, {
+        unlockedStepIndex: nextUnlocked,
+        completed,
+      });
+    },
+    [user?.id, activeLessonId],
+  );
+
+  const handleNextStep = useCallback(() => {
+    if (lessonSteps.length === 0) return;
+    const lastIndex = lessonSteps.length - 1;
+
+    if (unlockedStepIndex >= lastIndex) {
+      setLessonStepsCompleted(true);
+      persistStepProgress(lastIndex, true);
+      return;
+    }
+
+    const next = unlockedStepIndex + 1;
+    setUnlockedStepIndex(next);
+    persistStepProgress(next, false);
+
+    // Scroll to the newly revealed step after paint
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`lesson-step-${next}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [lessonSteps.length, unlockedStepIndex, persistStepProgress]);
+
+  const filledSteps = lessonStepsCompleted
+    ? lessonSteps.length
+    : unlockedStepIndex;
 
   const selectLesson = useCallback((moduleId: string, lessonId: string) => {
     setActiveModuleId(moduleId);
@@ -267,6 +354,13 @@ export function useCourseLessonPage() {
     setIsSidebarOpen,
     activeLesson,
     activeLessonId,
+    activeModuleIndex,
+    progressTheme,
+    lessonSteps,
+    unlockedStepIndex,
+    lessonStepsCompleted,
+    filledSteps,
+    handleNextStep,
     existingAnswer,
     flippedCards,
     selectLesson,

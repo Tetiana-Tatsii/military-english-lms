@@ -112,6 +112,12 @@ export default function CoursePage() {
             handleFileChange={page.handleFileChange}
             handleRemoveFile={page.handleRemoveFile}
             handleSendHomework={page.handleSendHomework}
+            lessonSteps={page.lessonSteps}
+            unlockedStepIndex={page.unlockedStepIndex}
+            lessonStepsCompleted={page.lessonStepsCompleted}
+            filledSteps={page.filledSteps}
+            handleNextStep={page.handleNextStep}
+            progressTheme={page.progressTheme}
           />
         </div>
       </div>

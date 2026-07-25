@@ -6,7 +6,10 @@ import {
   Target,
   ClipboardList,
   Languages,
+  ChevronRight,
+  Check,
 } from "lucide-react";
+import type { LessonBlockId } from "@/types";
 import type { CourseLessonPageState } from "./useCourseLessonPage";
 import CourseLessonTheorySection from "./CourseLessonTheorySection";
 import CourseLessonReadingSection from "./CourseLessonReadingSection";
@@ -20,10 +23,10 @@ import CourseLessonResourcesSection from "./CourseLessonResourcesSection";
 import CourseLessonCanDoSection from "./CourseLessonCanDoSection";
 import CourseLessonRichHtml from "./CourseLessonRichHtml";
 import LessonBlockCard from "./LessonBlockCard";
+import LessonProgressBar from "./LessonProgressBar";
 import {
   emphasizeObjectiveLabels,
   getBlockEstimatedTime,
-  isBlockVisibleOnStudent,
   LESSON_BLOCKS,
 } from "@/lib/lessonBlocks";
 
@@ -50,6 +53,12 @@ type CourseLessonMainContentProps = Pick<
   | "handleFileChange"
   | "handleRemoveFile"
   | "handleSendHomework"
+  | "lessonSteps"
+  | "unlockedStepIndex"
+  | "lessonStepsCompleted"
+  | "filledSteps"
+  | "handleNextStep"
+  | "progressTheme"
 >;
 
 export default function CourseLessonMainContent({
@@ -74,6 +83,12 @@ export default function CourseLessonMainContent({
   handleFileChange,
   handleRemoveFile,
   handleSendHomework,
+  lessonSteps,
+  unlockedStepIndex,
+  lessonStepsCompleted,
+  filledSteps,
+  handleNextStep,
+  progressTheme,
 }: CourseLessonMainContentProps) {
   if (!activeLesson) {
     return (
@@ -91,8 +106,202 @@ export default function CourseLessonMainContent({
   }
 
   const lesson = activeLesson;
-  const show = (id: Parameters<typeof isBlockVisibleOnStudent>[1]) =>
-    isBlockVisibleOnStudent(lesson, id);
+
+  const renderBlock = (blockId: LessonBlockId) => {
+    switch (blockId) {
+      case "objectives":
+        return lesson.objectives ? (
+          <LessonBlockCard
+            key={blockId}
+            title={LESSON_BLOCKS.objectives.title}
+            accent={LESSON_BLOCKS.objectives.accent}
+            icon={<Target size={20} />}
+            estimatedTime={getBlockEstimatedTime(lesson, "objectives")}
+            isDarkMode={isDarkMode}
+          >
+            <CourseLessonRichHtml
+              html={lesson.objectives}
+              isDarkMode={isDarkMode}
+              transform={emphasizeObjectiveLabels}
+            />
+          </LessonBlockCard>
+        ) : null;
+      case "missionBrief":
+        return lesson.missionBrief ? (
+          <LessonBlockCard
+            key={blockId}
+            title={LESSON_BLOCKS.missionBrief.title}
+            accent={LESSON_BLOCKS.missionBrief.accent}
+            icon={<ClipboardList size={20} />}
+            estimatedTime={getBlockEstimatedTime(lesson, "missionBrief")}
+            isDarkMode={isDarkMode}
+          >
+            <CourseLessonRichHtml
+              html={lesson.missionBrief}
+              isDarkMode={isDarkMode}
+            />
+          </LessonBlockCard>
+        ) : null;
+      case "keyInformation":
+        return lesson.content ? (
+          <LessonBlockCard
+            key={blockId}
+            title={LESSON_BLOCKS.keyInformation.title}
+            accent={LESSON_BLOCKS.keyInformation.accent}
+            icon={<FileText size={20} />}
+            estimatedTime={getBlockEstimatedTime(lesson, "keyInformation")}
+            isDarkMode={isDarkMode}
+          >
+            <CourseLessonRichHtml
+              html={lesson.content}
+              isDarkMode={isDarkMode}
+            />
+          </LessonBlockCard>
+        ) : null;
+      case "usefulPhrases":
+        return lesson.usefulPhrases ? (
+          <LessonBlockCard
+            key={blockId}
+            title={LESSON_BLOCKS.usefulPhrases.title}
+            accent={LESSON_BLOCKS.usefulPhrases.accent}
+            icon={<Languages size={20} />}
+            estimatedTime={getBlockEstimatedTime(lesson, "usefulPhrases")}
+            isDarkMode={isDarkMode}
+          >
+            <CourseLessonRichHtml
+              html={lesson.usefulPhrases}
+              isDarkMode={isDarkMode}
+            />
+          </LessonBlockCard>
+        ) : null;
+      case "dialogue":
+        return (
+          <CourseLessonDialogueSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+          />
+        );
+      case "video":
+        return (
+          <CourseLessonVideoSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+          />
+        );
+      case "vocabulary":
+        return (
+          <CourseLessonMaterialsSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+            flippedCards={flippedCards}
+            onToggleCard={toggleCard}
+            onPlayAudio={playAudio}
+          />
+        );
+      case "reading":
+        return (
+          <CourseLessonReadingSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+            mode="reading"
+            estimatedTime={getBlockEstimatedTime(lesson, "reading")}
+          />
+        );
+      case "readingCheck":
+        return (
+          <CourseLessonReadingSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+            mode="readingCheck"
+            estimatedTime={getBlockEstimatedTime(lesson, "readingCheck")}
+          />
+        );
+      case "grammarFocus":
+        return lesson.grammarContent ? (
+          <LessonBlockCard
+            key={blockId}
+            title={LESSON_BLOCKS.grammarFocus.title}
+            accent={LESSON_BLOCKS.grammarFocus.accent}
+            icon={<BookOpen size={20} />}
+            estimatedTime={getBlockEstimatedTime(lesson, "grammarFocus")}
+            isDarkMode={isDarkMode}
+            collapsible
+          >
+            <CourseLessonRichHtml
+              html={lesson.grammarContent}
+              isDarkMode={isDarkMode}
+            />
+          </LessonBlockCard>
+        ) : null;
+      case "visualReference":
+        return (
+          <CourseLessonVisualSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+          />
+        );
+      case "additionalResources":
+        return (
+          <CourseLessonResourcesSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+          />
+        );
+      case "interactiveQuiz":
+        return (
+          <CourseLessonQuizPanel
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+            quizAnswers={quizAnswers}
+            quizSubmitted={quizSubmitted}
+            quizScore={quizScore}
+            onAnswerChange={handleQuizAnswerChange}
+            onSubmit={handleQuizSubmit}
+          />
+        );
+      case "speakingTask":
+        return (
+          <CourseLessonHomeworkPanel
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+            existingAnswer={existingAnswer}
+            homeworkText={homeworkText}
+            onHomeworkTextChange={setHomeworkText}
+            isSubmitted={isSubmitted}
+            isSubmitting={isSubmitting}
+            audioResetKey={audioResetKey}
+            onAudioChange={setAudioBlob}
+            attachedFiles={attachedFiles}
+            onFileChange={handleFileChange}
+            onRemoveFile={handleRemoveFile}
+            onSendHomework={handleSendHomework}
+          />
+        );
+      case "canDoChecklist":
+        return (
+          <CourseLessonCanDoSection
+            key={blockId}
+            lesson={lesson}
+            isDarkMode={isDarkMode}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const visibleSteps = lessonSteps.slice(0, unlockedStepIndex + 1);
+  const isLastStep = unlockedStepIndex >= lessonSteps.length - 1;
+  const showNext = lessonSteps.length > 0 && !lessonStepsCompleted;
 
   return (
     <div
@@ -102,164 +311,91 @@ export default function CourseLessonMainContent({
         animation: "fadeIn 0.4s ease",
       }}
     >
+      <LessonProgressBar
+        totalSteps={lessonSteps.length}
+        filledSteps={filledSteps}
+        currentStep={unlockedStepIndex}
+        theme={progressTheme}
+        isDarkMode={isDarkMode}
+        completed={lessonStepsCompleted}
+      />
+
       <CourseLessonTheorySection lesson={lesson} isDarkMode={isDarkMode} />
 
-      {show("objectives") && lesson.objectives && (
-        <LessonBlockCard
-          title={LESSON_BLOCKS.objectives.title}
-          accent={LESSON_BLOCKS.objectives.accent}
-          icon={<Target size={20} />}
-          estimatedTime={getBlockEstimatedTime(lesson, "objectives")}
-          isDarkMode={isDarkMode}
+      {visibleSteps.map((step, index) => (
+        <div
+          key={step.id}
+          id={`lesson-step-${index}`}
+          style={{ scrollMarginTop: 96 }}
         >
-          <CourseLessonRichHtml
-            html={lesson.objectives}
-            isDarkMode={isDarkMode}
-            transform={emphasizeObjectiveLabels}
-          />
-        </LessonBlockCard>
-      )}
+          {step.blocks.map((blockId) => renderBlock(blockId))}
+        </div>
+      ))}
 
-      {show("missionBrief") && lesson.missionBrief && (
-        <LessonBlockCard
-          title={LESSON_BLOCKS.missionBrief.title}
-          accent={LESSON_BLOCKS.missionBrief.accent}
-          icon={<ClipboardList size={20} />}
-          estimatedTime={getBlockEstimatedTime(lesson, "missionBrief")}
-          isDarkMode={isDarkMode}
+      {showNext && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            margin: "8px 0 40px",
+          }}
         >
-          <CourseLessonRichHtml
-            html={lesson.missionBrief}
-            isDarkMode={isDarkMode}
-          />
-        </LessonBlockCard>
+          <button
+            type="button"
+            onClick={handleNextStep}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#8a8a45",
+              color: "#fff",
+              border: "none",
+              padding: "14px 28px",
+              borderRadius: 10,
+              fontWeight: 700,
+              fontSize: 15,
+              cursor: "pointer",
+              boxShadow: "0 4px 14px rgba(138, 138, 69, 0.25)",
+            }}
+          >
+            {isLastStep ? (
+              <>
+                Завершити урок <Check size={18} />
+              </>
+            ) : (
+              <>
+                Далі <ChevronRight size={18} />
+              </>
+            )}
+          </button>
+        </div>
       )}
 
-      {show("keyInformation") && lesson.content && (
-        <LessonBlockCard
-          title={LESSON_BLOCKS.keyInformation.title}
-          accent={LESSON_BLOCKS.keyInformation.accent}
-          icon={<FileText size={20} />}
-          estimatedTime={getBlockEstimatedTime(lesson, "keyInformation")}
-          isDarkMode={isDarkMode}
+      {lessonStepsCompleted && (
+        <p
+          style={{
+            textAlign: "center",
+            margin: "0 0 40px",
+            fontSize: 14,
+            fontWeight: 600,
+            color: isDarkMode ? "#a3a198" : "#7a7568",
+          }}
         >
-          <CourseLessonRichHtml html={lesson.content} isDarkMode={isDarkMode} />
-        </LessonBlockCard>
+          Ви пройшли всі кроки цього уроку.
+        </p>
       )}
 
-      {show("usefulPhrases") && lesson.usefulPhrases && (
-        <LessonBlockCard
-          title={LESSON_BLOCKS.usefulPhrases.title}
-          accent={LESSON_BLOCKS.usefulPhrases.accent}
-          icon={<Languages size={20} />}
-          estimatedTime={getBlockEstimatedTime(lesson, "usefulPhrases")}
-          isDarkMode={isDarkMode}
+      {lessonSteps.length === 0 && (
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: 48,
+            color: "#9a8f70",
+            fontSize: 15,
+          }}
         >
-          <CourseLessonRichHtml
-            html={lesson.usefulPhrases}
-            isDarkMode={isDarkMode}
-          />
-        </LessonBlockCard>
-      )}
-
-      {show("dialogue") && (
-        <CourseLessonDialogueSection
-          lesson={lesson}
-          isDarkMode={isDarkMode}
-        />
-      )}
-
-      {show("video") && (
-        <CourseLessonVideoSection lesson={lesson} isDarkMode={isDarkMode} />
-      )}
-
-      {show("vocabulary") && (
-        <CourseLessonMaterialsSection
-          lesson={lesson}
-          isDarkMode={isDarkMode}
-          flippedCards={flippedCards}
-          onToggleCard={toggleCard}
-          onPlayAudio={playAudio}
-        />
-      )}
-
-      {show("reading") && (
-        <CourseLessonReadingSection
-          lesson={lesson}
-          isDarkMode={isDarkMode}
-          mode="reading"
-          estimatedTime={getBlockEstimatedTime(lesson, "reading")}
-        />
-      )}
-
-      {show("readingCheck") && (
-        <CourseLessonReadingSection
-          lesson={lesson}
-          isDarkMode={isDarkMode}
-          mode="readingCheck"
-          estimatedTime={getBlockEstimatedTime(lesson, "readingCheck")}
-        />
-      )}
-
-      {show("grammarFocus") && lesson.grammarContent && (
-        <LessonBlockCard
-          title={LESSON_BLOCKS.grammarFocus.title}
-          accent={LESSON_BLOCKS.grammarFocus.accent}
-          icon={<BookOpen size={20} />}
-          estimatedTime={getBlockEstimatedTime(lesson, "grammarFocus")}
-          isDarkMode={isDarkMode}
-          collapsible
-        >
-          <CourseLessonRichHtml
-            html={lesson.grammarContent}
-            isDarkMode={isDarkMode}
-          />
-        </LessonBlockCard>
-      )}
-
-      {show("visualReference") && (
-        <CourseLessonVisualSection lesson={lesson} isDarkMode={isDarkMode} />
-      )}
-
-      {show("additionalResources") && (
-        <CourseLessonResourcesSection
-          lesson={lesson}
-          isDarkMode={isDarkMode}
-        />
-      )}
-
-      {show("interactiveQuiz") && (
-        <CourseLessonQuizPanel
-          lesson={lesson}
-          isDarkMode={isDarkMode}
-          quizAnswers={quizAnswers}
-          quizSubmitted={quizSubmitted}
-          quizScore={quizScore}
-          onAnswerChange={handleQuizAnswerChange}
-          onSubmit={handleQuizSubmit}
-        />
-      )}
-
-      {(show("speakingTask") || Boolean(existingAnswer)) && (
-        <CourseLessonHomeworkPanel
-          lesson={lesson}
-          isDarkMode={isDarkMode}
-          existingAnswer={existingAnswer}
-          homeworkText={homeworkText}
-          onHomeworkTextChange={setHomeworkText}
-          isSubmitted={isSubmitted}
-          isSubmitting={isSubmitting}
-          audioResetKey={audioResetKey}
-          onAudioChange={setAudioBlob}
-          attachedFiles={attachedFiles}
-          onFileChange={handleFileChange}
-          onRemoveFile={handleRemoveFile}
-          onSendHomework={handleSendHomework}
-        />
-      )}
-
-      {show("canDoChecklist") && (
-        <CourseLessonCanDoSection lesson={lesson} isDarkMode={isDarkMode} />
+          У цьому уроці ще немає видимого контенту.
+        </p>
       )}
     </div>
   );
