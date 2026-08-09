@@ -91,7 +91,7 @@ export function evaluateCertificateEligibility(
   }
   if (slpAverage < CERTIFICATE_SLP_MIN) {
     reasons.push(
-      `Середній SLP ${slpAverage}% — потрібно не нижче ${CERTIFICATE_SLP_MIN}%.`,
+      `Середній Progress ${slpAverage}% — потрібно не нижче ${CERTIFICATE_SLP_MIN}%.`,
     );
   }
 
@@ -179,7 +179,7 @@ function issueCertificateErrorMessage(code: string, payload: Record<string, unkn
     case "course_not_active":
       return "Сертифікат доступний лише для активних курсів.";
     case "slp_too_low":
-      return `Середній SLP ${payload.slpAverage ?? 0}% — потрібно не нижче ${CERTIFICATE_SLP_MIN}%.`;
+      return `Середній Progress ${payload.slpAverage ?? 0}% — потрібно не нижче ${CERTIFICATE_SLP_MIN}%.`;
     case "homework_incomplete":
       return `ДЗ здано ${payload.homeworkDone ?? 0}/${payload.totalLessons ?? 0} уроків — потрібні всі.`;
     case "quizzes_incomplete":
