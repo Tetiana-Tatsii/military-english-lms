@@ -8,7 +8,16 @@ import StreakCoinIcon from "@/components/ui/StreakCoinIcon";
 import CharacterStage, {
   EquippedLayersSummary,
 } from "@/components/dashboard/CharacterStage";
-import { getActiveRefreshmentId, getShopItem } from "@/lib/gamification";
+
+function streakBonusLabel(streakCount: number, filledCups: number): string {
+  if (streakCount > 0 && streakCount % 7 === 0) {
+    return "Weekly bonus unlocked!🎉";
+  }
+  const daysLeft = 7 - filledCups;
+  return daysLeft === 1
+    ? "1 day to weekly bonus"
+    : `${daysLeft} days to weekly bonus`;
+}
 
 interface InstructorCardProps {
   gamification: GamificationProfile;
@@ -27,8 +36,6 @@ export default function InstructorCard({
 }: InstructorCardProps) {
   const { streakCount, coffeeCoins } = gamification;
   const filledCups = streakCount === 0 ? 0 : ((streakCount - 1) % 7) + 1;
-  const handId = getActiveRefreshmentId(gamification);
-  const handEmoji = mood === "happy" ? (getShopItem(handId)?.emoji ?? "☕") : null;
   const showStreak = mood === "happy";
 
   return (
@@ -56,7 +63,7 @@ export default function InstructorCard({
             className="text-base sm:text-xl font-bold text-center leading-tight max-w-[11rem] sm:max-w-none"
             style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
           >
-            🪖 Your Instructor Kava{handEmoji ? ` ${handEmoji}` : ""}
+            Your Instructor Kava
           </span>
           <EquippedLayersSummary
             gamification={gamification}
@@ -84,17 +91,25 @@ export default function InstructorCard({
                   className="text-xs font-bold"
                   style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
                 >
-                  Well done! {streakCount} {streakCount === 1 ? "day" : "days"} in a row
+                  Well done! {streakCount}-day streak!
                 </p>
-                {streakCount > 0 && streakCount % 7 === 0 ? (
-                  <p className="text-xs font-bold animate-pulse mt-0.5" style={{ color: "#c97a4a" }}>
-                    🎉 +7 coins bonus!
-                  </p>
-                ) : (
-                  <p className="text-xs mt-0.5" style={{ color: isDarkMode ? "#6b6860" : "#a09890" }}>
-                    {7 - filledCups} {(7 - filledCups) === 1 ? "day" : "days"} to weekly bonus
-                  </p>
-                )}
+                <p
+                  className={`text-xs mt-0.5 ${
+                    streakCount > 0 && streakCount % 7 === 0
+                      ? "font-bold animate-pulse"
+                      : ""
+                  }`}
+                  style={{
+                    color:
+                      streakCount > 0 && streakCount % 7 === 0
+                        ? "#c97a4a"
+                        : isDarkMode
+                          ? "#6b6860"
+                          : "#a09890",
+                  }}
+                >
+                  {streakBonusLabel(streakCount, filledCups)}
+                </p>
               </div>
 
               <div className="flex items-center gap-3 self-end">

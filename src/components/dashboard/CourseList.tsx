@@ -85,23 +85,15 @@ export default function CourseList({
                       Продовжити
                     </button>
                   ) : (
-                    <>
-                      <span
-                        className={`rounded px-3 py-1.5 text-xs font-semibold ${
-                          isDarkMode
-                            ? "bg-[#3e403a] text-[#a3a198]"
-                            : "bg-[#e9e1cd] text-[#9a8f70]"
-                        }`}
-                      >
-                        У РОЗРОБЦІ
-                      </span>
-                      <button
-                        onClick={() => onCourseClick(course.id)}
-                        className="rounded-lg bg-[#8a8a45] px-4 py-2 font-semibold text-white cursor-pointer hover:bg-[#6b6b36] transition-colors duration-200 text-sm md:text-base"
-                      >
-                        Продовжити
-                      </button>
-                    </>
+                    <span
+                      className={`rounded px-3 py-1.5 text-xs font-semibold ${
+                        isDarkMode
+                          ? "bg-[#3e403a] text-[#a3a198]"
+                          : "bg-[#e9e1cd] text-[#9a8f70]"
+                      }`}
+                    >
+                      У РОЗРОБЦІ
+                    </span>
                   )}
                 </div>
               </div>

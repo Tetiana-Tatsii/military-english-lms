@@ -77,7 +77,7 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
           isDarkMode ? "text-[#e6e4dc]" : "text-[#3a3528]"
         }`}
       >
-        📈 Профіль SLP (STANAG 6001)
+        My Language Progress
       </h3>
       <div className="flex flex-col gap-4">
         {skills.map((skill) => (
@@ -104,8 +104,8 @@ export default function ProfileStats({ isDarkMode }: ProfileStatsProps) {
           isDarkMode ? "text-[#9a8f70]" : "text-[#9a8f70]"
         }`}
       >
-        *Дані профілю генеруються на основі результатів виконаних модулів
-        та фінальних тестів.
+        *Показники формуються на основі результатів виконання інтерактивних
+        тестів (quizzes) та оцінок за домашні завдання.
       </p>
     </div>
   );
