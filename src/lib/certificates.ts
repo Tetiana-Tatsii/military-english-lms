@@ -40,9 +40,9 @@ export function getOverallSlpAverage(slp: {
 
 /**
  * Criteria:
- * - homework submitted for every lesson
+ * - homework reviewed (with score) for every lesson
  * - quiz submitted for every lesson that has a quiz
- * - overall SLP average >= 60%
+ * - overall Progress average >= 60%
  */
 export function evaluateCertificateEligibility(
   course: Course,
@@ -66,12 +66,19 @@ export function evaluateCertificateEligibility(
     };
   }
 
-  const answered = new Set(
+  const reviewedLessonIds = new Set(
     answers
-      .filter((a) => a.courseId === course.id)
+      .filter(
+        (a) =>
+          a.courseId === course.id &&
+          a.status === "reviewed" &&
+          typeof a.score === "number",
+      )
       .map((a) => a.lessonId),
   );
-  const homeworkDone = lessons.filter((l) => answered.has(l.id)).length;
+  const homeworkDone = lessons.filter((l) =>
+    reviewedLessonIds.has(l.id),
+  ).length;
 
   const quizLessons = lessons.filter((l) => (l.quiz?.length ?? 0) > 0);
   const quizzesRequired = quizLessons.length;
@@ -81,7 +88,7 @@ export function evaluateCertificateEligibility(
 
   if (homeworkDone < totalLessons) {
     reasons.push(
-      `ДЗ здано ${homeworkDone}/${totalLessons} уроків — потрібні всі.`,
+      `ДЗ перевірено викладачем: ${homeworkDone}/${totalLessons} уроків — потрібні всі.`,
     );
   }
   if (quizzesDone < quizzesRequired) {
@@ -181,7 +188,7 @@ function issueCertificateErrorMessage(code: string, payload: Record<string, unkn
     case "slp_too_low":
       return `Середній Progress ${payload.slpAverage ?? 0}% — потрібно не нижче ${CERTIFICATE_SLP_MIN}%.`;
     case "homework_incomplete":
-      return `ДЗ здано ${payload.homeworkDone ?? 0}/${payload.totalLessons ?? 0} уроків — потрібні всі.`;
+      return `ДЗ перевірено викладачем: ${payload.homeworkDone ?? 0}/${payload.totalLessons ?? 0} уроків — потрібні всі.`;
     case "quizzes_incomplete":
       return `Практичні тести: ${payload.quizzesDone ?? 0}/${payload.quizzesRequired ?? 0} — потрібні всі.`;
     case "no_lessons":

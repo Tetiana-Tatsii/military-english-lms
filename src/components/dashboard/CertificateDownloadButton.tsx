@@ -90,7 +90,9 @@ export default function CertificateDownloadButton({
   }, [refresh]);
 
   const handleDownload = async () => {
-    if (!eligibility?.eligible && !existing) return;
+    // Never download solely because a row exists — eligibility must hold now
+    // (all HW reviewed, quizzes done, Progress ≥ 60%).
+    if (!eligibility?.eligible) return;
 
     setBusy(true);
     setError(null);
@@ -129,7 +131,7 @@ export default function CertificateDownloadButton({
 
   if (course.status !== "active") return null;
 
-  const canDownload = Boolean(existing) || Boolean(eligibility?.eligible);
+  const canDownload = Boolean(eligibility?.eligible);
   const muted = isDarkMode ? "#a3a198" : "#7a7568";
 
   return (
@@ -168,7 +170,7 @@ export default function CertificateDownloadButton({
         </ul>
       )}
 
-      {existing && (
+      {existing && canDownload && (
         <p className="mt-2 text-xs" style={{ color: muted }}>
           № {existing.certificate_number} · імʼя в файлі: {studentName}
         </p>
