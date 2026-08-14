@@ -3,11 +3,11 @@
 import React, { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
-  EQUIPMENT_COMING_SOON,
   EQUIPMENT_ITEMS,
   REFRESHMENT_ITEMS,
   getShopItem,
   type BuyShopResult,
+  type UnequipShopResult,
   type ShopCatalogItem,
 } from "@/lib/gamification";
 import type { GamificationProfile } from "@/context/AppContext";
@@ -17,6 +17,7 @@ interface VoentorgProps {
   gamification: GamificationProfile;
   isDarkMode: boolean;
   onBuy: (itemId: string) => Promise<BuyShopResult>;
+  onUnequip: (itemId: string) => Promise<UnequipShopResult>;
   defaultOpen?: boolean;
 }
 
@@ -24,6 +25,7 @@ export default function Voentorg({
   gamification,
   isDarkMode,
   onBuy,
+  onUnequip,
   defaultOpen = false,
 }: VoentorgProps) {
   const { coffeeCoins, purchasedItems, inventory } = gamification;
@@ -70,21 +72,9 @@ export default function Voentorg({
   };
 
   const handleBuy = async (item: ShopCatalogItem) => {
-    const equipped = isEquipped(item);
-    if (item.id === "coffee" && equipped) {
-      showToast("You made Instructor Kava happier ☕", true);
-      return;
-    }
-
     const owned = isOwned(item);
     if (!owned && coffeeCoins < item.price) {
       showToast("Недостатньо Кава-коїнів ☕", false);
-      return;
-    }
-
-    // Equipment already equipped — no-op toast
-    if (item.kind === "equipment" && owned && equipped) {
-      showToast("Already equipped ✅", true);
       return;
     }
 
@@ -98,6 +88,26 @@ export default function Voentorg({
       }
     } catch {
       showToast("Purchase failed. Try logging in again.", false);
+    } finally {
+      setBuying(null);
+    }
+  };
+
+  const handleUnequip = async (item: ShopCatalogItem) => {
+    if (item.id === "coffee") return;
+
+    setBuying(item.id);
+    try {
+      const result = await onUnequip(item.id);
+      if (result.error) {
+        showToast(result.error, false);
+      } else if (item.kind === "refreshment") {
+        showToast("Refreshment unequipped — coffee is back ☕", true);
+      } else {
+        showToast("Equipment unequipped ✅", true);
+      }
+    } catch {
+      showToast("Unequip failed. Try logging in again.", false);
     } finally {
       setBuying(null);
     }
@@ -121,7 +131,7 @@ export default function Voentorg({
     const canPurchase = !owned && coffeeCoins >= item.price;
     const canActivate = owned && !equipped;
     const canClick =
-      item.id === "coffee" ? true : canPurchase || canActivate || (owned && equipped);
+      item.id === "coffee" ? true : canPurchase || canActivate;
     const isLoading = buying === item.id;
 
     return (
@@ -145,7 +155,7 @@ export default function Voentorg({
           <img
             src={item.image}
             alt={item.name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain object-top"
             onError={(e) => {
               const target = e.currentTarget;
               target.style.display = "none";
@@ -181,12 +191,14 @@ export default function Voentorg({
         </p>
 
         {equipped && item.id !== "coffee" ? (
-          <span
-            className="rounded-full px-2 py-0.5 text-xs font-bold"
+          <button
+            onClick={() => handleUnequip(item)}
+            disabled={isLoading}
+            className="w-full rounded-lg px-2 py-1.5 text-xs font-bold transition-colors duration-200 cursor-pointer hover:bg-[#6b6b36]"
             style={{ background: "#8a8a45", color: "#fff" }}
           >
-            Equipped
-          </span>
+            {isLoading ? "..." : "Unequip"}
+          </button>
         ) : (
           <button
             onClick={() => handleBuy(item)}
@@ -272,55 +284,6 @@ export default function Voentorg({
 
             {sectionTitle("🪖 Equipment")}
             {EQUIPMENT_ITEMS.map(renderItemCard)}
-
-            {EQUIPMENT_COMING_SOON.map((stub) => (
-              <div
-                key={stub.id}
-                className="flex flex-col items-center gap-2 rounded-lg border p-3 text-center opacity-80"
-                style={{
-                  background: isDarkMode ? "#252622" : "#fff",
-                  borderColor: isDarkMode ? "#3e403a" : "#e0dcd0",
-                }}
-              >
-                <div
-                  className="flex items-center justify-center rounded-lg text-3xl"
-                  style={{
-                    width: 64,
-                    height: 64,
-                    background: isDarkMode ? "#2d2f2a" : "#f0ede5",
-                  }}
-                >
-                  {stub.emoji}
-                </div>
-                <p
-                  className="text-xs font-bold leading-tight"
-                  style={{ color: isDarkMode ? "#e6e4dc" : "#3a3528" }}
-                >
-                  {stub.name}
-                </p>
-                <p
-                  className="text-[10px] leading-tight"
-                  style={{ color: isDarkMode ? "#a3a198" : "#6b6560" }}
-                >
-                  {stub.nameUk}
-                </p>
-                <p
-                  className="text-[9px] font-mono leading-tight break-all px-0.5"
-                  style={{ color: "#9a8f70" }}
-                  title="Файли для дизайнера"
-                >
-                  {stub.artShop}
-                  <br />
-                  {stub.artLayer}
-                </p>
-                <p className="text-[10px] font-semibold" style={{ color: "#9a8f70" }}>
-                  Coming soon · layer: {stub.layer}
-                </p>
-                <span className="w-full rounded-lg px-2 py-1.5 text-xs font-bold bg-[#e9e1cd] text-[#9a8f70]">
-                  Locked
-                </span>
-              </div>
-            ))}
           </div>
 
           {toast && (

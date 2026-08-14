@@ -71,115 +71,23 @@ export type ShopCatalogItem = {
 
 // Purchasable catalogue (prices must match buy_shop_item RPC)
 export const SHOP_ITEMS: readonly ShopCatalogItem[] = [
-  { id: "coffee",   name: "Coffee",         price: 0,  emoji: "☕", image: "/shop/coffee.webp",   kind: "refreshment", layer: "hand" },
-  { id: "snickers", name: "Energy Bar",     price: 30, emoji: "🍫", image: "/shop/snickers.webp", kind: "refreshment", layer: "hand" },
-  { id: "energy",   name: "Energy Drink",   price: 40, emoji: "🥤", image: "/shop/energy.webp",   kind: "refreshment", layer: "hand" },
-  { id: "thermos",  name: "Thermo Cup",     price: 50, emoji: "🫖", image: "/shop/thermos.webp",  kind: "refreshment", layer: "hand" },
-  { id: "boots",    name: "Tactical Boots", price: 60, emoji: "🥾", image: "/shop/boots.webp",    kind: "equipment",   layer: "boots" },
+  { id: "coffee",    name: "Coffee",             price: 0,  emoji: "☕", image: "/shop/coffee.webp",        kind: "refreshment", layer: "hand" },
+  { id: "snickers",  name: "Energy Bar",         price: 30, emoji: "🍫", image: "/shop/snickers.webp",      kind: "refreshment", layer: "hand" },
+  { id: "energy",    name: "Energy Drink",       price: 40, emoji: "🥤", image: "/shop/energy.webp",        kind: "refreshment", layer: "hand" },
+  { id: "thermos",   name: "Thermo Cup",         price: 50, emoji: "🫖", image: "/shop/thermos.webp",       kind: "refreshment", layer: "hand" },
+  { id: "boots",     name: "Tactical Boots",     price: 10, emoji: "🥾", image: "/layers/boots.png",        kind: "equipment",   layer: "boots" },
+  { id: "kneepads",  name: "Knee Pads",          price: 10, emoji: "🦵", image: "/layers/kneepads.png",     kind: "equipment",   layer: "kneepads" },
+  { id: "vest",      name: "Plate Carrier",      price: 10, emoji: "🦺", image: "/layers/vest.png",         kind: "equipment",   layer: "vest" },
+  { id: "gloves",    name: "Tactical Gloves",    price: 10, emoji: "🧤", image: "/layers/gloves.png",       kind: "equipment",   layer: "gloves" },
+  { id: "watch",     name: "Field Watch",        price: 10, emoji: "⌚", image: "/layers/watch.png",        kind: "equipment",   layer: "watch" },
+  { id: "glasses",   name: "Ballistic Glasses",  price: 10, emoji: "🕶️", image: "/layers/glasses.png",      kind: "equipment",   layer: "glasses" },
+  { id: "headset",   name: "Comms Headset",      price: 10, emoji: "🎧", image: "/layers/headset.png",      kind: "equipment",   layer: "headset" },
+  { id: "radio",     name: "Field Radio",        price: 10, emoji: "📻", image: "/layers/radio.png",        kind: "equipment",   layer: "radio" },
+  { id: "helmet",    name: "Combat Helmet",      price: 10, emoji: "⛑️", image: "/layers/helmet.png",       kind: "equipment",   layer: "helmet" },
 ] as const;
 
-/** Full equipment roadmap for art (Locked in UI until priced + assets ready). Boots already live in SHOP_ITEMS. */
-export const EQUIPMENT_COMING_SOON: readonly EquipmentArtStub[] = [
-  {
-    id: "glasses",
-    name: "Ballistic Glasses",
-    nameUk: "Тактичні окуляри",
-    emoji: "🕶️",
-    layer: "glasses",
-    artShop: "/shop/glasses.webp",
-    artLayer: "/layers/glasses.webp",
-  },
-  {
-    id: "gloves",
-    name: "Tactical Gloves",
-    nameUk: "Рукавички",
-    emoji: "🧤",
-    layer: "gloves",
-    artShop: "/shop/gloves.webp",
-    artLayer: "/layers/gloves.webp",
-  },
-  {
-    id: "helmet",
-    name: "Combat Helmet",
-    nameUk: "Шолом",
-    emoji: "⛑️",
-    layer: "helmet",
-    artShop: "/shop/helmet.webp",
-    artLayer: "/layers/helmet.webp",
-  },
-  {
-    id: "vest",
-    name: "Plate Carrier",
-    nameUk: "Бронежилет / розгрузка",
-    emoji: "🦺",
-    layer: "vest",
-    artShop: "/shop/vest.webp",
-    artLayer: "/layers/vest.webp",
-  },
-  {
-    id: "radio",
-    name: "Field Radio",
-    nameUk: "Рація",
-    emoji: "📻",
-    layer: "radio",
-    artShop: "/shop/radio.webp",
-    artLayer: "/layers/radio.webp",
-  },
-  {
-    id: "kneepads",
-    name: "Knee Pads",
-    nameUk: "Наколінники",
-    emoji: "🦵",
-    layer: "kneepads",
-    artShop: "/shop/kneepads.webp",
-    artLayer: "/layers/kneepads.webp",
-  },
-  {
-    id: "belt",
-    name: "Tactical Belt",
-    nameUk: "Тактичний ремінь",
-    emoji: "⛓️",
-    layer: "belt",
-    artShop: "/shop/belt.webp",
-    artLayer: "/layers/belt.webp",
-  },
-  {
-    id: "backpack",
-    name: "Assault Pack",
-    nameUk: "Рюкзак",
-    emoji: "🎒",
-    layer: "backpack",
-    artShop: "/shop/backpack.webp",
-    artLayer: "/layers/backpack.webp",
-  },
-  {
-    id: "patch",
-    name: "Unit Patch",
-    nameUk: "Шеврон / патч",
-    emoji: "🎖️",
-    layer: "patch",
-    artShop: "/shop/patch.webp",
-    artLayer: "/layers/patch.webp",
-  },
-  {
-    id: "headset",
-    name: "Comms Headset",
-    nameUk: "Гарнітура",
-    emoji: "🎧",
-    layer: "headset",
-    artShop: "/shop/headset.webp",
-    artLayer: "/layers/headset.webp",
-  },
-  {
-    id: "watch",
-    name: "Field Watch",
-    nameUk: "Годинник",
-    emoji: "⌚",
-    layer: "watch",
-    artShop: "/shop/watch.webp",
-    artLayer: "/layers/watch.webp",
-  },
-];
+/** Empty — all layered equipment is live in SHOP_ITEMS. Patch has no art yet. */
+export const EQUIPMENT_COMING_SOON: readonly EquipmentArtStub[] = [];
 
 /** Suggested paint order for layered character (bottom → top). */
 export const CHARACTER_LAYER_ORDER: readonly CharacterLayerKey[] = [
@@ -203,10 +111,10 @@ export const CHARACTER_LAYER_ORDER: readonly CharacterLayerKey[] = [
 
 /** Non-shop prestige art (module rewards) — also needed from designer later. */
 export const PRESTIGE_ART_STUBS = [
-  { id: "cat", name: "Tactical Cat", nameUk: "Тактичний кіт", emoji: "🐱", art: "/layers/companion-cat.webp", unlock: "Module 1" },
-  { id: "dog", name: "Tactical Dog", nameUk: "Тактичний пес", emoji: "🐕", art: "/layers/companion-dog.webp", unlock: "Module 3" },
-  { id: "drone", name: "Recon Drone", nameUk: "Дрон", emoji: "🛸", art: "/layers/companion-drone.webp", unlock: "Module 4" },
-  { id: "victory", name: "Victory Cup", nameUk: "Кубок / proud Кава", emoji: "🏆", art: "/instructor/proud-victory.webp", unlock: "Module 5" },
+  { id: "cat", name: "Tactical Cat", nameUk: "Тактичний кіт", emoji: "🐱", art: "/layers/companion-cat.png", unlock: "After module 1 (on module 2)" },
+  { id: "dog", name: "Tactical Dog", nameUk: "Тактичний пес", emoji: "🐕", art: "/layers/companion-dog.png", unlock: "After module 2 (on module 3)" },
+  { id: "drone", name: "Recon Drone", nameUk: "Дрон", emoji: "🛸", art: "/layers/companion-drone.png", unlock: "After module 3 (on modules 4–5)" },
+  { id: "victory", name: "Victory Cup", nameUk: "Кубок", emoji: "🏆", art: "/layers/victory.png", unlock: "After all modules" },
 ] as const;
 
 export const REFRESHMENT_ITEMS = SHOP_ITEMS.filter((i) => i.kind === "refreshment");
@@ -217,6 +125,13 @@ export type ShopItemId = (typeof SHOP_ITEMS)[number]["id"];
 export interface BuyShopResult {
   error: string | null;
   charged: boolean;
+  coffeeCoins: number;
+  purchasedItems: string[];
+  activeInstructorItem: string;
+}
+
+export interface UnequipShopResult {
+  error: string | null;
   coffeeCoins: number;
   purchasedItems: string[];
   activeInstructorItem: string;
@@ -554,6 +469,75 @@ export async function buyShopItemInDb(
   }
 
   return fail("Не вдалося здійснити покупку. Спробуйте перелогінитись.");
+}
+
+// ─── Unequip shop item (equipment layer or refreshment → coffee) ──────────────
+export async function unequipShopItemInDb(
+  supabase: SupabaseClient,
+  userId: string,
+  itemId: string,
+): Promise<UnequipShopResult> {
+  const fail = (
+    error: string,
+    partial?: Partial<UnequipShopResult>,
+  ): UnequipShopResult => ({
+    error,
+    coffeeCoins: partial?.coffeeCoins ?? 0,
+    purchasedItems: partial?.purchasedItems ?? [],
+    activeInstructorItem: partial?.activeInstructorItem ?? "coffee",
+  });
+
+  if (getShopItemPrice(itemId) === null) {
+    return fail("Невідомий товар.");
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.user?.id !== userId) {
+    console.warn("unequipShopItemInDb: no Supabase auth session for", userId);
+    return fail("Потрібно перелогінитись (немає Supabase Auth сесії).");
+  }
+
+  const { data, error } = await supabase.rpc("unequip_shop_item", {
+    p_item_id: itemId,
+  });
+
+  if (error) {
+    console.error("unequip_shop_item RPC failed:", error);
+    return fail("Не вдалося зняти предмет. Спробуйте перелогінитись.");
+  }
+
+  if (data && typeof data === "object") {
+    const payload = data as Record<string, unknown>;
+    if (payload.error === "not_authenticated") {
+      return fail("Потрібно перелогінитись (немає Supabase Auth сесії).");
+    }
+    if (payload.error === "profile_not_found") {
+      return fail("Профіль не знайдено.");
+    }
+    if (payload.error === "unknown_item") {
+      return fail("Невідомий товар.");
+    }
+    if (payload.error === "not_unequippable") {
+      return fail("Цей предмет не можна зняти.");
+    }
+    if (payload.error === "not_owned") {
+      return fail("Предмет не у власності.");
+    }
+    if (payload.error) {
+      return fail(String(payload.error));
+    }
+    return {
+      error: null,
+      coffeeCoins: Number(payload.coffeeCoins ?? 0),
+      purchasedItems: normalizePurchasedItems(payload.purchasedItems),
+      activeInstructorItem: String(payload.activeInstructorItem ?? "coffee"),
+    };
+  }
+
+  return fail("Не вдалося зняти предмет. Спробуйте перелогінитись.");
 }
 
 // ─── Check & mark course as completed ────────────────────────────────────────

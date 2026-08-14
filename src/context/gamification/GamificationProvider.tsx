@@ -14,8 +14,10 @@ import {
   fetchGamificationProfile,
   processDailyStreak,
   buyShopItemInDb,
+  unequipShopItemInDb,
   DEFAULT_GAMIFICATION_PROFILE,
   type BuyShopResult,
+  type UnequipShopResult,
 } from "@/lib/gamification";
 import { useAuth } from "@/context/auth";
 
@@ -27,6 +29,7 @@ interface GamificationContextValue {
   setInstructorMood: React.Dispatch<React.SetStateAction<InstructorMood>>;
   refreshGamification: (uid?: string) => Promise<void>;
   buyShopItem: (itemId: string) => Promise<BuyShopResult>;
+  unequipShopItem: (itemId: string) => Promise<UnequipShopResult>;
 }
 
 const GamificationContext = createContext<GamificationContextValue | undefined>(
@@ -106,7 +109,41 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       const result = await buyShopItemInDb(supabase, user.id, itemId);
 
       if (!result.error) {
+        // Coffee / snack / equipment cheers Kava back from angry or proud.
+        setInstructorMood("happy");
         // Reload inventory + profile so CharacterStage sees layered equip
+        const profile = await fetchGamificationProfile(supabase, user.id);
+        if (profile) {
+          setGamification(profile);
+        } else {
+          setGamification((prev) => ({
+            ...(prev ?? DEFAULT_GAMIFICATION_PROFILE),
+            coffeeCoins: result.coffeeCoins,
+            purchasedItems: result.purchasedItems,
+            activeInstructorItem: result.activeInstructorItem,
+          }));
+        }
+      }
+
+      return result;
+    },
+    [gamification, user],
+  );
+
+  const unequipShopItem = useCallback(
+    async (itemId: string): Promise<UnequipShopResult> => {
+      if (!user) {
+        return {
+          error: "Не авторизований",
+          coffeeCoins: gamification?.coffeeCoins ?? 0,
+          purchasedItems: gamification?.purchasedItems ?? [],
+          activeInstructorItem: gamification?.activeInstructorItem ?? "coffee",
+        };
+      }
+
+      const result = await unequipShopItemInDb(supabase, user.id, itemId);
+
+      if (!result.error) {
         const profile = await fetchGamificationProfile(supabase, user.id);
         if (profile) {
           setGamification(profile);
@@ -149,6 +186,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         setInstructorMood,
         refreshGamification,
         buyShopItem,
+        unequipShopItem,
       }}
     >
       {children}

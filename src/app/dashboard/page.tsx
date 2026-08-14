@@ -7,18 +7,20 @@ import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import CourseList from "../../components/dashboard/CourseList";
 import ProfileStats from "../../components/dashboard/ProfileStats";
 import InstructorCard from "../../components/dashboard/InstructorCard";
-import InstructorSpeechBubble from "../../components/dashboard/InstructorSpeechBubble";
 import Voentorg from "../../components/dashboard/Voentorg";
 import Achievements from "../../components/dashboard/Achievements";
-import { DEFAULT_GAMIFICATION_PROFILE, getActiveRefreshmentId } from "@/lib/gamification";
-import { getInstructorSpeechMessage } from "@/lib/instructorQuotes";
+import { DEFAULT_GAMIFICATION_PROFILE } from "@/lib/gamification";
+import {
+  getActivePrestigeIds,
+} from "@/lib/characterLayers";
 
 export default function DashboardPage() {
-  const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem, refreshGamification } = useAppContext();
+  const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem, unequipShopItem, refreshGamification } = useAppContext();
   const router = useRouter();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showPxStore, setShowPxStore] = useState(false);
+  const [kavaPreview, setKavaPreview] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("darkMode");
@@ -31,6 +33,10 @@ export default function DashboardPage() {
   useEffect(() => {
     localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
   }, [isDarkMode]);
+
+  useEffect(() => {
+    setKavaPreview(new URLSearchParams(window.location.search).get("kava"));
+  }, []);
 
   useEffect(() => {
     if (isInitialized) {
@@ -99,16 +105,25 @@ export default function DashboardPage() {
   };
 
   const activeGamification = gamification ?? DEFAULT_GAMIFICATION_PROFILE;
-  const instructorSpeech = getInstructorSpeechMessage(
-    instructorMood,
-    getActiveRefreshmentId(activeGamification),
-  );
-  const speechVariant =
-    instructorMood === "angry"
-      ? "angry"
-      : instructorMood === "proud"
-        ? "proud"
-        : "item";
+  const previewCompanion =
+    kavaPreview === "cat" ||
+    kavaPreview === "dog" ||
+    kavaPreview === "drone" ||
+    kavaPreview === "victory"
+      ? kavaPreview
+      : null;
+  const previewAll = kavaPreview === "all";
+  const stageMood =
+    kavaPreview === "angry" || kavaPreview === "proud" || kavaPreview === "happy"
+      ? kavaPreview
+      : instructorMood;
+  const prestigeIds = previewCompanion
+    ? [previewCompanion]
+    : getActivePrestigeIds(
+        courses,
+        myAnswers.map((a) => a.lessonId),
+        activeGamification.completedCourses,
+      );
 
   return (
     <div
@@ -154,25 +169,16 @@ export default function DashboardPage() {
             isDarkMode={isDarkMode}
           />
 
-          {/* Offset right + gap above card so bubble clears the instructor head on mobile */}
-          {instructorSpeech && (
-            <div className="relative z-20 pl-[132px] sm:pl-[140px] md:pl-[150px] lg:pl-[180px] mb-3 sm:mb-2">
-              <InstructorSpeechBubble
-                message={instructorSpeech}
-                variant={speechVariant}
-                isDarkMode={isDarkMode}
-                className="w-full max-w-xl"
-              />
-            </div>
-          )}
-
-          <div className="relative z-10 overflow-visible mt-1 sm:mt-0">
+          <div className="relative z-10 overflow-visible">
             <InstructorCard
               gamification={activeGamification}
-              mood={instructorMood}
+              mood={stageMood}
               isDarkMode={isDarkMode}
               isPxStoreOpen={showPxStore}
               onPxStoreToggle={() => setShowPxStore((v) => !v)}
+              prestigeIds={prestigeIds}
+              previewAll={previewAll}
+              previewCompanion={previewCompanion}
             />
           </div>
 
@@ -181,6 +187,7 @@ export default function DashboardPage() {
               gamification={activeGamification}
               isDarkMode={isDarkMode}
               onBuy={buyShopItem}
+              onUnequip={unequipShopItem}
               defaultOpen={true}
             />
           )}

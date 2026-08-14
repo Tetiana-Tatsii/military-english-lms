@@ -5,9 +5,7 @@ import { ShoppingCart } from "lucide-react";
 import type { GamificationProfile } from "@/context/AppContext";
 import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 import StreakCoinIcon from "@/components/ui/StreakCoinIcon";
-import CharacterStage, {
-  EquippedLayersSummary,
-} from "@/components/dashboard/CharacterStage";
+import CharacterStage from "@/components/dashboard/CharacterStage";
 
 function streakBonusLabel(streakCount: number, filledCups: number): string {
   if (streakCount > 0 && streakCount % 7 === 0) {
@@ -25,6 +23,9 @@ interface InstructorCardProps {
   isDarkMode: boolean;
   isPxStoreOpen: boolean;
   onPxStoreToggle: () => void;
+  prestigeIds?: string[];
+  previewAll?: boolean;
+  previewCompanion?: string | null;
 }
 
 export default function InstructorCard({
@@ -33,6 +34,9 @@ export default function InstructorCard({
   isDarkMode,
   isPxStoreOpen,
   onPxStoreToggle,
+  prestigeIds = [],
+  previewAll = false,
+  previewCompanion = null,
 }: InstructorCardProps) {
   const { streakCount, coffeeCoins } = gamification;
   const filledCups = streakCount === 0 ? 0 : ((streakCount - 1) % 7) + 1;
@@ -40,24 +44,29 @@ export default function InstructorCard({
 
   return (
     <div
-      className="relative w-full rounded-2xl border flex flex-row overflow-visible mt-6"
+      className="relative w-full rounded-2xl border flex flex-row overflow-visible mt-12"
       style={{
         background: isDarkMode ? "#2d2f2a" : "#f6f1e4",
         borderColor: isDarkMode ? "#3e403a" : "#d8cdb4",
-        minHeight: 210,
+        minHeight: 248,
       }}
     >
-      {/* Mobile gutter wider so figure does not cover the title; size of figure unchanged */}
+      {/* Figure size is height-driven; gutter is only a layout slot — do not shrink the art */}
       <div
         className="relative flex-shrink-0 w-[132px] sm:w-[140px] md:w-[150px] lg:w-[180px] self-stretch"
         aria-hidden
       >
-        <div className="absolute bottom-0 left-1 sm:left-4 z-10 h-[calc(100%+56px)] w-[calc(100%-4px)] sm:w-[calc(100%-8px)]">
-          <CharacterStage gamification={gamification} mood={mood} />
+        <div className="absolute bottom-0 left-1 sm:left-4 z-10 h-[calc(100%+96px)] w-[calc(100%-4px)] sm:w-[calc(100%-8px)]">
+          <CharacterStage
+            gamification={gamification}
+            mood={mood}
+            prestigeIds={prestigeIds}
+            previewAll={previewAll}
+          />
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 min-w-0 pl-1 pr-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3">
+      <div className="flex flex-col flex-1 min-w-0 pl-8 pr-2 sm:px-4 md:px-5 py-4 gap-2 sm:gap-3">
         <div className="flex flex-col items-center justify-center sm:justify-center gap-1.5">
           <span
             className="text-base sm:text-xl font-bold text-center leading-tight max-w-[11rem] sm:max-w-none"
@@ -65,10 +74,16 @@ export default function InstructorCard({
           >
             Your Instructor Kava
           </span>
-          <EquippedLayersSummary
-            gamification={gamification}
-            isDarkMode={isDarkMode}
-          />
+          {(previewAll || previewCompanion) && (
+            <p
+              className="text-[10px] font-semibold"
+              style={{ color: "#c97a4a" }}
+            >
+              {previewAll
+                ? "Preview: full loadout"
+                : `Preview: ${previewCompanion}`}
+            </p>
+          )}
         </div>
 
         {showStreak ? (
@@ -112,7 +127,7 @@ export default function InstructorCard({
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 self-end">
+              <div className="flex items-center justify-end gap-3 w-full">
                 <div className="flex items-center gap-1">
                   <span className="text-sm font-bold" style={{ color: "#8a8a45" }}>
                     {coffeeCoins}

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { ProgressTheme } from "@/lib/lessonSteps";
 
 interface LessonProgressBarProps {
@@ -12,63 +13,15 @@ interface LessonProgressBarProps {
   completed: boolean;
 }
 
-const THEME_EMOJI: Record<Exclude<ProgressTheme, "coffee">, string> = {
-  cat: "🐱",
-  dog: "🐕",
-  drone: "🛸",
-  victory: "🏆",
+const THEME_ART: Record<ProgressTheme, string> = {
+  coffee: "/coins/coffee-coin_open.webp",
+  cat: "/progress/cat.png",
+  dog: "/progress/dog.png",
+  drone: "/progress/drone.png",
+  victory: "/progress/victory.png",
 };
 
-function ProgressIcon({
-  theme,
-  filled,
-  size = 28,
-}: {
-  theme: ProgressTheme;
-  filled: boolean;
-  size?: number;
-}) {
-  if (theme === "coffee") {
-    return (
-      <img
-        src={
-          filled
-            ? "/coins/coffee-coin_open.webp"
-            : "/coins/coffee-coin_locked.webp"
-        }
-        alt=""
-        width={size}
-        height={size}
-        style={{
-          width: size,
-          height: size,
-          objectFit: "contain",
-          opacity: filled ? 1 : 0.45,
-          filter: filled ? "none" : "grayscale(0.35)",
-          transition: "opacity 0.25s ease, transform 0.25s ease",
-          transform: filled ? "scale(1.05)" : "scale(1)",
-        }}
-      />
-    );
-  }
-
-  return (
-    <span
-      aria-hidden
-      style={{
-        fontSize: size * 0.85,
-        lineHeight: 1,
-        opacity: filled ? 1 : 0.35,
-        filter: filled ? "none" : "grayscale(1)",
-        transition: "opacity 0.25s ease, transform 0.25s ease",
-        transform: filled ? "scale(1.08)" : "scale(1)",
-        display: "inline-block",
-      }}
-    >
-      {THEME_EMOJI[theme]}
-    </span>
-  );
-}
+const FRAME = 200;
 
 export default function LessonProgressBar({
   totalSteps,
@@ -80,7 +33,15 @@ export default function LessonProgressBar({
 }: LessonProgressBarProps) {
   if (totalSteps <= 0) return null;
 
-  const pct = Math.round((filledSteps / totalSteps) * 100);
+  const pct = Math.max(0, Math.min(100, Math.round((filledSteps / totalSteps) * 100)));
+  const src = THEME_ART[theme];
+  const imgStyle: CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+  };
 
   return (
     <div
@@ -89,68 +50,79 @@ export default function LessonProgressBar({
         top: 0,
         zIndex: 20,
         marginBottom: 20,
-        padding: "14px 16px",
+        padding: "16px 18px",
         borderRadius: 12,
         background: isDarkMode ? "rgba(37, 38, 34, 0.96)" : "rgba(250, 249, 246, 0.96)",
         border: isDarkMode ? "1px solid #3e403a" : "1px solid #e0dcd0",
         backdropFilter: "blur(8px)",
       }}
     >
-      <div
+      <p
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          marginBottom: 10,
-          flexWrap: "wrap",
+          margin: "0 0 14px",
+          fontSize: 13,
+          fontWeight: 700,
+          color: isDarkMode ? "#e6e4dc" : "#3a3528",
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontWeight: 700,
-            color: isDarkMode ? "#e6e4dc" : "#3a3528",
-          }}
-        >
-          {completed
-            ? "Урок завершено"
-            : `Крок ${Math.min(currentStep + 1, totalSteps)} з ${totalSteps}`}
-        </p>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 12,
-            fontWeight: 600,
-            color: isDarkMode ? "#a3a198" : "#7a7568",
-          }}
-        >
-          Lesson completed: {pct}%
-        </p>
-      </div>
+        {completed
+          ? "Урок завершено"
+          : `Крок ${Math.min(currentStep + 1, totalSteps)} з ${totalSteps}`}
+      </p>
 
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          flexWrap: "wrap",
+          gap: 20,
         }}
         role="progressbar"
-        aria-valuenow={filledSteps}
+        aria-valuenow={pct}
         aria-valuemin={0}
-        aria-valuemax={totalSteps}
+        aria-valuemax={100}
         aria-label={`Прогрес уроку: ${pct}%`}
       >
-        {Array.from({ length: totalSteps }, (_, index) => (
-          <ProgressIcon
-            key={index}
-            theme={theme}
-            filled={index < filledSteps}
+        <div
+          style={{
+            position: "relative",
+            flexShrink: 0,
+            width: FRAME,
+            height: FRAME,
+          }}
+        >
+          <img
+            src={src}
+            alt=""
+            style={{
+              ...imgStyle,
+              filter: "grayscale(1)",
+              opacity: 0.5,
+            }}
           />
-        ))}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              clipPath: `inset(${100 - pct}% 0 0 0)`,
+              transition: "clip-path 0.45s ease",
+            }}
+          >
+            <img src={src} alt="" style={imgStyle} />
+          </div>
+        </div>
+
+        <span
+          style={{
+            fontSize: 44,
+            fontWeight: 800,
+            lineHeight: 1,
+            letterSpacing: "-0.04em",
+            color: pct >= 100 ? "#8a8a45" : isDarkMode ? "#e6e4dc" : "#3a3528",
+            minWidth: "3.2ch",
+          }}
+        >
+          {pct}%
+        </span>
       </div>
     </div>
   );

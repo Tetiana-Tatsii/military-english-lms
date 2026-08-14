@@ -28,7 +28,11 @@ import type {
   Question,
   UserAccount,
 } from "@/types";
-import type { GamificationProfile, BuyShopResult } from "@/lib/gamification";
+import type {
+  GamificationProfile,
+  BuyShopResult,
+  UnequipShopResult,
+} from "@/lib/gamification";
 
 // Re-export domain types (backward compatible imports from AppContext)
 export type {
@@ -90,6 +94,7 @@ interface AppState {
   instructorMood: "happy" | "angry" | "proud";
   refreshGamification: () => Promise<void>;
   buyShopItem: (itemId: string) => Promise<BuyShopResult>;
+  unequipShopItem: (itemId: string) => Promise<UnequipShopResult>;
 
   addSupportTicket: (type: "bug" | "improvement", message: string) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: "open" | "closed") => Promise<void>;
@@ -164,6 +169,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     instructorMood,
     refreshGamification,
     buyShopItem,
+    unequipShopItem,
   } = useGamification();
 
   const {
@@ -338,6 +344,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         instructorMood,
         refreshGamification,
         buyShopItem,
+        unequipShopItem,
       }}
     >
       {isInitialized ? (
