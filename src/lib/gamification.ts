@@ -75,18 +75,19 @@ export const SHOP_ITEMS: readonly ShopCatalogItem[] = [
   { id: "snickers",  name: "Energy Bar",         price: 30, emoji: "🍫", image: "/shop/snickers.webp",      kind: "refreshment", layer: "hand" },
   { id: "energy",    name: "Energy Drink",       price: 40, emoji: "🥤", image: "/shop/energy.webp",        kind: "refreshment", layer: "hand" },
   { id: "thermos",   name: "Thermo Cup",         price: 50, emoji: "🫖", image: "/shop/thermos.webp",       kind: "refreshment", layer: "hand" },
-  { id: "boots",     name: "Tactical Boots",     price: 10, emoji: "🥾", image: "/layers/boots.png",        kind: "equipment",   layer: "boots" },
-  { id: "kneepads",  name: "Knee Pads",          price: 10, emoji: "🦵", image: "/layers/kneepads.png",     kind: "equipment",   layer: "kneepads" },
-  { id: "vest",      name: "Plate Carrier",      price: 10, emoji: "🦺", image: "/layers/vest.png",         kind: "equipment",   layer: "vest" },
+  { id: "boots",     name: "Tactical Boots",     price: 10, emoji: "🥾", image: "/shop/boots.webp",         kind: "equipment",   layer: "boots" },
+  { id: "kneepads",  name: "Knee Pads",          price: 10, emoji: "🦵", image: "/shop/kneepads.webp",      kind: "equipment",   layer: "kneepads" },
+  { id: "vest",      name: "Plate Carrier",      price: 10, emoji: "🦺", image: "/shop/vest.webp",          kind: "equipment",   layer: "vest" },
+  { id: "patch",     name: "NGU Patch",          price: 10, emoji: "🎖️", image: "/shop/patch.webp",         kind: "equipment",   layer: "patch" },
   { id: "gloves",    name: "Tactical Gloves",    price: 10, emoji: "🧤", image: "/layers/gloves.png",       kind: "equipment",   layer: "gloves" },
-  { id: "watch",     name: "Field Watch",        price: 10, emoji: "⌚", image: "/layers/watch.png",        kind: "equipment",   layer: "watch" },
-  { id: "glasses",   name: "Ballistic Glasses",  price: 10, emoji: "🕶️", image: "/layers/glasses.png",      kind: "equipment",   layer: "glasses" },
-  { id: "headset",   name: "Comms Headset",      price: 10, emoji: "🎧", image: "/layers/headset.png",      kind: "equipment",   layer: "headset" },
-  { id: "radio",     name: "Field Radio",        price: 10, emoji: "📻", image: "/layers/radio.png",        kind: "equipment",   layer: "radio" },
-  { id: "helmet",    name: "Combat Helmet",      price: 10, emoji: "⛑️", image: "/layers/helmet.png",       kind: "equipment",   layer: "helmet" },
+  { id: "watch",     name: "Field Watch",        price: 10, emoji: "⌚", image: "/shop/watch.webp",         kind: "equipment",   layer: "watch" },
+  { id: "glasses",   name: "Ballistic Glasses",  price: 10, emoji: "🕶️", image: "/shop/glasses.webp",       kind: "equipment",   layer: "glasses" },
+  { id: "headset",   name: "Comms Headset",      price: 10, emoji: "🎧", image: "/shop/headset.webp",      kind: "equipment",   layer: "headset" },
+  { id: "radio",     name: "Field Radio",        price: 10, emoji: "📻", image: "/shop/radio.webp",         kind: "equipment",   layer: "radio" },
+  { id: "helmet",    name: "Combat Helmet",      price: 10, emoji: "⛑️", image: "/shop/helmet.webp",        kind: "equipment",   layer: "helmet" },
 ] as const;
 
-/** Empty — all layered equipment is live in SHOP_ITEMS. Patch has no art yet. */
+/** Empty — all layered equipment is live in SHOP_ITEMS. Belt and backpack cards exist in /shop but are not sold. */
 export const EQUIPMENT_COMING_SOON: readonly EquipmentArtStub[] = [];
 
 /** Suggested paint order for layered character (bottom → top). */

@@ -147,15 +147,15 @@ export default function Voentorg({
         <div
           className="flex items-center justify-center overflow-hidden rounded-lg"
           style={{
-            width: 64,
-            height: 64,
-            background: isDarkMode ? "#2d2f2a" : "#f0ede5",
+            width: 80,
+            height: 80,
+            background: "transparent",
           }}
         >
           <img
             src={item.image}
             alt={item.name}
-            className="h-full w-full object-contain object-top"
+            className="h-full w-full object-contain"
             onError={(e) => {
               const target = e.currentTarget;
               target.style.display = "none";

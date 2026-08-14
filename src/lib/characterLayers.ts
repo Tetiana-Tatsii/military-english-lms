@@ -40,6 +40,9 @@ const EQUIPMENT_SRC: Record<string, string> = {
   helmet: "/layers/helmet.png",
 };
 
+/** Full plate-carrier layer with the NGU chevron — replaces plain vest. */
+const VEST_PATCH_SRC = "/layers/vest-patch.png";
+
 const PRESTIGE_SRC: Record<string, string> = {
   cat: "/layers/companion-cat.png",
   dog: "/layers/companion-dog.png",
@@ -182,6 +185,12 @@ export function getCharacterLayerStack(opts: {
   }
 
   for (const id of BODY_EQUIP_ORDER) {
+    if (id === "vest") {
+      // Patch is not a small overlay — it swaps in the vest-with-chevron art.
+      if (show("patch")) pushLayer(layers, "vest", VEST_PATCH_SRC);
+      else if (show("vest")) pushLayer(layers, "vest", EQUIPMENT_SRC.vest);
+      continue;
+    }
     if (show(id)) pushLayer(layers, id, EQUIPMENT_SRC[id]);
   }
 
