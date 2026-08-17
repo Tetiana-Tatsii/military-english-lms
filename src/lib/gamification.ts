@@ -79,7 +79,7 @@ export const SHOP_ITEMS: readonly ShopCatalogItem[] = [
   { id: "kneepads",  name: "Knee Pads",          price: 10, emoji: "🦵", image: "/shop/kneepads.webp",      kind: "equipment",   layer: "kneepads" },
   { id: "vest",      name: "Plate Carrier",      price: 10, emoji: "🦺", image: "/shop/vest.webp",          kind: "equipment",   layer: "vest" },
   { id: "patch",     name: "NGU Patch",          price: 10, emoji: "🎖️", image: "/shop/patch.webp",         kind: "equipment",   layer: "patch" },
-  { id: "gloves",    name: "Tactical Gloves",    price: 10, emoji: "🧤", image: "/layers/gloves.png",       kind: "equipment",   layer: "gloves" },
+  { id: "gloves",    name: "Tactical Gloves",    price: 10, emoji: "🧤", image: "/shop/gloves.webp",        kind: "equipment",   layer: "gloves" },
   { id: "watch",     name: "Field Watch",        price: 10, emoji: "⌚", image: "/shop/watch.webp",         kind: "equipment",   layer: "watch" },
   { id: "glasses",   name: "Ballistic Glasses",  price: 10, emoji: "🕶️", image: "/shop/glasses.webp",       kind: "equipment",   layer: "glasses" },
   { id: "headset",   name: "Comms Headset",      price: 10, emoji: "🎧", image: "/shop/headset.webp",      kind: "equipment",   layer: "headset" },
