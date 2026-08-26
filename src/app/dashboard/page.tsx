@@ -9,7 +9,7 @@ import ProfileStats from "../../components/dashboard/ProfileStats";
 import InstructorCard from "../../components/dashboard/InstructorCard";
 import Voentorg from "../../components/dashboard/Voentorg";
 import Achievements from "../../components/dashboard/Achievements";
-import { DEFAULT_GAMIFICATION_PROFILE } from "@/lib/gamification";
+import PageLoadingScreen from "@/components/ui/PageLoadingScreen";
 import {
   getActivePrestigeIds,
 } from "@/lib/characterLayers";
@@ -71,11 +71,7 @@ export default function DashboardPage() {
   }, [myAnswers, refreshGamification, user?.id]);
 
   if (!isInitialized || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f0e9d8] text-[#8a8a45] font-semibold text-lg">
-        Завантаження платформи...
-      </div>
-    );
+    return <PageLoadingScreen message="Завантаження платформи..." />;
   }
 
   const getCourseProgress = (courseId: string) => {

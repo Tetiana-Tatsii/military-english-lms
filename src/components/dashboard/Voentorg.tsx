@@ -30,6 +30,8 @@ export default function Voentorg({
 }: VoentorgProps) {
   const { coffeeCoins, purchasedItems, inventory } = gamification;
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [refreshmentsOpen, setRefreshmentsOpen] = useState(true);
+  const [equipmentOpen, setEquipmentOpen] = useState(true);
   const [buying, setBuying] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -227,13 +229,32 @@ export default function Voentorg({
     );
   };
 
-  const sectionTitle = (label: string) => (
-    <p
-      className="col-span-2 text-xs font-bold uppercase tracking-wide pt-1"
-      style={{ color: isDarkMode ? "#a3a198" : "#8a8a45" }}
+  const sectionHeader = (
+    label: string,
+    open: boolean,
+    onToggle: () => void,
+  ) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="flex w-full items-center justify-between bg-transparent px-0 py-1 text-left"
     >
-      {label}
-    </p>
+      <span
+        className="text-xs font-bold uppercase tracking-wide"
+        style={{ color: isDarkMode ? "#a3a198" : "#8a8a45" }}
+      >
+        {label}
+      </span>
+      <ChevronDown
+        size={16}
+        className="transition-transform duration-300"
+        style={{
+          color: isDarkMode ? "#a3a198" : "#8a8a45",
+          transform: open ? "rotate(180deg)" : "rotate(0deg)",
+        }}
+      />
+    </button>
   );
 
   return (
@@ -278,12 +299,28 @@ export default function Voentorg({
 
       {isOpen && (
         <>
-          <div className="grid grid-cols-2 gap-3 p-4">
-            {sectionTitle("☕ Refreshments")}
-            {REFRESHMENT_ITEMS.map(renderItemCard)}
+          <div className="flex flex-col gap-4 p-4">
+            <div>
+              {sectionHeader("☕ Refreshments", refreshmentsOpen, () =>
+                setRefreshmentsOpen((v) => !v),
+              )}
+              {refreshmentsOpen && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {REFRESHMENT_ITEMS.map(renderItemCard)}
+                </div>
+              )}
+            </div>
 
-            {sectionTitle("🪖 Equipment")}
-            {EQUIPMENT_ITEMS.map(renderItemCard)}
+            <div>
+              {sectionHeader("🪖 Equipment", equipmentOpen, () =>
+                setEquipmentOpen((v) => !v),
+              )}
+              {equipmentOpen && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {EQUIPMENT_ITEMS.map(renderItemCard)}
+                </div>
+              )}
+            </div>
           </div>
 
           {toast && (

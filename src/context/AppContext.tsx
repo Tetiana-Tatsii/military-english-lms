@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "./auth";
 import { GamificationProvider, useGamification } from "./gamification";
 import { CoursesProvider, useCourses } from "./courses";
 import { QueryProvider } from "./QueryProvider";
+import PageLoadingScreen from "@/components/ui/PageLoadingScreen";
 import type {
   SkillType,
   UserRole,
@@ -350,20 +351,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       {isInitialized ? (
         children
       ) : (
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f0e9d8",
-            fontFamily: "sans-serif",
-            color: "#3a3528",
-            fontWeight: 500,
-          }}
-        >
-          Завантаження системи...
-        </div>
+        <PageLoadingScreen message="Завантаження системи..." />
       )}
     </AppContext.Provider>
   );

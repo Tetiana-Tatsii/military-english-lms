@@ -15,8 +15,12 @@ import {
   type NextStepGate,
 } from "@/lib/lessonSteps";
 import {
+  fetchLessonStepProgress,
   loadLessonStepProgress,
+  mergeLessonStepProgress,
   saveLessonStepProgress,
+  upsertLessonStepProgress,
+  type LessonStepStored,
 } from "@/lib/lessonStepStorage";
 import { isReadingCheckPassed } from "@/lib/readingCheckStorage";
 import type { Answer, Course, Lesson, Module } from "@/types";
@@ -73,6 +77,7 @@ export function useCourseLessonPage() {
   const [unlockedStepIndex, setUnlockedStepIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [lessonStepsCompleted, setLessonStepsCompleted] = useState(false);
+  const storedProgressRef = useRef<LessonStepStored | null>(null);
 
   useEffect(() => {
     if (isInitialized && !user) {
@@ -168,46 +173,135 @@ export function useCourseLessonPage() {
 
   useEffect(() => {
     if (!user?.id || !activeLessonId) {
+      storedProgressRef.current = null;
       setUnlockedStepIndex(0);
       setCurrentStepIndex(0);
       setLessonStepsCompleted(false);
       return;
     }
-    const stored = loadLessonStepProgress(user.id, activeLessonId);
-    if (stored) {
+
+    const applyStored = (stored: LessonStepStored | null) => {
+      storedProgressRef.current = stored;
+      if (!stored) {
+        setUnlockedStepIndex(0);
+        setCurrentStepIndex(0);
+        setLessonStepsCompleted(false);
+        return;
+      }
       setUnlockedStepIndex(stored.unlockedStepIndex);
       setCurrentStepIndex(stored.unlockedStepIndex);
       setLessonStepsCompleted(stored.completed);
-    } else {
-      setUnlockedStepIndex(0);
-      setCurrentStepIndex(0);
-      setLessonStepsCompleted(false);
-    }
+    };
+
+    const local = loadLessonStepProgress(user.id, activeLessonId);
+    applyStored(local);
+
+    let cancelled = false;
+    void (async () => {
+      const remote = await fetchLessonStepProgress(
+        supabase,
+        user.id,
+        activeLessonId,
+      );
+      if (cancelled) return;
+      const latestLocal = loadLessonStepProgress(user.id, activeLessonId);
+      const merged = mergeLessonStepProgress(
+        mergeLessonStepProgress(latestLocal, storedProgressRef.current),
+        remote,
+      );
+      applyStored(merged);
+      if (!merged) return;
+      saveLessonStepProgress(user.id, activeLessonId, merged);
+      const remoteBehind =
+        !remote ||
+        merged.unlockedStepIndex > remote.unlockedStepIndex ||
+        (merged.completed && !remote.completed);
+      if (remoteBehind) {
+        void upsertLessonStepProgress(supabase, user.id, activeLessonId, merged);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, activeLessonId]);
+
+  const persistStepProgress = useCallback(
+    (
+      nextUnlocked: number,
+      completed: boolean,
+      opts?: { mergeCompleted?: boolean },
+    ) => {
+      if (!user?.id || !activeLessonId) return;
+      const existing =
+        storedProgressRef.current ??
+        loadLessonStepProgress(user.id, activeLessonId);
+      const mergeCompleted = opts?.mergeCompleted !== false;
+      const nextCompleted = mergeCompleted
+        ? completed || Boolean(existing?.completed)
+        : completed;
+      const maxKnown = Math.max(
+        nextUnlocked,
+        existing?.unlockedStepIndex ?? 0,
+        nextCompleted ? Math.max(0, lessonSteps.length - 1) : 0,
+      );
+      if (
+        existing &&
+        existing.unlockedStepIndex >= maxKnown &&
+        existing.completed === nextCompleted
+      ) {
+        if (nextCompleted) setLessonStepsCompleted(true);
+        return;
+      }
+      const payload = {
+        unlockedStepIndex: maxKnown,
+        completed: nextCompleted,
+      };
+      storedProgressRef.current = {
+        ...payload,
+        savedAt: new Date().toISOString(),
+      };
+      saveLessonStepProgress(user.id, activeLessonId, payload);
+      void upsertLessonStepProgress(
+        supabase,
+        user.id,
+        activeLessonId,
+        payload,
+      );
+      if (nextCompleted) setLessonStepsCompleted(true);
+    },
+    [user?.id, activeLessonId, lessonSteps.length],
+  );
 
   // Clamp indexes when step count changes; never downgrade a valid completion.
   // Completion without required homework is invalid (only after answers hydrate).
+  // Homework already submitted (any device) → treat lesson as fully filled.
   useEffect(() => {
     if (lessonSteps.length === 0 || !user?.id || !activeLessonId) return;
     const maxIdx = Math.max(0, lessonSteps.length - 1);
-    const stored = loadLessonStepProgress(user.id, activeLessonId);
+    const stored =
+      storedProgressRef.current ??
+      loadLessonStepProgress(user.id, activeLessonId);
     const finishStep = lessonSteps[maxIdx];
     const needsHomework = Boolean(
       finishStep && stepHasSpeakingTask(finishStep),
     );
     const hwDone = Boolean(existingAnswer);
 
-    // Wait for answers to load before invalidating a stored completion.
+    if (hwDone) {
+      persistStepProgress(maxIdx, true);
+      setUnlockedStepIndex(maxIdx);
+      setCurrentStepIndex((prev) => Math.min(Math.max(prev, maxIdx), maxIdx));
+      return;
+    }
+
     if (
       isInitialized &&
       stored?.completed &&
       needsHomework &&
       !hwDone
     ) {
-      saveLessonStepProgress(user.id, activeLessonId, {
-        unlockedStepIndex: maxIdx,
-        completed: false,
-      });
+      persistStepProgress(maxIdx, false, { mergeCompleted: false });
       setLessonStepsCompleted(false);
       setUnlockedStepIndex(maxIdx);
       setCurrentStepIndex((prev) => Math.min(prev, maxIdx));
@@ -219,13 +313,9 @@ export function useCourseLessonPage() {
       (!needsHomework || hwDone || !isInitialized);
 
     if (completed) {
-      setLessonStepsCompleted(true);
+      persistStepProgress(maxIdx, true);
       setUnlockedStepIndex(maxIdx);
       setCurrentStepIndex((prev) => Math.min(prev, maxIdx));
-      saveLessonStepProgress(user.id, activeLessonId, {
-        unlockedStepIndex: maxIdx,
-        completed: true,
-      });
       return;
     }
 
@@ -237,26 +327,8 @@ export function useCourseLessonPage() {
     activeLessonId,
     existingAnswer,
     isInitialized,
+    persistStepProgress,
   ]);
-
-  const persistStepProgress = useCallback(
-    (nextUnlocked: number, completed: boolean) => {
-      if (!user?.id || !activeLessonId) return;
-      const existing = loadLessonStepProgress(user.id, activeLessonId);
-      const mergedCompleted = completed || Boolean(existing?.completed);
-      const maxKnown = Math.max(
-        nextUnlocked,
-        existing?.unlockedStepIndex ?? 0,
-        mergedCompleted ? Math.max(0, lessonSteps.length - 1) : 0,
-      );
-      saveLessonStepProgress(user.id, activeLessonId, {
-        unlockedStepIndex: maxKnown,
-        completed: mergedCompleted,
-      });
-      if (mergedCompleted) setLessonStepsCompleted(true);
-    },
-    [user?.id, activeLessonId, lessonSteps.length],
-  );
 
   const scrollToStep = useCallback((index: number) => {
     requestAnimationFrame(() => {

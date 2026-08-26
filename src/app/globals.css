@@ -311,3 +311,49 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.12);
   vertical-align: top;
 }
+
+/* ─── Tactical reticle cursor ─── */
+html body {
+  cursor: url("/cursors/reticle.png?v=2") 16 16, crosshair;
+}
+
+html body :is(a, button, label, select, summary, [role="button"], .cursor-pointer) {
+  cursor: url("/cursors/reticle-pointer.png?v=2") 16 16, pointer;
+}
+
+html body :is(
+  input:not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea,
+  [contenteditable="true"],
+  .ql-editor,
+  .ql-container,
+  .ql-toolbar input
+) {
+  cursor: text;
+}
+
+html body :is(button:disabled, [disabled], .cursor-not-allowed) {
+  cursor: not-allowed;
+}
+
+/* ─── Compass loader ─── */
+@keyframes compass-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.compass-needle {
+  transform-origin: 24px 24px;
+  transform-box: view-box;
+  animation: compass-spin 2.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compass-needle {
+    animation: none;
+  }
+}

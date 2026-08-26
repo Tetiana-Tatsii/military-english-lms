@@ -7,23 +7,10 @@ import { CourseLessonSidebarStyles } from "@/components/courses/lesson-page/Cour
 import CourseLessonSidebar from "@/components/courses/lesson-page/CourseLessonSidebar";
 import CourseLessonMainContent from "@/components/courses/lesson-page/CourseLessonMainContent";
 import { useCourseLessonPage } from "@/components/courses/lesson-page/useCourseLessonPage";
+import PageLoadingScreen from "@/components/ui/PageLoadingScreen";
 
 function CoursePageLoading() {
-  return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#faf9f6",
-        color: "#8a8a45",
-        fontWeight: 600,
-      }}
-    >
-      Завантаження курсу...
-    </div>
-  );
+  return <PageLoadingScreen message="Завантаження курсу..." />;
 }
 
 function CoursePageInner() {
@@ -31,19 +18,10 @@ function CoursePageInner() {
 
   if (!page.isReady) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: page.isDarkMode ? "#2d2f2a" : "#faf9f6",
-          color: "#8a8a45",
-          fontWeight: 600,
-        }}
-      >
-        Завантаження курсу...
-      </div>
+      <PageLoadingScreen
+        message="Завантаження курсу..."
+        isDarkMode={page.isDarkMode}
+      />
     );
   }
 

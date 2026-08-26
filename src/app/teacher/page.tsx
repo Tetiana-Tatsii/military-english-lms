@@ -19,6 +19,7 @@ import AnswersTab from "@/components/teacher/AnswersTab";
 import UsersTab from "@/components/teacher/UsersTab";
 import EditorTab from "@/components/teacher/EditorTab";
 import SupportTab from "@/components/teacher/SupportTab";
+import PageLoadingScreen from "@/components/ui/PageLoadingScreen";
 
 export default function TeacherDashboard() {
   const {
@@ -65,13 +66,10 @@ export default function TeacherDashboard() {
 
   if (!isInitialized || !user || user.role === "student") {
     return (
-      <div
-        className={`flex min-h-screen items-center justify-center font-semibold ${
-          isDarkMode ? "bg-[#1c1d1a] text-[#8a8a45]" : "bg-[#faf9f6] text-[#8a8a45]"
-        }`}
-      >
-        Завантаження кабінету...
-      </div>
+      <PageLoadingScreen
+        message="Завантаження кабінету..."
+        isDarkMode={isDarkMode}
+      />
     );
   }
 

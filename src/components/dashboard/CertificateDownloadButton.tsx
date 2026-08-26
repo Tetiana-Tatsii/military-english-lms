@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Award, Download, Loader2 } from "lucide-react";
+import { Award, Download } from "lucide-react";
+import CompassLoader from "@/components/ui/CompassLoader";
 import { supabase } from "@/lib/supabase";
 import {
   downloadCertificateHtml,
@@ -156,7 +157,7 @@ export default function CertificateDownloadButton({
         }`}
       >
         {busy || checking ? (
-          <Loader2 size={16} className="animate-spin" />
+          <CompassLoader size={16} />
         ) : canDownload ? (
           <Download size={16} />
         ) : (

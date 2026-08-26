@@ -108,9 +108,10 @@ function isCourseFullyComplete(
   doneLessonIds: Set<string>,
   completedCourseIds: string[],
 ): boolean {
-  if (completedCourseIds.includes(course.id)) return true;
   const lessons = (course.modules ?? []).flatMap((mod) => mod.lessons ?? []);
-  return lessons.length > 0 && lessons.every((lesson) => doneLessonIds.has(lesson.id));
+  if (lessons.length === 0) return completedCourseIds.includes(course.id);
+  // Stale completed_courses must not hide cat/dog/drone after progress is reset.
+  return lessons.every((lesson) => doneLessonIds.has(lesson.id));
 }
 
 function countDoneModules(course: Course, doneLessonIds: Set<string>): number {
@@ -173,9 +174,8 @@ export function getCharacterLayerStack(opts: {
   const layers: CharacterLayer[] = [];
   pushLayer(layers, "base", "/layers/base.png");
 
-  // Never stack cat + dog + drone + cup. Course complete / proud → cup only.
-  const prestigeId =
-    mood === "proud" ? "victory" : opts.prestigeIds[0];
+  // Mood only swaps the head. Cup vs companion comes from progress, not proud.
+  const prestigeId = opts.prestigeIds[0];
 
   // Cup goes on the floor beside him: under the boots, shifted left off the toe.
   if (prestigeId === "victory") {
