@@ -12,6 +12,7 @@ import {
   type CertificateEligibility,
   type CertificateRecord,
 } from "@/lib/certificates";
+import CertificateFeedbackModal from "./CertificateFeedbackModal";
 import type { Answer, Course } from "@/types";
 
 interface CertificateDownloadButtonProps {
@@ -36,6 +37,7 @@ export default function CertificateDownloadButton({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const refresh = useCallback(async () => {
     if (course.status !== "active") {
@@ -89,6 +91,12 @@ export default function CertificateDownloadButton({
     void refresh();
   }, [refresh]);
 
+  const openFeedbackModal = () => {
+    if (!eligibility?.eligible || busy || checking) return;
+    setError(null);
+    setShowFeedbackModal(true);
+  };
+
   const handleDownload = async () => {
     // Never download solely because a row exists — eligibility must hold now
     // (all HW reviewed, quizzes done, Progress ≥ 60%).
@@ -109,6 +117,7 @@ export default function CertificateDownloadButton({
         ...cert,
         student_name: studentName,
       });
+      setShowFeedbackModal(false);
     } catch (err) {
       console.error(err);
       const message =
@@ -138,7 +147,7 @@ export default function CertificateDownloadButton({
     <div className="mt-4">
       <button
         type="button"
-        onClick={handleDownload}
+        onClick={openFeedbackModal}
         disabled={!canDownload || busy || checking}
         className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
           canDownload && !busy
@@ -178,6 +187,19 @@ export default function CertificateDownloadButton({
 
       {error && (
         <p className="mt-2 text-xs text-[#c97a4a]">{error}</p>
+      )}
+
+      {showFeedbackModal && (
+        <CertificateFeedbackModal
+          isDarkMode={isDarkMode}
+          busy={busy}
+          onDownload={() => {
+            void handleDownload();
+          }}
+          onClose={() => {
+            if (!busy) setShowFeedbackModal(false);
+          }}
+        />
       )}
     </div>
   );
