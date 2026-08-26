@@ -10,9 +10,8 @@ import InstructorCard from "../../components/dashboard/InstructorCard";
 import Voentorg from "../../components/dashboard/Voentorg";
 import Achievements from "../../components/dashboard/Achievements";
 import PageLoadingScreen from "@/components/ui/PageLoadingScreen";
-import {
-  getActivePrestigeIds,
-} from "@/lib/characterLayers";
+import { getActivePrestigeIds } from "@/lib/characterLayers";
+import { DEFAULT_GAMIFICATION_PROFILE } from "@/lib/gamification";
 
 export default function DashboardPage() {
   const { user, courses, answers, logout, isInitialized, gamification, instructorMood, buyShopItem, unequipShopItem, refreshGamification } = useAppContext();
