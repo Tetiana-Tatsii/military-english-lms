@@ -11,7 +11,10 @@ export async function fetchAnswers(): Promise<Answer[]> {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Помилка завантаження відповідей з Supabase:", error);
+      console.error(
+        "Помилка завантаження відповідей з Supabase:",
+        error.message || error.code || error,
+      );
       return [];
     }
 

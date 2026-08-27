@@ -83,19 +83,20 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
       if (data === null) throw new Error("Failed to load courses");
       return data;
     },
-    enabled: authReady,
+    enabled: authReady && !!user,
   });
 
   const answersQuery = useQuery({
     queryKey: answersQueryKey,
     queryFn: fetchAnswers,
-    enabled: authReady,
+    enabled: authReady && !!user,
   });
 
   const courses = coursesQuery.data ?? [];
   const answers = answersQuery.data ?? [];
+  // Login has no user — don't wait on answers/courses (anon has no table grants).
   const isInitialized =
-    authReady && coursesQuery.isFetched && answersQuery.isFetched;
+    authReady && (!user || (coursesQuery.isFetched && answersQuery.isFetched));
 
   const setCourses = useCallback(
     (updater: CoursesUpdater) => {

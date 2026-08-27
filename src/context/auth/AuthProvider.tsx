@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [usersDb, setUsersDb] = useState<UserAccount[]>([]);
   const [authReady, setAuthReady] = useState(false);
   const postLoginHandlers = useRef<PostLoginHandler[]>([]);
+  const usersFetchGen = useRef(0);
 
   const registerPostLoginHandler = useCallback((handler: PostLoginHandler) => {
     postLoginHandlers.current.push(handler);
@@ -67,12 +68,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUsersFromSupabase = useCallback(async () => {
+    const gen = ++usersFetchGen.current;
+
+    // Wait for a real JWT before listing profiles. An early request can
+    // pass RLS as "own row only" and then overwrite a later full list.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      if (gen === usersFetchGen.current) setUsersDb([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("profiles")
       .select("id, name, role, status, squad_id")
       .order("created_at", { ascending: true });
 
-    if (!error && data) {
+    if (gen !== usersFetchGen.current) return;
+
+    if (error) {
+      console.error("fetchUsersFromSupabase:", error);
+      return;
+    }
+
+    if (data) {
       setUsersDb(
         data.map((u) => ({
           id: u.id,
@@ -198,6 +218,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [restoreSession]);
 
+  useEffect(() => {
+    if (!authReady || !user) return;
+    if (user.role !== "teacher" && user.role !== "admin") return;
+    void fetchUsersFromSupabase();
+  }, [authReady, user, fetchUsersFromSupabase]);
+
   const finishLogin = useCallback(
     async (userId: string): Promise<string | null> => {
       const { data: profileData, error: profileError } = await supabase
@@ -224,9 +250,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       await runPostLoginHandlers(profileData.id);
+      await fetchUsersFromSupabase();
       return null;
     },
-    [applySessionUser, clearBrokenSession, runPostLoginHandlers],
+    [
+      applySessionUser,
+      clearBrokenSession,
+      fetchUsersFromSupabase,
+      runPostLoginHandlers,
+    ],
   );
 
   const registerUser = useCallback(
@@ -337,6 +369,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setUsersDb([]);
     sessionStorage.removeItem("lanp_user");
   }, []);
 

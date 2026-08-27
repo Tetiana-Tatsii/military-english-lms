@@ -139,7 +139,7 @@ export default function Voentorg({
     return (
       <div
         key={item.id}
-        className="flex flex-col items-center gap-2 rounded-lg border p-3 text-center transition-all duration-200"
+        className="flex flex-col items-center gap-1.5 rounded-lg border p-2 text-center transition-all duration-200"
         style={{
           background: cardBg(equipped),
           borderColor: border(equipped),
@@ -163,7 +163,7 @@ export default function Voentorg({
               target.style.display = "none";
               const parent = target.parentElement;
               if (parent) {
-                parent.style.fontSize = "36px";
+                parent.style.fontSize = "42px";
                 parent.textContent = item.emoji;
               }
             }}
@@ -196,7 +196,7 @@ export default function Voentorg({
           <button
             onClick={() => handleUnequip(item)}
             disabled={isLoading}
-            className="w-full rounded-lg px-2 py-1.5 text-xs font-bold transition-colors duration-200 cursor-pointer hover:bg-[#6b6b36]"
+            className="mt-auto max-w-full self-center rounded-lg px-3 py-1.5 text-xs font-bold transition-colors duration-200 cursor-pointer hover:bg-[#6b6b36]"
             style={{ background: "#8a8a45", color: "#fff" }}
           >
             {isLoading ? "..." : "Unequip"}
@@ -205,7 +205,7 @@ export default function Voentorg({
           <button
             onClick={() => handleBuy(item)}
             disabled={(!canClick && !equipped) || isLoading}
-            className={`w-full rounded-lg px-2 py-1.5 text-xs font-bold transition-colors duration-200 ${
+            className={`mt-auto max-w-full self-center rounded-lg px-3 py-1.5 text-xs font-bold transition-colors duration-200 ${
               (canClick || item.id === "coffee") && !isLoading
                 ? "bg-[#8a8a45] text-white cursor-pointer hover:bg-[#6b6b36]"
                 : "bg-[#e9e1cd] text-[#9a8f70] cursor-not-allowed"
@@ -305,7 +305,7 @@ export default function Voentorg({
                 setRefreshmentsOpen((v) => !v),
               )}
               {refreshmentsOpen && (
-                <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
                   {REFRESHMENT_ITEMS.map(renderItemCard)}
                 </div>
               )}
@@ -316,7 +316,7 @@ export default function Voentorg({
                 setEquipmentOpen((v) => !v),
               )}
               {equipmentOpen && (
-                <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
                   {EQUIPMENT_ITEMS.map(renderItemCard)}
                 </div>
               )}
