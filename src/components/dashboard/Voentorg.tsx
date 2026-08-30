@@ -176,21 +176,21 @@ export default function Voentorg({
         >
           {item.name}
         </p>
-        <p
-          className="text-xs font-semibold flex items-center justify-center gap-1"
-          style={{ color: "#8a8a45" }}
-        >
-          {item.price === 0 ? (
-            "Free"
-          ) : owned ? (
-            "У власності"
-          ) : (
-            <>
-              {item.price}
-              <CoffeeCoinIcon />
-            </>
-          )}
-        </p>
+        {item.price > 0 && (
+          <p
+            className="text-xs font-semibold flex items-center justify-center gap-1"
+            style={{ color: "#8a8a45" }}
+          >
+            {owned ? (
+              "У власності"
+            ) : (
+              <>
+                {item.price}
+                <CoffeeCoinIcon />
+              </>
+            )}
+          </p>
+        )}
 
         {equipped && item.id !== "coffee" ? (
           <button
@@ -214,10 +214,7 @@ export default function Voentorg({
             {isLoading ? (
               "..."
             ) : item.id === "coffee" ? (
-              <span className="inline-flex items-center justify-center gap-1">
-                Give coffee
-                <CoffeeCoinIcon />
-              </span>
+              "Like"
             ) : owned ? (
               "Activate"
             ) : (

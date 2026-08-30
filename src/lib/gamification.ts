@@ -71,7 +71,7 @@ export type ShopCatalogItem = {
 
 // Purchasable catalogue (prices must match buy_shop_item RPC)
 export const SHOP_ITEMS: readonly ShopCatalogItem[] = [
-  { id: "coffee",    name: "Coffee",             price: 0,  emoji: "☕", image: "/shop/coffee.webp",        kind: "refreshment", layer: "hand" },
+  { id: "coffee",    name: "Like",               price: 0,  emoji: "👍", image: "/shop/like.webp",          kind: "refreshment", layer: "hand" },
   { id: "snickers",  name: "Energy Bar",         price: 30, emoji: "🍫", image: "/shop/snickers.webp",      kind: "refreshment", layer: "hand" },
   { id: "energy",    name: "Energy Drink",       price: 40, emoji: "🥤", image: "/shop/energy.webp",        kind: "refreshment", layer: "hand" },
   { id: "thermos",   name: "Thermo Cup",         price: 50, emoji: "🫖", image: "/shop/thermos.webp",       kind: "refreshment", layer: "hand" },
