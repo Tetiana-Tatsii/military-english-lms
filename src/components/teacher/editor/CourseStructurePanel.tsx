@@ -3,11 +3,9 @@
 import React from "react";
 import {
   Plus,
-  Trash2,
   Edit2,
   Edit3,
   BookOpen,
-  X,
 } from "lucide-react";
 
 import type { EditorTabState } from "./useEditorTab";
@@ -25,14 +23,12 @@ export default function CourseStructurePanel({ state, isDarkMode }: CourseStruct
     activeCourse,
     setIsAddingCourse,
     openEditCourseModal,
-    handleDeleteCourse,
     editingModuleId,
     editingModuleName,
     setEditingModuleName,
     handleSaveModuleName,
     handleCancelEditModuleName,
     handleEditModuleName,
-    handleDeleteModule,
     editingLessonId,
     editingLessonName,
     setEditingLessonName,
@@ -40,7 +36,6 @@ export default function CourseStructurePanel({ state, isDarkMode }: CourseStruct
     handleCancelEditLessonName,
     handleEditLessonName,
     setEditingLesson,
-    handleDeleteLesson,
     newLessonTitle,
     selectedModuleId,
     setSelectedModuleId,
@@ -133,21 +128,6 @@ export default function CourseStructurePanel({ state, isDarkMode }: CourseStruct
               {activeCourse.subtitle}
             </p>
           </div>
-          <button
-            onClick={handleDeleteCourse}
-            className="w-full shrink-0 md:w-auto"
-            style={{
-              background: "#fdeced",
-              color: "#c97a4a",
-              border: "1px solid #facbce",
-              padding: "8px 16px",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Видалити курс
-          </button>
         </div>
 
         <h4
@@ -234,18 +214,6 @@ export default function CourseStructurePanel({ state, isDarkMode }: CourseStruct
                   </button>
                 </span>
               )}
-              <button
-                onClick={() => handleDeleteModule(mod.id)}
-                className="shrink-0 self-end md:self-auto"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#c97a4a",
-                  cursor: "pointer",
-                }}
-              >
-                <Trash2 size={18} />
-              </button>
             </div>
             <div className="border-[#e0dcd0] pl-0 md:ml-7 md:border-l-2 md:pl-6">
               {mod.lessons.map((les, lesIndex) => (
@@ -335,18 +303,6 @@ export default function CourseStructurePanel({ state, isDarkMode }: CourseStruct
                       </button>
                     </span>
                   )}
-                  <button
-                    onClick={() => handleDeleteLesson(mod.id, les.id)}
-                    className="shrink-0 self-end md:self-auto"
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#c97a4a",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <X size={18} />
-                  </button>
                 </div>
               ))}
               <div className="mt-4 flex flex-col gap-2 md:flex-row">
