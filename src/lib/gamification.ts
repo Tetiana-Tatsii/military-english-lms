@@ -71,20 +71,20 @@ export type ShopCatalogItem = {
 
 // Purchasable catalogue (prices must match buy_shop_item RPC)
 export const SHOP_ITEMS: readonly ShopCatalogItem[] = [
-  { id: "coffee",    name: "Like",               price: 0,  emoji: "👍", image: "/shop/like.webp",          kind: "refreshment", layer: "hand" },
-  { id: "snickers",  name: "Energy Bar",         price: 30, emoji: "🍫", image: "/shop/snickers.webp",      kind: "refreshment", layer: "hand" },
-  { id: "energy",    name: "Energy Drink",       price: 40, emoji: "🥤", image: "/shop/energy.webp",        kind: "refreshment", layer: "hand" },
-  { id: "thermos",   name: "Thermo Cup",         price: 50, emoji: "🫖", image: "/shop/thermos.webp",       kind: "refreshment", layer: "hand" },
-  { id: "boots",     name: "Tactical Boots",     price: 10, emoji: "🥾", image: "/shop/boots.webp",         kind: "equipment",   layer: "boots" },
-  { id: "kneepads",  name: "Knee Pads",          price: 10, emoji: "🦵", image: "/shop/kneepads.webp",      kind: "equipment",   layer: "kneepads" },
-  { id: "vest",      name: "Plate Carrier",      price: 10, emoji: "🦺", image: "/shop/vest.webp",          kind: "equipment",   layer: "vest" },
-  { id: "patch",     name: "NGU Patch",          price: 10, emoji: "🎖️", image: "/shop/patch.webp",         kind: "equipment",   layer: "patch" },
-  { id: "gloves",    name: "Tactical Gloves",    price: 10, emoji: "🧤", image: "/shop/gloves.webp",        kind: "equipment",   layer: "gloves" },
-  { id: "watch",     name: "Field Watch",        price: 10, emoji: "⌚", image: "/shop/watch.webp",         kind: "equipment",   layer: "watch" },
-  { id: "glasses",   name: "Ballistic Glasses",  price: 10, emoji: "🕶️", image: "/shop/glasses.webp",       kind: "equipment",   layer: "glasses" },
-  { id: "headset",   name: "Comms Headset",      price: 10, emoji: "🎧", image: "/shop/headset.webp",      kind: "equipment",   layer: "headset" },
-  { id: "radio",     name: "Field Radio",        price: 10, emoji: "📻", image: "/shop/radio.webp",         kind: "equipment",   layer: "radio" },
-  { id: "helmet",    name: "Combat Helmet",      price: 10, emoji: "⛑️", image: "/shop/helmet.webp",        kind: "equipment",   layer: "helmet" },
+  { id: "coffee",    name: "Like",               price: 0,   emoji: "👍", image: "/shop/like.webp",          kind: "refreshment", layer: "hand" },
+  { id: "snickers",  name: "Energy Bar",         price: 10,  emoji: "🍫", image: "/shop/snickers.webp",      kind: "refreshment", layer: "hand" },
+  { id: "energy",    name: "Energy Drink",       price: 15,  emoji: "🥤", image: "/shop/energy.webp",        kind: "refreshment", layer: "hand" },
+  { id: "thermos",   name: "Thermo Cup",         price: 28,  emoji: "🫖", image: "/shop/thermos.webp",       kind: "refreshment", layer: "hand" },
+  { id: "boots",     name: "Tactical Boots",     price: 110, emoji: "🥾", image: "/shop/boots.webp",         kind: "equipment",   layer: "boots" },
+  { id: "kneepads",  name: "Knee Pads",          price: 75,  emoji: "🦵", image: "/shop/kneepads.webp",      kind: "equipment",   layer: "kneepads" },
+  { id: "vest",      name: "Plate Carrier",      price: 230, emoji: "🦺", image: "/shop/vest.webp",          kind: "equipment",   layer: "vest" },
+  { id: "patch",     name: "NGU Patch",          price: 0,   emoji: "🎖️", image: "/shop/patch.webp",         kind: "equipment",   layer: "patch" },
+  { id: "gloves",    name: "Tactical Gloves",    price: 60,  emoji: "🧤", image: "/shop/gloves.webp",        kind: "equipment",   layer: "gloves" },
+  { id: "watch",     name: "Field Watch",        price: 70,  emoji: "⌚", image: "/shop/watch.webp",         kind: "equipment",   layer: "watch" },
+  { id: "glasses",   name: "Ballistic Glasses",  price: 90,  emoji: "🕶️", image: "/shop/glasses.webp",       kind: "equipment",   layer: "glasses" },
+  { id: "headset",   name: "Comms Headset",      price: 190, emoji: "🎧", image: "/shop/headset.webp",      kind: "equipment",   layer: "headset" },
+  { id: "radio",     name: "Field Radio",        price: 160, emoji: "📻", image: "/shop/radio.webp",         kind: "equipment",   layer: "radio" },
+  { id: "helmet",    name: "Combat Helmet",      price: 280, emoji: "⛑️", image: "/shop/helmet.webp",        kind: "equipment",   layer: "helmet" },
 ] as const;
 
 /** Empty — all layered equipment is live in SHOP_ITEMS. Belt and backpack cards exist in /shop but are not sold. */
@@ -119,7 +119,9 @@ export const PRESTIGE_ART_STUBS = [
 ] as const;
 
 export const REFRESHMENT_ITEMS = SHOP_ITEMS.filter((i) => i.kind === "refreshment");
-export const EQUIPMENT_ITEMS = SHOP_ITEMS.filter((i) => i.kind === "equipment");
+export const EQUIPMENT_ITEMS = SHOP_ITEMS.filter(
+  (i) => i.kind === "equipment" && i.id !== "patch",
+);
 
 export type ShopItemId = (typeof SHOP_ITEMS)[number]["id"];
 
