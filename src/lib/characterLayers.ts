@@ -60,7 +60,7 @@ const BODY_EQUIP_ORDER = [
 const HEAD_EQUIP_ORDER = ["glasses", "headset", "helmet"] as const;
 
 function resolveHandSrc(
-  _mood: InstructorMood,
+  mood: InstructorMood,
   handId: string,
   previewAll: boolean,
 ): string {
@@ -68,7 +68,7 @@ function resolveHandSrc(
   if (handId !== "coffee") {
     return HAND_SRC[handId] ?? "/layers/hand-thumbs-up.png";
   }
-  // Mood swaps only the head — keep the default thumbs-up (and any equipped gear).
+  if (mood === "angry") return "/layers/hand-coffee.png";
   return "/layers/hand-thumbs-up.png";
 }
 
