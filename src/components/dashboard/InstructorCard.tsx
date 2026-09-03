@@ -149,17 +149,14 @@ export default function InstructorCard({
             </div>
           </div>
         ) : (
-          <div className="flex flex-1 flex-col items-end justify-end gap-3 pb-1 min-h-0">
+          <div className="flex flex-1 flex-col items-end justify-end gap-3 pb-1">
             {mood === "angry" && (
-              <div className="flex w-full flex-1 items-center sm:min-h-[5.5rem] md:min-h-[6.5rem]">
-                <InstructorSpeechBubble
-                  message={INSTRUCTOR_MOOD_QUOTES.angry}
-                  variant="angry"
-                  isDarkMode={isDarkMode}
-                  prominent
-                  className="w-full"
-                />
-              </div>
+              <InstructorSpeechBubble
+                message={INSTRUCTOR_MOOD_QUOTES.angry}
+                variant="angry"
+                isDarkMode={isDarkMode}
+                className="w-full"
+              />
             )}
             <button
               onClick={onPxStoreToggle}
