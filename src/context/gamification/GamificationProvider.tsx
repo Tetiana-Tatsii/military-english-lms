@@ -19,6 +19,13 @@ import {
   type BuyShopResult,
   type UnequipShopResult,
 } from "@/lib/gamification";
+import {
+  itemCheersInstructor,
+  latestLoginBrokeStreak,
+  readPersistedInstructorMood,
+  resolveMoodAfterStreak,
+  writePersistedInstructorMood,
+} from "@/lib/instructorMood";
 import { useAuth } from "@/context/auth";
 
 export type InstructorMood = "happy" | "angry" | "proud";
@@ -75,7 +82,18 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       }
 
       const streakResult = await processDailyStreak(supabase, id);
-      setInstructorMood(streakResult.wasStreakBroken ? "angry" : "happy");
+      const ledgerBrokeStreak =
+        !streakResult.wasStreakBroken &&
+        readPersistedInstructorMood(id) == null
+          ? await latestLoginBrokeStreak(supabase, id)
+          : false;
+      setInstructorMood(
+        resolveMoodAfterStreak({
+          userId: id,
+          wasStreakBroken: streakResult.wasStreakBroken,
+          ledgerBrokeStreak,
+        }),
+      );
 
       const profile = await fetchGamificationProfile(supabase, id);
       const base = profile ?? DEFAULT_GAMIFICATION_PROFILE;
@@ -109,8 +127,10 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
       const result = await buyShopItemInDb(supabase, user.id, itemId);
 
       if (!result.error) {
-        // Coffee / snack / equipment cheers Kava back from angry or proud.
-        setInstructorMood("happy");
+        if (itemCheersInstructor(itemId)) {
+          writePersistedInstructorMood(user.id, "happy");
+          setInstructorMood("happy");
+        }
         // Reload inventory + profile so CharacterStage sees layered equip
         const profile = await fetchGamificationProfile(supabase, user.id);
         if (profile) {
@@ -161,6 +181,16 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     },
     [gamification, user],
   );
+
+  useEffect(() => {
+    if (!user?.id) {
+      setInstructorMood("happy");
+      return;
+    }
+    if (readPersistedInstructorMood(user.id) === "angry") {
+      setInstructorMood("angry");
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     return registerPostLoginHandler(async (userId) => {

@@ -6,6 +6,8 @@ import type { GamificationProfile } from "@/context/AppContext";
 import CoffeeCoinIcon from "@/components/ui/CoffeeCoinIcon";
 import StreakCoinIcon from "@/components/ui/StreakCoinIcon";
 import CharacterStage from "@/components/dashboard/CharacterStage";
+import InstructorSpeechBubble from "@/components/dashboard/InstructorSpeechBubble";
+import { INSTRUCTOR_MOOD_QUOTES } from "@/lib/instructorQuotes";
 
 function streakBonusLabel(streakCount: number, filledCups: number): string {
   if (streakCount > 0 && streakCount % 7 === 0) {
@@ -147,7 +149,15 @@ export default function InstructorCard({
             </div>
           </div>
         ) : (
-          <div className="flex flex-1 items-end justify-end pb-1">
+          <div className="flex flex-1 flex-col items-end justify-end gap-3 pb-1">
+            {mood === "angry" && (
+              <InstructorSpeechBubble
+                message={INSTRUCTOR_MOOD_QUOTES.angry}
+                variant="angry"
+                isDarkMode={isDarkMode}
+                className="w-full"
+              />
+            )}
             <button
               onClick={onPxStoreToggle}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-medium bg-[#8a8a45] hover:opacity-90 transition-opacity cursor-pointer text-sm"
