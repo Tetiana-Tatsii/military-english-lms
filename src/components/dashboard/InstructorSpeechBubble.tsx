@@ -9,6 +9,8 @@ interface InstructorSpeechBubbleProps {
   variant: BubbleVariant;
   isDarkMode: boolean;
   className?: string;
+  /** Larger copy on sm+ — mobile stays compact. */
+  prominent?: boolean;
 }
 
 const VARIANT_STYLES: Record<BubbleVariant, { border: string; bg: string; bgDark: string }> = {
@@ -23,14 +25,23 @@ export default function InstructorSpeechBubble({
   variant,
   isDarkMode,
   className = "",
+  prominent = false,
 }: InstructorSpeechBubbleProps) {
   const palette = VARIANT_STYLES[variant];
   const fill = isDarkMode ? palette.bgDark : palette.bg;
 
+  const textClasses = prominent
+    ? "text-[11px] sm:text-sm md:text-base lg:text-lg font-semibold leading-snug sm:leading-relaxed"
+    : "text-[11px] sm:text-xs font-semibold leading-snug";
+
+  const padClasses = prominent
+    ? "px-3 py-2.5 sm:px-5 sm:py-4 md:px-6 md:py-5"
+    : "px-3 py-2.5";
+
   return (
     <div className={className} aria-label={`Instructor Kava says: ${message}`}>
       <div
-        className="rounded-xl border px-3 py-2.5 text-center text-[11px] sm:text-xs font-semibold leading-snug shadow-sm break-words hyphens-auto"
+        className={`rounded-xl border text-center shadow-sm break-words hyphens-auto ${padClasses} ${textClasses}`}
         style={{
           background: fill,
           color: isDarkMode ? "#e6e4dc" : "#3a3528",

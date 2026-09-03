@@ -68,7 +68,7 @@ function resolveHandSrc(
   if (handId !== "coffee") {
     return HAND_SRC[handId] ?? "/layers/hand-thumbs-up.png";
   }
-  if (mood === "angry") return "/layers/hand-coffee.png";
+  if (mood === "angry") return "/layers/hand-thermos.png";
   return "/layers/hand-thumbs-up.png";
 }
 
