@@ -254,6 +254,15 @@ export async function getOrIssueCertificate(
   return mapCertificateRow(cert as Record<string, unknown>);
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 export async function downloadCertificateHtml(
   cert: CertificateRecord,
 ): Promise<void> {
@@ -263,12 +272,18 @@ export async function downloadCertificateHtml(
   }
 
   let html = await res.text();
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  html = html.replaceAll(
+    'url("/certificates/military-english.png")',
+    `url("${origin}/certificates/military-english.png")`,
+  );
   const replacements: Record<string, string> = {
-    "{{STUDENT_NAME}}": cert.student_name,
-    "{{COURSE_TITLE}}": cert.course_title,
+    "{{STUDENT_NAME}}": escapeHtml(cert.student_name),
+    "{{COURSE_TITLE}}": escapeHtml(cert.course_title),
     "{{COMPLETED_AT}}": formatUaDate(cert.completed_at),
     "{{ISSUED_AT}}": formatUaDate(cert.issued_at),
-    "{{CERTIFICATE_NUMBER}}": cert.certificate_number,
+    "{{CERTIFICATE_NUMBER}}": escapeHtml(cert.certificate_number),
   };
 
   for (const [token, value] of Object.entries(replacements)) {
